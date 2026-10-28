@@ -30,3 +30,22 @@ if (process.env.NODE_ENV !== "production") {
 
 /** True when a database connection string is configured at all. */
 export const isDatabaseConfigured = Boolean(connectionString);
+
+/**
+ * True when `error` is Prisma's unique-constraint failure (P2002) on `field`.
+ *
+ * The error class is not imported: with a driver adapter the thrown object is
+ * matched on its `code`, which is stable, and `meta.target` names the columns
+ * (sometimes the constraint) that collided. Checking the field matters —
+ * "email already taken" and "that workspace slug is taken" need very different
+ * answers.
+ */
+export function isUniqueViolationOn(error: unknown, field: string): boolean {
+  if (typeof error !== "object" || error === null) return false;
+  const { code, meta } = error as { code?: unknown; meta?: { target?: unknown } };
+  if (code !== "P2002") return false;
+
+  const target = meta?.target;
+  const text = Array.isArray(target) ? target.join(",") : String(target ?? "");
+  return text.toLowerCase().includes(field.toLowerCase());
+}

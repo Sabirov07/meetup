@@ -16,7 +16,7 @@ Against a real Postgres database, with no stubs:
 
 | Area | State |
 |---|---|
-| Auth | Server sessions (scrypt hashes, httpOnly cookie, opaque tokens). Sign in, sign out, route protection. |
+| Auth | Open sign-up with email + password, or **Continue with Google**. Server sessions (scrypt hashes, httpOnly cookie, opaque tokens). Sign in, sign out, route protection. |
 | Tasks | Create, edit, delete, comment, depend-on, complete. Optimistic updates with rollback. |
 | Boards | Dashboard owner panels + per-page kanban. Drag between statuses and between owners; a move reassigns, never copies. |
 | Prioritisation | Smart priority engine with a visible, per-task explanation of *why* a task ranks where it does. |
@@ -40,9 +40,40 @@ credential is missing, the UI says so and the control is disabled.
 
 - **Transcript analysis** needs `ANTHROPIC_API_KEY`. Without it, transcripts are
   stored but the *Analyse* button is disabled and says why.
+- **Google sign-in** needs `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`. Without
+  them the login page simply does not offer it and says which variables are
+  missing; email and password keep working.
 - **Google Meet** needs `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` and
   `GOOGLE_REDIRECT_URI`. Without them, *Create a Google Meet* is disabled and
   you paste a link instead. The app never invents a `meet.google.com` URL.
+
+### Signing in
+
+Three ways in, all real:
+
+- **Create an account** at `/signup` — name, email, password (8 characters or
+  more). The account gets its own workspace and is its administrator.
+- **Sign in** at `/login` with that email and password.
+- **Continue with Google**, on either page.
+
+Google sign-in and the Google *Meet* integration are deliberately separate
+flows on the same OAuth client:
+
+| | Sign-in | Meet |
+|---|---|---|
+| Scopes | `openid email profile` | `meetings.space.created`, `meetings.space.readonly` |
+| Redirect URI | `/api/auth/google/callback` | `/api/google/callback` |
+| Stores tokens | No — the ID token is read once and discarded | Yes, in `google_accounts` |
+
+Signing in therefore never asks for Meet permissions, and connecting Meet stays
+a separate, explicit step in **Settings**. Both redirect URIs have to be listed
+on the OAuth client. The sign-in one defaults to `APP_URL` +
+`/api/auth/google/callback`; override it with `GOOGLE_AUTH_REDIRECT_URI` when
+the public URL differs from `APP_URL`.
+
+A Google account whose verified email matches an existing account is **linked**
+to it rather than duplicating the person. Matching is on Google's `sub` claim
+first, which does not change when someone changes their Google email address.
 
 ### Google Meet transcripts, specifically
 
@@ -75,12 +106,14 @@ npm run db:seed
 npm run dev -- -p 3100
 ```
 
-Open `http://localhost:3100`. Sign in with either seeded account — the emails
-are printed by the seed, and the password is the `SEED_PASSWORD` value in
-`.env.local`.
+Open `http://localhost:3100`. Either **create an account** at `/signup`, or sign
+in with one of the seeded accounts — those emails are printed by the seed, and
+the password is the `SEED_PASSWORD` value in `.env.local`.
 
-The seeded names (*Alex Morgan*, *Maya Chen*) are placeholders. Rename both
-people, and the workspace, from **Settings**.
+`db:seed` is optional. It exists so the app is not empty on a first look; a
+brand-new account gets its own empty workspace instead. The seeded names
+(*Alex Morgan*, *Maya Chen*) are placeholders — rename them, and the workspace,
+from **Settings**.
 
 ### Scripts
 
@@ -127,7 +160,10 @@ src/lib/domain/           Pure logic: priority scoring, filters, stats,
 src/lib/data/             Reads → view models (dates serialised for the client).
 src/lib/actions/          Server actions. Validation, authorisation, activity.
 src/lib/ai/               Claude extraction behind a strict schema.
-src/lib/google/           OAuth + Meet REST v2, server-only.
+src/lib/auth/             Sessions, scrypt hashing, account provisioning,
+                          the authorisation chokepoint.
+src/lib/google/           Sign-in (identity.ts) + Meet REST v2 (oauth.ts,
+                          meet.ts), server-only.
 src/components/           UI. Design tokens only — no raw colours.
 ```
 
@@ -165,6 +201,10 @@ Stated plainly rather than stubbed:
   scheduled job calls it yet. Transcripts are attached manually today.
 - **Multi-workspace UI.** The schema supports N workspaces and N members; the
   UI assumes the one you are in.
-- **Invites.** Accounts come from the seed.
+- **Invites.** Sign-up creates a workspace of your own; there is no way yet to
+  invite someone into an existing one, or to join one by link.
+- **Password reset.** No email is sent anywhere in the product, so there is no
+  recovery flow. An account that signed up with Google has no password at all,
+  and the login form says so rather than claiming the password is wrong.
 - **Google Meet embedded in-page.** Meet opens in a separate tab, which is both
   what Google supports and what keeps the task board usable during a call.

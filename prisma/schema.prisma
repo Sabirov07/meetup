@@ -166,8 +166,13 @@ model User {
   id           String   @id @default(cuid())
   email        String   @unique
   name         String
-  /// scrypt hash; never leaves the server.
-  passwordHash String
+  /// scrypt hash; never leaves the server. Null for accounts that only ever
+  /// sign in with Google and therefore have no password to verify.
+  passwordHash String?
+  /// Google's `sub` claim — the stable account identifier. Email can change on
+  /// a Google account, `sub` cannot, so this is what a returning Google
+  /// sign-in is matched on.
+  googleSub    String?  @unique
   /// Token used to tint this person's avatar consistently across the app.
   accentToken  String   @default("violet")
   createdAt    DateTime @default(now())
