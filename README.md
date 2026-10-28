@@ -1,50 +1,170 @@
 # Meetup
 
-A premium shared workspace for turning employer conversations into focused, trackable work. The current MVP provides a polished task-management experience with local demo persistence, a meeting setup flow, and an AI proposal review surface. It does not claim to retrieve transcripts or run AI extraction before those integrations are configured.
+A shared workspace for two people — an employee and their employer — that turns
+conversations into clear, trackable ownership.
 
-## Run locally
+The product is built around one idea: **a model can read a conversation, but it
+cannot decide who committed to what.** So AI output never becomes a commitment
+on its own. It lands as a *proposal*, carrying the evidence behind it and an
+honest statement of how sure it is, and a person approves, edits, or rejects it.
+
+---
+
+## What works right now
+
+Against a real Postgres database, with no stubs:
+
+| Area | State |
+|---|---|
+| Auth | Server sessions (scrypt hashes, httpOnly cookie, opaque tokens). Sign in, sign out, route protection. |
+| Tasks | Create, edit, delete, comment, depend-on, complete. Optimistic updates with rollback. |
+| Boards | Dashboard owner panels + per-page kanban. Drag between statuses and between owners; a move reassigns, never copies. |
+| Prioritisation | Smart priority engine with a visible, per-task explanation of *why* a task ranks where it does. |
+| Sorting | 8 modes. Manual order is never silently re-sorted. |
+| Filtering | 9 facets that combine correctly; filtered counts stay distinct from global counts. |
+| Meetings | Create, track through a real lifecycle, attach a transcript, delete. |
+| Transcripts | Stored per meeting, server-side; only sent to the browser when explicitly opened. |
+| AI review | Summary, decisions, open questions and proposed tasks, each labelled Confirmed / Inferred / Suggested. Approve, edit, bulk-approve or reject. |
+| Recommendations | Derived from live task state; every one cites the tasks it came from. |
+| Activity | Full audit trail — status, owner, priority and deadline changes, with from → to. |
+| Settings | Rename people, change roles and avatar colours, see exactly which integration env vars are missing. |
+
+Everything above was exercised end to end in a browser against the live
+database, including a full task lifecycle (create → in progress → waiting →
+complete) with the statistics and history verified at each step.
+
+## What needs credentials
+
+Both are **optional**. The product does not simulate either one — where a
+credential is missing, the UI says so and the control is disabled.
+
+- **Transcript analysis** needs `ANTHROPIC_API_KEY`. Without it, transcripts are
+  stored but the *Analyse* button is disabled and says why.
+- **Google Meet** needs `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` and
+  `GOOGLE_REDIRECT_URI`. Without them, *Create a Google Meet* is disabled and
+  you paste a link instead. The app never invents a `meet.google.com` URL.
+
+### Google Meet transcripts, specifically
+
+Worth knowing before you spend time on the setup:
+
+- Meet only produces transcripts for a **Google Workspace** plan that includes
+  transcription. A personal `@gmail.com` account can complete OAuth and call the
+  API, but `conferenceRecords.transcripts` will always be empty.
+- Transcription must have been **switched on during the call**. It is not
+  retroactive.
+- Transcripts are **not available the moment a call ends** — which is why
+  *Awaiting transcript* is a normal state in the lifecycle, not an error.
+- Scopes requested: `meetings.space.created`, `meetings.space.readonly`.
+- Google deletes transcript entries **30 days** after the conference ends.
+
+Setup: Google Cloud Console → enable the *Google Meet API* → create an OAuth
+client (Web application) → add your redirect URI exactly as it appears in
+Settings → put the id and secret in `.env.local`. Then connect your account from
+the Settings page.
+
+---
+
+## Running it
 
 ```bash
 npm install
-npm run dev
+cp .env.example .env.local   # then fill in DATABASE_URL, DIRECT_URL, AUTH_SECRET
+npm run db:migrate
+npm run db:seed
+npm run dev -- -p 3100
 ```
 
-Open `http://localhost:3000`. The app starts with clearly labeled sample data and saves task changes to browser storage for the active demo workspace.
+Open `http://localhost:3100`. Sign in with either seeded account — the emails
+are printed by the seed, and the password is the `SEED_PASSWORD` value in
+`.env.local`.
 
-## Available workflows
+The seeded names (*Alex Morgan*, *Maya Chen*) are placeholders. Rename both
+people, and the workspace, from **Settings**.
 
-- Create, edit, delete, filter, search, and complete tasks.
-- Drag a task onto another task in the target status to update its status.
-- Start a meeting record and open Google Meet in a separate tab.
-- Review, approve, or reject suggested tasks from a realistic demo proposal set.
-- Navigate activity, shared tasks, personal tasks, employer tasks, and settings without dead-end controls.
-
-## Supabase setup
-
-The initial SQL schema is in [`supabase/schema.sql`](supabase/schema.sql). Create a Supabase project, run that script in the SQL editor, then add these values to `.env.local`:
+### Scripts
 
 ```bash
-NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+npm run dev          # dev server
+npm run build        # production build
+npm run typecheck    # tsc --noEmit
+npm run lint         # eslint
+npm run db:migrate   # apply migrations
+npm run db:seed      # reset + reseed demo content
+npm run db:studio    # browse the database
 ```
 
-The browser client is intentionally optional while the UI uses demo data. Before switching data operations to Supabase, configure authentication and complete policies for all tables (including profiles, participants, transcripts, AI proposals, and activity events) for the intended workspace roles. Never expose a service-role key in the client.
+---
 
-## Google Meet and AI readiness
+## Trying the whole flow
 
-The meeting experience deliberately opens Google Meet rather than embedding it. To make transcript processing real:
+1. **Meetings → Start meeting.** Pick *No link yet* (or paste a Meet link).
+2. Open the meeting → **Add transcript**. Paste a conversation in
+   `Name: what they said` form, one turn per line. Speaker labels are what the
+   ownership detection reads.
+3. **Analyse** (needs `ANTHROPIC_API_KEY`). The model returns a summary,
+   decisions, open questions and proposed tasks.
+4. **AI review.** Each proposal shows its owner, priority and deadline with an
+   evidence level and a one-line rationale. Anything genuinely ambiguous is
+   flagged *Needs a decision*.
+5. **Approve.** A real task is created, linked back to the meeting and the
+   quote it came from, and marked confirmed-by-human so re-analysis can never
+   overwrite it.
 
-1. Create a Google Cloud OAuth client and request only the scopes needed for meeting and transcript access.
-2. Store OAuth tokens server-side and implement a server-only Google integration service.
-3. Retrieve transcripts only after authorization and save source metadata plus processing state in `meeting_transcripts`.
-4. Send authorized transcript text to a server-side OpenAI extraction service.
-5. Persist generated suggestions as `ai_task_proposals`, then require human approval before creating shared tasks.
+Without an API key you can still do steps 1–2 and 4–5, because the workspace is
+seeded with a labelled sample analysis.
 
-Keep the Google and OpenAI calls behind server-side services; the current UI is designed for those boundaries and intentionally does not fabricate their results.
+---
 
-## Checks
+## Architecture
 
-```bash
-npm run lint
-npm run build
 ```
+prisma/schema.prisma      16 tables. Ownership is always a member reference,
+                          never a "me"/"employer" enum.
+src/lib/domain/           Pure logic: priority scoring, filters, stats,
+                          recommendations. No database imports, so the UI can
+                          use it directly.
+src/lib/data/             Reads → view models (dates serialised for the client).
+src/lib/actions/          Server actions. Validation, authorisation, activity.
+src/lib/ai/               Claude extraction behind a strict schema.
+src/lib/google/           OAuth + Meet REST v2, server-only.
+src/components/           UI. Design tokens only — no raw colours.
+```
+
+A few decisions worth knowing:
+
+**Authorisation is enforced in the server layer, not by RLS.** Prisma connects
+as the Postgres owner role, which carries `BYPASSRLS`, so row-level policies do
+not constrain application queries. Every read and write is scoped by a
+`workspaceId` that came from `requireSession()`. RLS is still enabled on every
+table with no permissive policies, which matters: it locks down the public
+PostgREST endpoint Supabase exposes on every project by default.
+
+**AI output is quarantined.** It is written to `meeting_analyses` and
+`task_proposals`, never to `tasks`. `Task.confirmedByHuman` records the moment a
+person took responsibility for a value, and re-analysis will not touch those
+rows.
+
+**Cache Components is on.** Every route is session-gated, so each page segment
+declares `instant = false` and streams a skeleton from a `<Suspense>` boundary.
+Clock reads happen after `connection()`, never during prerender.
+
+**Two database URLs.** Runtime uses the transaction pooler (6543); migrations
+use the session pooler (5432), because the transaction pooler rejects Prisma's
+prepared statements.
+
+---
+
+## Not built
+
+Stated plainly rather than stubbed:
+
+- **Automatic transcript retrieval.** The Meet API client (`lib/google/meet.ts`)
+  implements space creation, conference records, transcripts and entries, and
+  `Transcript` carries `retryCount` / `nextRetryAt` for backoff — but no
+  scheduled job calls it yet. Transcripts are attached manually today.
+- **Multi-workspace UI.** The schema supports N workspaces and N members; the
+  UI assumes the one you are in.
+- **Invites.** Accounts come from the seed.
+- **Google Meet embedded in-page.** Meet opens in a separate tab, which is both
+  what Google supports and what keeps the task board usable during a call.

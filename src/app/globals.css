@@ -1,23 +1,263 @@
 @import "tailwindcss";
 
-:root {
-  --background: #f8fafc;
-  --foreground: #0f172a;
+/* ===========================================================================
+   Meetup design system
+   ---------------------------------------------------------------------------
+   A dark-first product surface. Three rules hold the whole thing together:
+
+   1. No component ever writes a raw colour. Everything resolves through a
+      semantic token, so re-tuning the palette is a single-file change.
+   2. Surfaces step up in lightness as they come forward (canvas → sidebar →
+      surface → raised → overlay). Depth comes from that step and a hairline
+      border, not from heavy shadows or glow.
+   3. Foreground colours are contrast-checked against `--color-surface`:
+        text        #F4F5F7  14.0:1
+        secondary   #A8ADB8   6.9:1
+        muted       #868D9B   5.4:1   (AA for body text)
+        faint       #6B7280   3.3:1   (decorative and disabled only)
+      Accent #8B7CFF reads 5.3:1 as text, but only 3.3:1 behind white — so
+      solid buttons use the deeper `--color-accent-solid` (#6E5BF0, 4.8:1
+      behind white) while the brighter tone is reserved for text, icons,
+      borders and graphics.
+   =========================================================================== */
+
+@theme {
+  /* --- Surfaces -------------------------------------------------------- */
+  --color-canvas: #101114;
+  --color-sidebar: #14161a;
+  --color-surface: #191b20;
+  --color-raised: #20232a;
+  --color-overlay: #23262e;
+  --color-hover: #22252c;
+
+  /* --- Borders --------------------------------------------------------- */
+  --color-line: #2a2d35;
+  --color-line-strong: #363a44;
+  --color-line-accent: #4a3fa8;
+
+  /* --- Text ------------------------------------------------------------ */
+  --color-text: #f4f5f7;
+  --color-text-secondary: #a8adb8;
+  --color-text-muted: #868d9b;
+  --color-text-faint: #6b7280;
+  --color-text-inverse: #101114;
+
+  /* --- Accent ---------------------------------------------------------- */
+  --color-accent: #8b7cff;
+  --color-accent-bright: #a79cff;
+  --color-accent-solid: #6e5bf0;
+  --color-accent-solid-hover: #7d6df5;
+  --color-accent-dim: #2a2456;
+
+  /* --- Semantic -------------------------------------------------------- */
+  --color-success: #46c995;
+  --color-success-dim: #10342a;
+  --color-warning: #f0b65a;
+  --color-warning-dim: #3a2d14;
+  --color-danger: #f16d79;
+  --color-danger-dim: #3d1c22;
+  --color-info: #68a9ff;
+  --color-info-dim: #152c4a;
+  --color-neutral: #9aa1af;
+  --color-neutral-dim: #262a32;
+
+  /* --- Type ------------------------------------------------------------ */
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+
+  --text-2xs: 0.6875rem;
+  --text-2xs--line-height: 1rem;
+
+  /* --- Radius ---------------------------------------------------------- */
+  --radius-sm: 0.3125rem;
+  --radius-md: 0.4375rem;
+  --radius-lg: 0.625rem;
+  --radius-xl: 0.875rem;
+
+  /* --- Elevation. Restrained by design. -------------------------------- */
+  --shadow-raised: 0 1px 2px rgb(0 0 0 / 0.3);
+  --shadow-popover: 0 8px 24px -6px rgb(0 0 0 / 0.5), 0 2px 6px -2px rgb(0 0 0 / 0.4);
+  --shadow-modal: 0 24px 60px -12px rgb(0 0 0 / 0.65);
+
+  /* --- Motion. Short and non-negotiable; nothing bounces. -------------- */
+  --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
+
+  --animate-fade-in: fade-in 0.15s var(--ease-out-quart);
+  --animate-scale-in: scale-in 0.15s var(--ease-out-quart);
+  --animate-slide-in-right: slide-in-right 0.22s var(--ease-out-quart);
+  --animate-slide-down: slide-down 0.15s var(--ease-out-quart);
+  --animate-shimmer: shimmer 1.6s ease-in-out infinite;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes scale-in {
+  from { opacity: 0; transform: scale(0.97); }
+  to { opacity: 1; transform: scale(1); }
+}
+@keyframes slide-in-right {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+@keyframes slide-down {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes shimmer {
+  0%, 100% { opacity: 0.45; }
+  50% { opacity: 0.8; }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* ===========================================================================
+   Base
+   =========================================================================== */
+
+@layer base {
+  * {
+    border-color: var(--color-line);
+  }
+
+  html {
+    color-scheme: dark;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  body {
+    background-color: var(--color-canvas);
+    color: var(--color-text);
+    font-family: var(--font-sans);
+    font-feature-settings: "cv11", "ss01";
+    font-variant-ligatures: contextual;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* One focus treatment for the entire product. */
+  :focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+    border-radius: var(--radius-sm);
+  }
+
+  button, input, textarea, select {
+    font: inherit;
+    color: inherit;
+  }
+
+  ::placeholder {
+    color: var(--color-text-faint);
+  }
+
+  /* Tabular figures keep KPI numbers from shifting as they change. */
+  .tnum {
+    font-variant-numeric: tabular-nums;
+  }
+
+  ::selection {
+    background-color: var(--color-accent-dim);
+    color: var(--color-text);
+  }
+
+  /* Scrollbars: present but quiet. */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-line-strong) transparent;
+  }
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background-color: var(--color-line-strong);
+    border-radius: 9999px;
+    border: 3px solid transparent;
+    background-clip: content-box;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background-color: #454a56;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
 }
 
-* { border-color: #e2e8f0; }
-button, input, textarea, select { font: inherit; }
-.label { display: block; font-size: 0.75rem; line-height: 1rem; font-weight: 600; color: #475569; }
+/* ===========================================================================
+   Tones
+   ---------------------------------------------------------------------------
+   A tone class sets a foreground / dim-background pair. Badges, status dots
+   and chips then read `--tone-fg` / `--tone-bg` and need no per-variant CSS,
+   which is what keeps `labels.ts` able to name a tone as plain data.
+   =========================================================================== */
+
+@layer components {
+  .tone-accent  { --tone-fg: var(--color-accent-bright); --tone-bg: var(--color-accent-dim); }
+  .tone-success { --tone-fg: var(--color-success);       --tone-bg: var(--color-success-dim); }
+  .tone-warning { --tone-fg: var(--color-warning);       --tone-bg: var(--color-warning-dim); }
+  .tone-danger  { --tone-fg: var(--color-danger);        --tone-bg: var(--color-danger-dim); }
+  .tone-info    { --tone-fg: var(--color-info);          --tone-bg: var(--color-info-dim); }
+  .tone-neutral { --tone-fg: var(--color-neutral);       --tone-bg: var(--color-neutral-dim); }
+
+  .tone-fg { color: var(--tone-fg); }
+  .tone-bg { background-color: var(--tone-bg); }
+  .tone-dot {
+    background-color: var(--tone-fg);
+  }
+
+  /* Section label: the small all-caps header used across panels. */
+  .eyebrow {
+    font-size: var(--text-2xs);
+    line-height: 1rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--color-text-muted);
+  }
+
+  /* Hairline that reads as a seam rather than a line. */
+  .seam {
+    background-image: linear-gradient(
+      to right,
+      transparent,
+      var(--color-line) 12%,
+      var(--color-line) 88%,
+      transparent
+    );
+  }
+}
+
+/* ===========================================================================
+   Utilities
+   =========================================================================== */
+
+@utility no-scrollbar {
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* Clamp long text to a fixed number of lines. */
+@utility line-clamp-* {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: --value(integer);
+  overflow: hidden;
+}
+
+/* Drag affordance for dnd-kit handles. */
+@utility grab {
+  cursor: grab;
+  &:active {
+    cursor: grabbing;
+  }
+}

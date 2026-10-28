@@ -1,0 +1,250 @@
+"use client";
+
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { Check, ChevronsLeft, LogOut, PanelLeft } from "lucide-react";
+import { signOut } from "@/lib/actions/auth";
+import type { MemberSummary, WorkspaceSummary } from "@/lib/domain/types";
+import { cn } from "@/lib/utils";
+import { Logo } from "@/components/brand";
+import { Avatar } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
+import { Count } from "@/components/ui/badge";
+import { Tooltip } from "@/components/ui/feedback";
+import { Menu, MenuContent, MenuItem, MenuLabel, MenuSeparator, MenuTrigger } from "@/components/ui/menu";
+import { navSections, type NavItem } from "./nav";
+
+export type NavCounts = { pendingReview: number; myOpen: number; theirOpen: number };
+
+export function Sidebar({
+  workspace,
+  member,
+  counterpart,
+  counts,
+  collapsed,
+  onToggle,
+  onNavigate,
+}: {
+  workspace: WorkspaceSummary;
+  member: MemberSummary;
+  counterpart: MemberSummary | null;
+  counts: NavCounts;
+  collapsed: boolean;
+  onToggle: () => void;
+  onNavigate?: () => void;
+}) {
+  const pathname = usePathname();
+
+  /** The counterpart's own name beats a generic label in a two-person workspace. */
+  function labelFor(item: NavItem): string {
+    if (item.href !== "/employer-tasks") return item.label;
+    if (workspace.members.length > 2) return "Team tasks";
+    return counterpart ? `${counterpart.name.split(" ")[0]}’s tasks` : item.label;
+  }
+
+  function isActive(href: string): boolean {
+    return href === "/" ? pathname === "/" : pathname.startsWith(href);
+  }
+
+  return (
+    <div className="flex h-full flex-col bg-sidebar">
+      {/* Brand + workspace */}
+      <div
+        className={cn(
+          "flex h-12 shrink-0 items-center border-b border-line",
+          collapsed ? "justify-center px-2" : "gap-1 px-3",
+        )}
+      >
+        {collapsed ? (
+          <Tooltip content={workspace.name} side="right">
+            <button
+              onClick={onToggle}
+              aria-label="Expand sidebar"
+              className="rounded-md p-0.5 transition-opacity hover:opacity-80"
+            >
+              <Logo />
+            </button>
+          </Tooltip>
+        ) : (
+          <>
+            <Menu>
+              <MenuTrigger asChild>
+                <button className="flex min-w-0 flex-1 items-center gap-2 rounded-md px-1.5 py-1 text-left transition-colors hover:bg-hover">
+                  <Logo />
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-[13px] font-semibold tracking-[-0.015em] text-text">
+                      {workspace.name}
+                    </span>
+                  </span>
+                </button>
+              </MenuTrigger>
+              <MenuContent align="start" className="w-60">
+                <MenuLabel>Workspace</MenuLabel>
+                <MenuItem className="gap-2">
+                  <Logo size={18} />
+                  <span className="min-w-0 flex-1 truncate">{workspace.name}</span>
+                  <Check className="h-3.5 w-3.5 shrink-0 text-accent-bright" />
+                </MenuItem>
+                <MenuSeparator />
+                <div className="px-2 py-1.5 text-2xs leading-4 text-text-faint">
+                  Additional workspaces are supported by the data model. Creating them from the
+                  UI is not part of this release.
+                </div>
+              </MenuContent>
+            </Menu>
+            <Tooltip content="Collapse sidebar" side="right">
+              <Button variant="ghost" size="icon-sm" onClick={onToggle} aria-label="Collapse sidebar">
+                <ChevronsLeft className="h-4 w-4" />
+              </Button>
+            </Tooltip>
+          </>
+        )}
+      </div>
+
+      {/* Navigation */}
+      <nav className="min-h-0 flex-1 overflow-y-auto px-2 py-3" aria-label="Main">
+        {navSections.map((section, index) => (
+          <div key={section.heading ?? index} className={index > 0 ? "mt-4" : undefined}>
+            {section.heading && !collapsed && (
+              <p className="eyebrow px-2 pb-1.5">{section.heading}</p>
+            )}
+            {section.heading && collapsed && index > 0 && (
+              <div className="mx-2 mb-2 h-px bg-line" />
+            )}
+            <ul className="space-y-0.5">
+              {section.items.map((item) => {
+                const active = isActive(item.href);
+                const count = item.badge ? counts[item.badge] : 0;
+                const label = labelFor(item);
+
+                const link = (
+                  <Link
+                    href={item.href}
+                    onClick={onNavigate}
+                    aria-current={active ? "page" : undefined}
+                    className={cn(
+                      "group flex h-7 items-center rounded-md text-[13px] font-medium transition-colors",
+                      collapsed ? "justify-center px-0" : "gap-2 px-2",
+                      active
+                        ? "bg-raised text-text"
+                        : "text-text-secondary hover:bg-hover hover:text-text",
+                    )}
+                  >
+                    <item.icon
+                      className={cn(
+                        "h-4 w-4 shrink-0 transition-colors",
+                        active ? "text-accent-bright" : "text-text-faint group-hover:text-text-muted",
+                      )}
+                    />
+                    {!collapsed && (
+                      <>
+                        <span className="min-w-0 flex-1 truncate">{label}</span>
+                        {count > 0 && (
+                          <Count
+                            className={
+                              item.badge === "pendingReview"
+                                ? "tone-accent bg-[var(--tone-bg)] text-[var(--tone-fg)]"
+                                : undefined
+                            }
+                          >
+                            {count}
+                          </Count>
+                        )}
+                      </>
+                    )}
+                    {collapsed && count > 0 && (
+                      <span
+                        className={cn(
+                          "absolute right-1.5 top-1 h-1.5 w-1.5 rounded-full",
+                          item.badge === "pendingReview" ? "bg-accent" : "bg-text-faint",
+                        )}
+                      />
+                    )}
+                  </Link>
+                );
+
+                return (
+                  <li key={item.href} className="relative">
+                    {collapsed ? (
+                      <Tooltip
+                        content={count > 0 ? `${label} · ${count}` : label}
+                        side="right"
+                        delay={120}
+                      >
+                        {link}
+                      </Tooltip>
+                    ) : (
+                      link
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        ))}
+      </nav>
+
+      {/* Person */}
+      <div className={cn("shrink-0 border-t border-line p-2")}>
+        <Menu>
+          <MenuTrigger asChild>
+            <button
+              aria-label="Account menu"
+              className={cn(
+                "flex w-full items-center rounded-md transition-colors hover:bg-hover",
+                collapsed ? "justify-center p-1.5" : "gap-2 px-1.5 py-1.5",
+              )}
+            >
+              <Avatar member={member} size="lg" />
+              {!collapsed && (
+                <span className="min-w-0 flex-1 text-left">
+                  <span className="block truncate text-[13px] font-medium leading-4 text-text">
+                    {member.name}
+                  </span>
+                  <span className="block truncate text-2xs leading-4 text-text-faint">
+                    {member.jobTitle ?? (member.role === "ADMINISTRATOR" ? "Administrator" : "Member")}
+                  </span>
+                </span>
+              )}
+            </button>
+          </MenuTrigger>
+          <MenuContent align="start" side="top" className="w-60">
+            <div className="px-2 py-1.5">
+              <p className="truncate text-[13px] font-medium text-text">{member.name}</p>
+              <p className="truncate text-2xs text-text-muted">{member.email}</p>
+            </div>
+            <MenuSeparator />
+            <MenuItem asChild>
+              <Link href="/settings">Workspace settings</Link>
+            </MenuItem>
+            <MenuSeparator />
+            <form action={signOut}>
+              <button
+                type="submit"
+                className="flex w-full cursor-default items-center gap-2 rounded-md px-2 py-1.5 text-left text-[13px] text-text-secondary transition-colors hover:bg-hover hover:text-text"
+              >
+                <LogOut className="h-3.5 w-3.5" />
+                Sign out
+              </button>
+            </form>
+          </MenuContent>
+        </Menu>
+      </div>
+    </div>
+  );
+}
+
+/** Shown in the header on small screens, where the sidebar is a drawer. */
+export function SidebarTrigger({ onClick }: { onClick: () => void }) {
+  return (
+    <Button
+      variant="ghost"
+      size="icon-sm"
+      onClick={onClick}
+      aria-label="Open navigation"
+      className="lg:hidden"
+    >
+      <PanelLeft className="h-4 w-4" />
+    </Button>
+  );
+}

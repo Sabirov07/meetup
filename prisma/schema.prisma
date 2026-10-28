@@ -1,0 +1,579 @@
+// Meetup — conversations into accountable, trackable work.
+//
+// Design notes:
+//  * Ownership is always a WorkspaceMember reference, never a hard-coded
+//    "me" / "employer" enum. The workspace is seeded with two members but the
+//    schema, the AI ownership detection and the UI all scale to N members.
+//  * AI output is never written straight into `Task`. It lands in
+//    `MeetingAnalysis` + `TaskProposal` and only becomes a Task after a human
+//    approves it. `Task.confirmedByHuman` records that transition so a later
+//    re-analysis can never silently overwrite a confirmed commitment.
+//  * Evidence level (CONFIRMED / INFERRED / RECOMMENDED) is modelled
+//    explicitly so the UI can always tell the user how much to trust a value.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
+
+enum WorkspaceRole {
+  ADMINISTRATOR
+  MEMBER
+}
+
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  BLOCKED
+  COMPLETED
+}
+
+enum TaskPriority {
+  URGENT
+  HIGH
+  MEDIUM
+  LOW
+}
+
+enum TaskCategory {
+  DEVELOPMENT
+  AI_AUTOMATION
+  INFRASTRUCTURE
+  RESEARCH
+  BUSINESS_OPS
+  FINANCE
+  COMMUNICATION
+  ADMINISTRATION
+  PLANNING
+  REVIEW_APPROVAL
+  GENERAL
+}
+
+/// How much to trust a piece of information. Surfaced directly in the UI.
+enum EvidenceLevel {
+  /// Stated explicitly in the conversation, or set by a human.
+  CONFIRMED
+  /// The model's reading of ambiguous context.
+  INFERRED
+  /// Not stated at all — the model's suggestion.
+  RECOMMENDED
+}
+
+enum MeetingSource {
+  MANUAL
+  GOOGLE_MEET
+}
+
+enum MeetingStatus {
+  SCHEDULED
+  READY_TO_JOIN
+  IN_PROGRESS
+  AWAITING_TRANSCRIPT
+  PROCESSING
+  REVIEW_REQUIRED
+  COMPLETED
+  FAILED
+}
+
+enum TranscriptStatus {
+  /// No transcript has been asked for yet.
+  NOT_REQUESTED
+  /// Meeting is over; Google may still be generating the transcript.
+  AWAITING
+  FETCHING
+  READY
+  /// Definitively not available (e.g. transcription was never switched on,
+  /// or the organising account is not on a Workspace plan).
+  UNAVAILABLE
+  FAILED
+}
+
+enum AnalysisStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+}
+
+enum ProposalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum ActivityType {
+  TASK_CREATED
+  TASK_UPDATED
+  TASK_STATUS_CHANGED
+  TASK_OWNER_CHANGED
+  TASK_PRIORITY_CHANGED
+  TASK_DUE_DATE_CHANGED
+  TASK_COMPLETED
+  TASK_REOPENED
+  TASK_DELETED
+  TASK_COMMENTED
+  MEETING_CREATED
+  MEETING_UPDATED
+  TRANSCRIPT_READY
+  TRANSCRIPT_FAILED
+  ANALYSIS_COMPLETED
+  PROPOSAL_APPROVED
+  PROPOSAL_REJECTED
+  MEMBER_JOINED
+}
+
+enum RecommendationKind {
+  UNBLOCK_DEPENDENCY
+  REQUEST_ACCESS
+  CLARIFY_DEADLINE
+  HIGH_IMPACT_BLOCKER
+  POSSIBLE_DUPLICATE
+  STALE_TASK
+  OVERDUE_CLUSTER
+  AWAITING_OTHER_PERSON
+}
+
+enum RecommendationStatus {
+  OPEN
+  DISMISSED
+  RESOLVED
+}
+
+enum TaskSortMode {
+  SMART
+  PRIORITY
+  DUE_DATE
+  STATUS
+  CREATED_AT
+  UPDATED_AT
+  ALPHABETICAL
+  MANUAL
+}
+
+// ---------------------------------------------------------------------------
+// Identity
+// ---------------------------------------------------------------------------
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  name         String
+  /// scrypt hash; never leaves the server.
+  passwordHash String
+  /// Token used to tint this person's avatar consistently across the app.
+  accentToken  String   @default("violet")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  sessions      Session[]
+  memberships   WorkspaceMember[]
+  preference    UserPreference?
+  googleAccount GoogleAccount?
+
+  @@map("users")
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  userId    String
+  /// SHA-256 of the cookie token. The raw token is never stored.
+  tokenHash String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  userAgent String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("sessions")
+}
+
+model UserPreference {
+  id               String       @id @default(cuid())
+  userId           String       @unique
+  defaultSort      TaskSortMode @default(SMART)
+  sidebarCollapsed Boolean      @default(false)
+  /// Last workspace the person had open.
+  lastWorkspaceId  String?
+  updatedAt        DateTime     @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_preferences")
+}
+
+/// Server-only Google OAuth material. Never selected into client components.
+model GoogleAccount {
+  id           String   @id @default(cuid())
+  userId       String   @unique
+  googleEmail  String
+  accessToken  String
+  refreshToken String?
+  scope        String
+  expiresAt    DateTime
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("google_accounts")
+}
+
+// ---------------------------------------------------------------------------
+// Workspace
+// ---------------------------------------------------------------------------
+
+model Workspace {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  members         WorkspaceMember[]
+  tasks           Task[]
+  meetings        Meeting[]
+  activity        ActivityEvent[]
+  recommendations Recommendation[]
+
+  @@map("workspaces")
+}
+
+model WorkspaceMember {
+  id          String        @id @default(cuid())
+  workspaceId String
+  userId      String
+  role        WorkspaceRole @default(MEMBER)
+  /// Job title shown under the person's name, e.g. "Engineer", "Founder".
+  jobTitle    String?
+  createdAt   DateTime      @default(now())
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  ownedTasks           Task[]              @relation("TaskOwner")
+  createdTasks         Task[]              @relation("TaskCreator")
+  createdMeetings      Meeting[]           @relation("MeetingCreator")
+  meetingParticipation MeetingParticipant[]
+  activity             ActivityEvent[]
+  comments             TaskComment[]
+  proposalsOwned       TaskProposal[]      @relation("ProposalSuggestedOwner")
+  proposalsReviewed    TaskProposal[]      @relation("ProposalReviewer")
+
+  @@unique([workspaceId, userId])
+  @@index([workspaceId])
+  @@map("workspace_members")
+}
+
+// ---------------------------------------------------------------------------
+// Meetings and transcripts
+// ---------------------------------------------------------------------------
+
+model Meeting {
+  id          String        @id @default(cuid())
+  workspaceId String
+  title       String
+  source      MeetingSource @default(MANUAL)
+  status      MeetingStatus @default(SCHEDULED)
+  scheduledAt DateTime?
+  startedAt   DateTime?
+  endedAt     DateTime?
+  meetUrl     String?
+  notes       String?
+
+  /// Google Meet space resource name, e.g. "spaces/abc123".
+  googleSpaceId      String?
+  /// Google Meet conference record, e.g. "conferenceRecords/xyz".
+  googleConferenceId String?
+
+  createdByMemberId String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  workspace    Workspace            @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  createdBy    WorkspaceMember?     @relation("MeetingCreator", fields: [createdByMemberId], references: [id], onDelete: SetNull)
+  participants MeetingParticipant[]
+  transcript   Transcript?
+  analysis     MeetingAnalysis?
+  proposals    TaskProposal[]
+  tasks        Task[]
+  activity     ActivityEvent[]
+
+  @@index([workspaceId, status])
+  @@index([workspaceId, scheduledAt])
+  @@map("meetings")
+}
+
+model MeetingParticipant {
+  id          String  @id @default(cuid())
+  meetingId   String
+  memberId    String?
+  /// Used for guests who are not workspace members.
+  displayName String
+  email       String?
+  /// Speaker label as it appears in the transcript, used to map speech to people.
+  speakerLabel String?
+
+  meeting Meeting          @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  member  WorkspaceMember? @relation(fields: [memberId], references: [id], onDelete: SetNull)
+
+  @@index([meetingId])
+  @@map("meeting_participants")
+}
+
+model Transcript {
+  id        String           @id @default(cuid())
+  meetingId String           @unique
+  status    TranscriptStatus @default(NOT_REQUESTED)
+  /// Full transcript text. Only readable by workspace members.
+  content   String?
+  /// Structured [{ speaker, text, startedAt }] entries when available.
+  entries   Json?
+  source    MeetingSource    @default(MANUAL)
+  /// Google transcript resource name.
+  googleTranscriptName String?
+  fetchedAt     DateTime?
+  failureReason String?
+  retryCount    Int      @default(0)
+  nextRetryAt   DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  meeting Meeting @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+
+  @@index([status, nextRetryAt])
+  @@map("transcripts")
+}
+
+// ---------------------------------------------------------------------------
+// AI output (always reviewable, never authoritative)
+// ---------------------------------------------------------------------------
+
+model MeetingAnalysis {
+  id        String         @id @default(cuid())
+  meetingId String         @unique
+  status    AnalysisStatus @default(PENDING)
+  summary   String?
+  /// [{ text, evidence, excerpt }]
+  decisions Json?
+  /// [{ text, excerpt }] — things the model could not resolve.
+  openQuestions Json?
+  /// Model identifier actually used, for auditability.
+  model         String?
+  inputTokens   Int?
+  outputTokens  Int?
+  failureReason String?
+  /// True when this row is seeded illustrative content rather than a real
+  /// transcript analysis. The UI labels these unmistakably.
+  isSample  Boolean  @default(false)
+  startedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  meeting   Meeting        @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  proposals TaskProposal[]
+
+  @@map("meeting_analyses")
+}
+
+model TaskProposal {
+  id         String @id @default(cuid())
+  meetingId  String
+  analysisId String?
+
+  title       String
+  description String?
+
+  suggestedOwnerMemberId String?
+  /// How confident the model is about the owner. UNCERTAIN forces review.
+  ownerEvidence          EvidenceLevel @default(INFERRED)
+  ownerRationale         String?
+  /// True when the conversation contains an explicit commitment
+  /// ("I'll do X") rather than an assignment the model inferred.
+  isExplicitCommitment   Boolean       @default(false)
+
+  suggestedPriority  TaskPriority  @default(MEDIUM)
+  priorityEvidence   EvidenceLevel @default(RECOMMENDED)
+  priorityRationale  String?
+
+  suggestedDueDate String? // ISO date; kept as text because the model may be imprecise.
+  dueDateEvidence  EvidenceLevel @default(RECOMMENDED)
+
+  category TaskCategory @default(GENERAL)
+  labels   String[]     @default([])
+
+  /// Verbatim transcript snippet backing this proposal.
+  transcriptExcerpt String?
+  /// Free-text blockers the model identified.
+  blockers          String[] @default([])
+  /// Titles of other proposals this one depends on, resolved on approval.
+  dependsOnTitles   String[] @default([])
+
+  status         ProposalStatus @default(PENDING)
+  needsReview    Boolean        @default(false)
+  reviewedByMemberId String?
+  reviewedAt     DateTime?
+  createdTaskId  String?        @unique
+  /// Seeded illustrative content. Labelled as sample data in the UI.
+  isSample       Boolean        @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  meeting        Meeting          @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  analysis       MeetingAnalysis? @relation(fields: [analysisId], references: [id], onDelete: SetNull)
+  suggestedOwner WorkspaceMember? @relation("ProposalSuggestedOwner", fields: [suggestedOwnerMemberId], references: [id], onDelete: SetNull)
+  reviewedBy     WorkspaceMember? @relation("ProposalReviewer", fields: [reviewedByMemberId], references: [id], onDelete: SetNull)
+  createdTask    Task?            @relation(fields: [createdTaskId], references: [id], onDelete: SetNull)
+
+  @@index([meetingId, status])
+  @@map("task_proposals")
+}
+
+// ---------------------------------------------------------------------------
+// Tasks
+// ---------------------------------------------------------------------------
+
+model Task {
+  id          String       @id @default(cuid())
+  workspaceId String
+  title       String
+  description String?
+
+  ownerMemberId   String?
+  creatorMemberId String?
+
+  status   TaskStatus   @default(TODO)
+  priority TaskPriority @default(MEDIUM)
+  category TaskCategory @default(GENERAL)
+  labels   String[]     @default([])
+
+  dueDate        DateTime?
+  estimateMinutes Int?
+
+  /// What the model would have chosen, kept alongside the human value so the
+  /// UI can show "AI suggested Urgent" without overwriting the real priority.
+  aiSuggestedPriority TaskPriority?
+  aiPriorityRationale String?
+  isAiGenerated       Boolean       @default(false)
+  /// Set once a person has approved or edited this task. Re-analysis must
+  /// never change owner / dueDate / priority on a task where this is true.
+  confirmedByHuman    Boolean       @default(false)
+  needsReview         Boolean       @default(false)
+
+  sourceMeetingId String?
+  sourceExcerpt   String?
+
+  /// Explicit user ordering, used only while sort mode is MANUAL.
+  manualOrder Float?
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  completedAt DateTime?
+
+  workspace     Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  owner         WorkspaceMember? @relation("TaskOwner", fields: [ownerMemberId], references: [id], onDelete: SetNull)
+  creator       WorkspaceMember? @relation("TaskCreator", fields: [creatorMemberId], references: [id], onDelete: SetNull)
+  sourceMeeting Meeting?         @relation(fields: [sourceMeetingId], references: [id], onDelete: SetNull)
+
+  /// Tasks this one is waiting on.
+  dependencies TaskDependency[] @relation("DependentTask")
+  /// Tasks that are waiting on this one.
+  dependents   TaskDependency[] @relation("BlockingTask")
+
+  comments  TaskComment[]
+  activity  ActivityEvent[]
+  proposal  TaskProposal?
+
+  @@index([workspaceId, status])
+  @@index([workspaceId, ownerMemberId, status])
+  @@index([workspaceId, dueDate])
+  @@map("tasks")
+}
+
+model TaskDependency {
+  id String @id @default(cuid())
+  /// The task that is blocked.
+  taskId          String
+  /// The task that must finish first.
+  dependsOnTaskId String
+  createdAt       DateTime @default(now())
+
+  task          Task @relation("DependentTask", fields: [taskId], references: [id], onDelete: Cascade)
+  dependsOnTask Task @relation("BlockingTask", fields: [dependsOnTaskId], references: [id], onDelete: Cascade)
+
+  @@unique([taskId, dependsOnTaskId])
+  @@index([dependsOnTaskId])
+  @@map("task_dependencies")
+}
+
+model TaskComment {
+  id             String   @id @default(cuid())
+  taskId         String
+  authorMemberId String?
+  body           String
+  createdAt      DateTime @default(now())
+
+  task   Task             @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  author WorkspaceMember? @relation(fields: [authorMemberId], references: [id], onDelete: SetNull)
+
+  @@index([taskId, createdAt])
+  @@map("task_comments")
+}
+
+// ---------------------------------------------------------------------------
+// Activity and recommendations
+// ---------------------------------------------------------------------------
+
+model ActivityEvent {
+  id            String       @id @default(cuid())
+  workspaceId   String
+  actorMemberId String?
+  type          ActivityType
+  /// Human-readable one-liner rendered in the feed.
+  summary       String
+  taskId        String?
+  meetingId     String?
+  /// { field, from, to } for change events.
+  metadata      Json?
+  createdAt     DateTime     @default(now())
+
+  workspace Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  actor     WorkspaceMember? @relation(fields: [actorMemberId], references: [id], onDelete: SetNull)
+  task      Task?            @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  meeting   Meeting?         @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId, createdAt])
+  @@map("activity_events")
+}
+
+model Recommendation {
+  id          String               @id @default(cuid())
+  workspaceId String
+  kind        RecommendationKind
+  title       String
+  body        String
+  /// Always populated — a recommendation with no grounding is not shown.
+  relatedTaskIds String[]          @default([])
+  evidence    EvidenceLevel        @default(RECOMMENDED)
+  status      RecommendationStatus @default(OPEN)
+  /// True when derived from live workspace data by the deterministic engine
+  /// rather than from a model call.
+  isDeterministic Boolean          @default(true)
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId, status])
+  @@map("recommendations")
+}
