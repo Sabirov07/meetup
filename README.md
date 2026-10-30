@@ -18,6 +18,8 @@ Against a real Postgres database, with no stubs:
 |---|---|
 | Auth | Open sign-up with email + password, or **Continue with Google**. Server sessions (scrypt hashes, httpOnly cookie, opaque tokens). Sign in, sign out, route protection. |
 | Tasks | Create, edit, delete, comment, depend-on, complete. Optimistic updates with rollback. |
+| Documents | Every task has a Markdown document body: headings, checklists, quotes, code, dividers and images. Toolbar, `/` block menu, ⌘B/⌘I/⌘E/⌘K, list continuation on Enter, autosave, a full-width split view with live preview, and checklists that can be ticked straight from the read view. |
+| Images | Pasted, dropped or picked into a document. Stored in Postgres and served from `/api/attachments/[id]`, which requires a session in the owning workspace — so a screenshot in a task is not readable by URL alone. |
 | Boards | Dashboard owner panels + per-page kanban. Drag between statuses and between owners; a move reassigns, never copies. |
 | Prioritisation | Smart priority engine with a visible, per-task explanation of *why* a task ranks where it does. |
 | Sorting | 8 modes. Manual order is never silently re-sorted. |
@@ -157,6 +159,9 @@ prisma/schema.prisma      16 tables. Ownership is always a member reference,
 src/lib/domain/           Pure logic: priority scoring, filters, stats,
                           recommendations. No database imports, so the UI can
                           use it directly.
+src/lib/doc/              The document format: a Markdown subset parsed to a
+                          typed block tree, plus the pure text transforms the
+                          editor's toolbar and shortcuts apply.
 src/lib/data/             Reads → view models (dates serialised for the client).
 src/lib/actions/          Server actions. Validation, authorisation, activity.
 src/lib/ai/               Claude extraction behind a strict schema.
@@ -175,6 +180,21 @@ not constrain application queries. Every read and write is scoped by a
 `workspaceId` that came from `requireSession()`. RLS is still enabled on every
 table with no permissive policies, which matters: it locks down the public
 PostgREST endpoint Supabase exposes on every project by default.
+
+**Documents render as React, never as HTML.** `lib/doc/markdown.ts` parses the
+Markdown subset into a block tree and `components/doc/doc-content.tsx` renders
+each node as an element, so there is no `dangerouslySetInnerHTML` on the path a
+task body travels and markup pasted into a document stays text. Link and image
+targets go through an allow-list; `javascript:` and `data:` URLs render as the
+text that was typed.
+
+**Embedded images live in Postgres.** Not in `public/`, which is readable by
+anyone holding the URL, and not in a bucket, which would need its own
+authorisation story. `task_attachments` rows carry the workspace id, and
+`/api/attachments/[id]` fetches by id *and* the caller's workspace — so a
+screenshot pasted into a task is behind the same check as the task. Uploads go
+through a Route Handler rather than a Server Function because Server Functions
+cap request bodies at 1 MB.
 
 **AI output is quarantined.** It is written to `meeting_analyses` and
 `task_proposals`, never to `tasks`. `Task.confirmedByHuman` records the moment a

@@ -14,7 +14,7 @@ import {
   X,
 } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { toast } from "sonner";
 import {
   addComment,
@@ -53,6 +53,7 @@ import {
   SelectTrigger,
   Textarea,
 } from "@/components/ui/field";
+import { TaskDoc } from "./task-doc";
 import { TaskFormDialog } from "./task-form-dialog";
 import { useTasks } from "./task-store";
 
@@ -60,27 +61,47 @@ export function TaskDetailSheet() {
   const { tasks, openTaskId, setOpenTaskId } = useTasks();
   const task = openTaskId ? (tasks.find((t) => t.id === openTaskId) ?? null) : null;
 
+  // While the document editor is open it owns Escape; the drawer gets the
+  // next one. Radix dismisses from a capture-phase listener, so this has to
+  // be decided here rather than by stopping the event further down.
+  const docCapturesEscape = useRef(false);
+
   return (
     <Dialog open={Boolean(task)} onOpenChange={(open) => !open && setOpenTaskId(null)}>
       {task && (
-        <SheetContent aria-describedby={undefined}>
+        <SheetContent
+          aria-describedby={undefined}
+          onEscapeKeyDown={(event) => {
+            if (docCapturesEscape.current) event.preventDefault();
+          }}
+        >
           <DialogTitle className="sr-only">{task.title}</DialogTitle>
           {/* Keyed by task id so opening a different task remounts with
               fresh drafts, instead of resetting them from an effect. */}
-          <TaskDetail key={task.id} task={task} />
+          <TaskDetail
+            key={task.id}
+            task={task}
+            onDocCapturesEscapeChange={(captures) => {
+              docCapturesEscape.current = captures;
+            }}
+          />
         </SheetContent>
       )}
     </Dialog>
   );
 }
 
-function TaskDetail({ task }: { task: TaskView }) {
+function TaskDetail({
+  task,
+  onDocCapturesEscapeChange,
+}: {
+  task: TaskView;
+  onDocCapturesEscapeChange: (captures: boolean) => void;
+}) {
   const { members, now, move, remove, upsertTask, setOpenTaskId, tasks } = useTasks();
 
   const [editingTitle, setEditingTitle] = useState(false);
   const [titleDraft, setTitleDraft] = useState(task.title);
-  const [descDraft, setDescDraft] = useState(task.description ?? "");
-  const [editingDesc, setEditingDesc] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
 
   const [comments, setComments] = useState<CommentView[] | null>(null);
@@ -364,55 +385,8 @@ function TaskDetail({ task }: { task: TaskView }) {
 
         <Separator />
 
-        {/* Description */}
-        <section className="px-4 py-3.5">
-          <p className="eyebrow mb-1.5">Description</p>
-          {editingDesc ? (
-            <div className="space-y-2">
-              <Textarea
-                value={descDraft}
-                autoFocus
-                onChange={(event) => setDescDraft(event.target.value)}
-                placeholder="What does done look like?"
-              />
-              <div className="flex gap-2">
-                <Button
-                  size="sm"
-                  variant="primary"
-                  onClick={() => {
-                    setEditingDesc(false);
-                    void save({ id: task.id, description: descDraft.trim() || null });
-                  }}
-                >
-                  Save
-                </Button>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => {
-                    setDescDraft(task.description ?? "");
-                    setEditingDesc(false);
-                  }}
-                >
-                  Cancel
-                </Button>
-              </div>
-            </div>
-          ) : (
-            <button
-              onClick={() => setEditingDesc(true)}
-              className="-mx-1 block w-full rounded px-1 py-0.5 text-left hover:bg-hover"
-            >
-              {task.description ? (
-                <p className="whitespace-pre-wrap text-[13px] leading-6 text-text-secondary">
-                  {task.description}
-                </p>
-              ) : (
-                <p className="text-[13px] text-text-faint">Add a description…</p>
-              )}
-            </button>
-          )}
-        </section>
+        {/* The task's document: rich text, checklists and screenshots. */}
+        <TaskDoc task={task} onCapturesEscapeChange={onDocCapturesEscapeChange} />
 
         {/* Why it ranks where it does */}
         {task.status !== "COMPLETED" && factors.length > 0 && (

@@ -25,17 +25,44 @@ import {
   type ActionResult,
 } from "./shared";
 
-const taskInput = z.object({
+/**
+ * One definition of each field, with no defaults attached, so the create and
+ * update schemas can disagree about what a missing key means.
+ */
+const taskFields = {
   title: z.string().trim().min(3, "Give the task a title of at least 3 characters.").max(200),
-  description: z.string().trim().max(5000).optional().nullable(),
-  ownerMemberId: z.string().nullable().optional(),
-  status: z.enum(TASK_STATUSES).default("TODO"),
-  priority: z.enum(TASK_PRIORITIES).default("MEDIUM"),
-  category: z.enum(TASK_CATEGORIES).default("GENERAL"),
-  labels: z.array(z.string().trim().min(1).max(40)).max(10).default([]),
-  dueDate: z.string().nullable().optional(),
-  estimateMinutes: z.number().int().positive().max(100_000).nullable().optional(),
-  sourceMeetingId: z.string().nullable().optional(),
+  /**
+   * The task's document body, in Markdown. The ceiling is generous because
+   * this is a document, not a summary field — several screens of brief with
+   * embedded image references stays well inside it.
+   */
+  description: z
+    .string()
+    .trim()
+    .max(50_000, "That document is too long to save. Split it across tasks.")
+    .nullable(),
+  ownerMemberId: z.string().nullable(),
+  status: z.enum(TASK_STATUSES),
+  priority: z.enum(TASK_PRIORITIES),
+  category: z.enum(TASK_CATEGORIES),
+  labels: z.array(z.string().trim().min(1).max(40)).max(10),
+  dueDate: z.string().nullable(),
+  estimateMinutes: z.number().int().positive().max(100_000).nullable(),
+  sourceMeetingId: z.string().nullable(),
+};
+
+/** A new task: the omitted fields fall back to the defaults below. */
+const taskInput = z.object({
+  title: taskFields.title,
+  description: taskFields.description.optional(),
+  ownerMemberId: taskFields.ownerMemberId.optional(),
+  status: taskFields.status.default("TODO"),
+  priority: taskFields.priority.default("MEDIUM"),
+  category: taskFields.category.default("GENERAL"),
+  labels: taskFields.labels.default([]),
+  dueDate: taskFields.dueDate.optional(),
+  estimateMinutes: taskFields.estimateMinutes.optional(),
+  sourceMeetingId: taskFields.sourceMeetingId.optional(),
 });
 
 export type TaskInput = z.input<typeof taskInput>;
@@ -89,7 +116,29 @@ export async function createTask(raw: TaskInput): Promise<ActionResult<TaskView>
   });
 }
 
-const updateInput = taskInput.partial().extend({ id: z.string().min(1) });
+/**
+ * A change to an existing task, where an absent key means "leave it alone".
+ *
+ * Built from `taskFields` rather than `taskInput.partial()` on purpose:
+ * `partial()` keeps a field's `.default()`, so parsing `{ id, description }`
+ * returns status TODO, priority MEDIUM, category GENERAL and an empty label
+ * set as well — and this action writes every key it is given. Saving a
+ * description would quietly reset four other fields.
+ */
+const updateInput = z.object({
+  id: z.string().min(1),
+  title: taskFields.title.optional(),
+  description: taskFields.description.optional(),
+  ownerMemberId: taskFields.ownerMemberId.optional(),
+  status: taskFields.status.optional(),
+  priority: taskFields.priority.optional(),
+  category: taskFields.category.optional(),
+  labels: taskFields.labels.optional(),
+  dueDate: taskFields.dueDate.optional(),
+  estimateMinutes: taskFields.estimateMinutes.optional(),
+  sourceMeetingId: taskFields.sourceMeetingId.optional(),
+});
+
 export type TaskUpdateInput = z.input<typeof updateInput>;
 
 /**

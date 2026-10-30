@@ -200,7 +200,7 @@ export function TaskFormDialog({
             <Field
               label="Description"
               htmlFor="task-description"
-              hint="Optional"
+              hint="Markdown · images once it exists"
             >
               <Textarea
                 id="task-description"

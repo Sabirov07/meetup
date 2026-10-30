@@ -249,6 +249,7 @@ model Workspace {
   meetings        Meeting[]
   activity        ActivityEvent[]
   recommendations Recommendation[]
+  attachments     TaskAttachment[]
 
   @@map("workspaces")
 }
@@ -267,6 +268,7 @@ model WorkspaceMember {
 
   ownedTasks           Task[]              @relation("TaskOwner")
   createdTasks         Task[]              @relation("TaskCreator")
+  uploads              TaskAttachment[]
   createdMeetings      Meeting[]           @relation("MeetingCreator")
   meetingParticipation MeetingParticipant[]
   activity             ActivityEvent[]
@@ -452,6 +454,9 @@ model Task {
   id          String       @id @default(cuid())
   workspaceId String
   title       String
+  /// The task's document body, held as Markdown. Images inside it are
+  /// `![alt](/api/attachments/<id>)` references to `TaskAttachment` rows, so
+  /// the body stays plain text and remains searchable with `contains`.
   description String?
 
   ownerMemberId   String?
@@ -495,9 +500,10 @@ model Task {
   /// Tasks that are waiting on this one.
   dependents   TaskDependency[] @relation("BlockingTask")
 
-  comments  TaskComment[]
-  activity  ActivityEvent[]
-  proposal  TaskProposal?
+  comments    TaskComment[]
+  attachments TaskAttachment[]
+  activity    ActivityEvent[]
+  proposal    TaskProposal?
 
   @@index([workspaceId, status])
   @@index([workspaceId, ownerMemberId, status])
@@ -519,6 +525,40 @@ model TaskDependency {
   @@unique([taskId, dependsOnTaskId])
   @@index([dependsOnTaskId])
   @@map("task_dependencies")
+}
+
+/// An image embedded in a task's document body.
+///
+/// The bytes live in Postgres rather than in `public/` or a bucket so that an
+/// upload is covered by exactly the same workspace check as the task it sits
+/// in — a file under `public/` is readable by anyone who guesses the URL, and
+/// an image pasted into a task can easily be a screenshot of something
+/// private. `/api/attachments/[id]` is the only way to read one back, and it
+/// requires a session in the owning workspace. The size cap in
+/// `lib/doc/attachments.ts` is what keeps the table from growing unbounded.
+model TaskAttachment {
+  id                 String  @id @default(cuid())
+  workspaceId        String
+  taskId             String
+  uploadedByMemberId String?
+  /// Original file name, shown in the alt text and on download.
+  filename           String
+  mimeType           String
+  byteSize           Int
+  /// Intrinsic pixel size when it could be read from the file header, so the
+  /// renderer can reserve the right box and avoid layout shift.
+  width              Int?
+  height             Int?
+  data               Bytes
+  createdAt          DateTime @default(now())
+
+  workspace  Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  task       Task             @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  uploadedBy WorkspaceMember? @relation(fields: [uploadedByMemberId], references: [id], onDelete: SetNull)
+
+  @@index([taskId, createdAt])
+  @@index([workspaceId])
+  @@map("task_attachments")
 }
 
 model TaskComment {

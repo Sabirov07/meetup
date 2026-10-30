@@ -6,13 +6,16 @@ import {
   Check,
   CircleDashed,
   Clock,
+  FileText,
   GitBranch,
   MessageSquare,
   MoreHorizontal,
   Sparkles,
   Trash2,
 } from "lucide-react";
+import { useMemo } from "react";
 import { toast } from "sonner";
+import { docStats, plainText } from "@/lib/doc/markdown";
 import type { TaskView } from "@/lib/domain/types";
 import { categoryMeta, priorityMeta, statusMeta } from "@/lib/domain/labels";
 import { blockingImpact, smartExplanation, unmetDependencies } from "@/lib/domain/priority";
@@ -58,6 +61,23 @@ export function TaskRow({
 
   const due = formatDueDate(task.dueDate, now);
   const done = task.status === "COMPLETED";
+
+  // A document is a signal in its own right: it says this task has a brief,
+  // and a checklist inside it says how far through that brief the work is.
+  const doc = useMemo(() => {
+    if (!task.description?.trim()) return null;
+    const stats = docStats(task.description);
+    if (stats.words === 0 && stats.images === 0) return null;
+    const excerpt = plainText(task.description).slice(0, 180);
+    return {
+      label: stats.checklist
+        ? `${stats.checklist.done}/${stats.checklist.total}`
+        : stats.images > 0
+          ? String(stats.images)
+          : null,
+      excerpt,
+    };
+  }, [task.description]);
   const blocks = blockingImpact(task);
   const unmet = unmetDependencies(task);
   const effort = formatEffort(task.estimateMinutes);
@@ -197,6 +217,18 @@ export function TaskRow({
                 </span>
               </Tooltip>
             </>
+          )}
+
+          {doc && (
+            <span className="hidden shrink-0 items-center gap-2 @[26rem]/row:flex">
+              <span aria-hidden>·</span>
+              <Tooltip content={doc.excerpt}>
+                <span className="flex items-center gap-1">
+                  <FileText className="h-2.5 w-2.5" />
+                  {doc.label}
+                </span>
+              </Tooltip>
+            </span>
           )}
 
           {task.commentCount > 0 && (
