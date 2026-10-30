@@ -2,6 +2,8 @@ import "server-only";
 
 import { randomBytes } from "node:crypto";
 
+import { appUrlFor, normaliseOrigin } from "@/lib/app-url";
+
 /**
  * "Continue with Google" — sign-in only.
  *
@@ -34,10 +36,6 @@ export class GoogleAuthNotConfiguredError extends Error {
   }
 }
 
-export function appUrl(): string {
-  return process.env.APP_URL ?? "http://localhost:3100";
-}
-
 type GoogleAuthConfig = {
   clientId: string;
   clientSecret: string;
@@ -57,8 +55,13 @@ export function getGoogleAuthConfig(): GoogleAuthConfig | null {
   const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
   if (!clientId || !clientSecret) return null;
 
-  const redirectUri =
-    process.env.GOOGLE_AUTH_REDIRECT_URI ?? new URL(GOOGLE_AUTH_CALLBACK_PATH, appUrl()).toString();
+  // An explicit override is validated too: a bare host here would be handed
+  // straight to Google, which rejects it with redirect_uri_mismatch and no
+  // hint as to why. Falling back to the derived value is the better failure.
+  const override = normaliseOrigin(process.env.GOOGLE_AUTH_REDIRECT_URI)
+    ? process.env.GOOGLE_AUTH_REDIRECT_URI!.trim()
+    : null;
+  const redirectUri = override ?? appUrlFor(GOOGLE_AUTH_CALLBACK_PATH).toString();
 
   return { clientId, clientSecret, redirectUri };
 }

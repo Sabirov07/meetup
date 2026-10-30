@@ -1,10 +1,10 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { getSessionContext } from "@/lib/auth/guards";
+import { appUrlFor } from "@/lib/app-url";
 import {
   GOOGLE_AUTH_STATE_COOKIE,
   GoogleAuthNotConfiguredError,
-  appUrl,
   buildGoogleAuthUrl,
   createOAuthState,
 } from "@/lib/google/identity";
@@ -20,7 +20,7 @@ import {
 export async function GET() {
   // Already signed in: there is nothing to do here.
   if (await getSessionContext()) {
-    return NextResponse.redirect(new URL("/", appUrl()));
+    return NextResponse.redirect(appUrlFor("/"));
   }
 
   try {
@@ -39,6 +39,6 @@ export async function GET() {
     return NextResponse.redirect(authUrl);
   } catch (error) {
     const reason = error instanceof GoogleAuthNotConfiguredError ? "not-configured" : "unknown";
-    return NextResponse.redirect(new URL(`/login?google=${reason}`, appUrl()));
+    return NextResponse.redirect(appUrlFor(`/login?google=${reason}`));
   }
 }

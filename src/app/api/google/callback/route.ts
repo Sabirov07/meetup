@@ -1,12 +1,13 @@
 import { cookies } from "next/headers";
 import { NextResponse, type NextRequest } from "next/server";
 import { getSessionContext } from "@/lib/auth/guards";
+import { appUrl } from "@/lib/app-url";
 import { exchangeCodeForTokens } from "@/lib/google/oauth";
 
 const STATE_COOKIE = "google_oauth_state";
 
 function settingsUrl(request: NextRequest, status: string): URL {
-  const base = process.env.APP_URL ?? request.nextUrl.origin;
+  const base = appUrl(request.nextUrl.origin);
   return new URL(`/settings?google=${status}`, base);
 }
 
@@ -19,7 +20,7 @@ function settingsUrl(request: NextRequest, status: string): URL {
 export async function GET(request: NextRequest) {
   const session = await getSessionContext();
   if (!session) {
-    return NextResponse.redirect(new URL("/login", process.env.APP_URL ?? request.nextUrl.origin));
+    return NextResponse.redirect(new URL("/login", appUrl(request.nextUrl.origin)));
   }
 
   const store = await cookies();

@@ -2,11 +2,12 @@ import { cookies, headers } from "next/headers";
 import { NextResponse, type NextRequest } from "next/server";
 import { resolveGoogleSignIn } from "@/lib/auth/provision";
 import { createSession } from "@/lib/auth/session";
+import { appUrl } from "@/lib/app-url";
 import { GOOGLE_AUTH_STATE_COOKIE, exchangeCodeForIdentity } from "@/lib/google/identity";
 
 /** Prefers the configured public URL, falling back to the request's origin. */
 function base(request: NextRequest): string {
-  return process.env.APP_URL ?? request.nextUrl.origin;
+  return appUrl(request.nextUrl.origin);
 }
 
 function loginUrl(request: NextRequest, status: string): URL {
