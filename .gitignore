@@ -51,3 +51,23 @@ next-env.d.ts
 /.agents
 /.claude/skills
 /skills-lock.json
+
+# editors / IDEs
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS files
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+.AppleDouble
+.LSOverride
+
+# logs
+*.log
+logs/
+
+# local Claude Code settings
+/.claude/settings.local.json
