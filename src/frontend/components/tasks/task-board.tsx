@@ -274,7 +274,7 @@ export function OwnerPanel({
             <Count>{openCount}</Count>
           </div>
           <p className="truncate text-2xs text-text-faint">
-            {subtitle ?? member?.jobTitle ?? t("tasks.panel.noOwnerYet")}
+            {subtitle ?? member?.jobTitle ?? t("tasks.panel.noAssigneeYet")}
           </p>
         </div>
         {onAdd && (

@@ -133,7 +133,7 @@ export function Overview({
               <OwnerPanel
                 member={null}
                 title={t("common.unassigned")}
-                subtitle={t("overview.waitingForOwner")}
+                subtitle={t("overview.waitingForAssignee")}
                 onAdd={() => setNewTaskFor(null)}
                 className="max-h-[38rem]"
               />

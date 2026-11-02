@@ -192,7 +192,7 @@ export function ProposalCard({
       {/* Suggested values, each with how sure the model is */}
       <div className="mt-3 grid gap-2.5 border-t border-line px-3 py-3 sm:grid-cols-3">
         <SuggestedField
-          label={t("tasks.facet.owner")}
+          label={t("tasks.facet.assignee")}
           evidence={proposal.ownerEvidence}
           rationale={proposal.ownerRationale}
           highlight={ownerUncertain}

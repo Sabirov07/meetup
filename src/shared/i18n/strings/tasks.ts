@@ -3,7 +3,7 @@ import type { Entries } from "./entry";
 /** The three task boards, the filter bar, the row and the priority reasoning. */
 export const tasks = {
   "tasks.page.all.description": [
-    "The whole workspace in one board, across every owner.",
+    "The whole workspace in one board, across every assignee.",
     "Всё пространство на одной доске, по всем исполнителям.",
   ],
   "tasks.page.mine.description": [
@@ -42,7 +42,7 @@ export const tasks = {
   "tasks.search.label": ["Search tasks", "Поиск задач"],
   "tasks.search.clear": ["Clear search", "Очистить поиск"],
   "tasks.filter": ["Filter", "Фильтр"],
-  "tasks.facet.owner": ["Owner", "Исполнитель"],
+  "tasks.facet.assignee": ["Assignee", "Исполнитель"],
   "tasks.facet.status": ["Status", "Статус"],
   "tasks.facet.priority": ["Priority", "Приоритет"],
   "tasks.facet.deadline": ["Deadline", "Срок"],
@@ -56,7 +56,7 @@ export const tasks = {
   "tasks.due.NO_DATE": ["No deadline", "Без срока"],
   "tasks.toggle.needsReview": ["Needs review only", "Только требующие проверки"],
   "tasks.toggle.needsReviewHint": [
-    "Where the owner or deadline was unclear",
+    "Where the assignee or deadline was unclear",
     "Где не ясен исполнитель или срок",
   ],
   "tasks.toggle.waiting": ["Waiting on someone", "В ожидании кого-то"],
@@ -77,7 +77,7 @@ export const tasks = {
   "tasks.zone.nothingHere": ["Nothing here", "Здесь пусто"],
   "tasks.zone.addOne": ["Add one", "Добавить"],
   "tasks.zone.dropTaskHere": ["Drop a task here", "Перетащите задачу сюда"],
-  "tasks.panel.noOwnerYet": ["No owner yet", "Исполнитель не назначен"],
+  "tasks.panel.noAssigneeYet": ["No assignee yet", "Исполнитель не назначен"],
   "tasks.panel.addFor": ["Add a task for {name}", "Добавить задачу для: {name}"],
   "tasks.panel.addUnassigned": [
     "Add an unassigned task",
@@ -164,7 +164,7 @@ export const tasks = {
     "Отметить «{title}» выполненной",
   ],
   "tasks.row.reviewTip": [
-    "The owner or deadline was unclear. Worth a look.",
+    "The assignee or deadline was unclear. Worth a look.",
     "Исполнитель или срок остались неясными. Стоит взглянуть.",
   ],
   "tasks.row.reviewBadge": ["Review", "Проверить"],
@@ -243,7 +243,7 @@ export const tasks = {
   "detail.editTask": ["Edit task", "Изменить задачу"],
   "detail.deleteTask": ["Delete task", "Удалить задачу"],
   "detail.property.status": ["Status", "Статус"],
-  "detail.property.owner": ["Owner", "Исполнитель"],
+  "detail.property.assignee": ["Assignee", "Исполнитель"],
   "detail.property.priority": ["Priority", "Приоритет"],
   "detail.property.deadline": ["Deadline", "Срок"],
   "detail.property.category": ["Category", "Категория"],

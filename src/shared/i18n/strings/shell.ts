@@ -79,7 +79,7 @@ export const shell = {
   "alerts.unclear.title.many": ["{count} tasks need a decision", "{count} задач требуют решения"],
   "alerts.unclear.title.other": ["{count} tasks need a decision", "{count} задачи требуют решения"],
   "alerts.unclear.detail": [
-    "The owner or deadline was left unclear.",
+    "The assignee or deadline was left unclear.",
     "Не указан исполнитель или срок.",
   ],
   "alerts.transcripts.title.one": [

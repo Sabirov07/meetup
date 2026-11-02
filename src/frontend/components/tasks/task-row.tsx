@@ -361,7 +361,7 @@ export function TaskRow({
           </MenuRadioGroup>
 
           <MenuSeparator />
-          <MenuLabel>{t("tasks.facet.owner")}</MenuLabel>
+          <MenuLabel>{t("tasks.facet.assignee")}</MenuLabel>
           <MenuRadioGroup
             value={task.owner?.id ?? "UNASSIGNED"}
             onValueChange={(value) =>

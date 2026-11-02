@@ -215,7 +215,7 @@ export function TaskFormDialog({
             </Field>
 
             <div className="grid gap-4 sm:grid-cols-2">
-              <Field label={t("tasks.facet.owner")}>
+              <Field label={t("tasks.facet.assignee")}>
                 <Controller
                   control={form.control}
                   name="ownerMemberId"

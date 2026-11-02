@@ -279,7 +279,7 @@ function TaskDetail({
             </Select>
           </Property>
 
-          <Property label={t("detail.property.owner")}>
+          <Property label={t("detail.property.assignee")}>
             <Select
               value={task.owner?.id ?? "UNASSIGNED"}
               onValueChange={(value) =>

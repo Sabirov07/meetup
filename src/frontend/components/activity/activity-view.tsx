@@ -113,7 +113,7 @@ export function ActivityView({
         </div>
 
         <div className="rounded-xl border border-line bg-surface p-3.5">
-          <p className="eyebrow">{t("activity.openByOwner")}</p>
+          <p className="eyebrow">{t("activity.openByAssignee")}</p>
           <div className="mt-2.5 space-y-2.5">
             {stats.byMember.map(({ member, open, overdue, completed }) => {
               const total = open + completed;

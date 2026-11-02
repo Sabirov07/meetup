@@ -38,7 +38,7 @@ export const overview = {
   ],
   "overview.assignedToYou": ["Assigned to you", "Назначено вам"],
   "overview.assignedToThem": ["Assigned to them", "Назначено им"],
-  "overview.waitingForOwner": ["Waiting for an owner", "Ждёт исполнителя"],
+  "overview.waitingForAssignee": ["Waiting for an assignee", "Ждёт исполнителя"],
   "overview.nextMeeting": ["Next meeting", "Следующая встреча"],
   "overview.all": ["All", "Все"],
   "overview.nothingScheduled": ["Nothing scheduled", "Ничего не запланировано"],
@@ -189,7 +189,7 @@ export const overview = {
     "Обе открыты, и названия сильно совпадают. Стоит объединить одну с другой.",
   ],
   "rec.duplicate.body.differentOwners": [
-    "Both are open and their titles overlap heavily. Worth merging one into the other — they are currently owned by different people.",
+    "Both are open and their titles overlap heavily. Worth merging one into the other — they are currently assigned to different people.",
     "Обе открыты, и названия сильно совпадают. Стоит объединить одну с другой — сейчас у них разные исполнители.",
   ],
 

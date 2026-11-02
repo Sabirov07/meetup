@@ -34,24 +34,24 @@ export const activity = {
   "activity.waitingCount": ["{count} waiting", "в ожидании: {count}"],
   "activity.overdueCount": ["{count} overdue", "просрочено: {count}"],
   "activity.dueTodayCount": ["{count} due today", "срок сегодня: {count}"],
-  "activity.openByOwner": ["Open work by owner", "Открытая работа по исполнителям"],
+  "activity.openByAssignee": ["Open work by assignee", "Открытая работа по исполнителям"],
   "activity.openCount": ["{count} open", "открыто: {count}"],
   "activity.lateCount": ["{count} late", "опаздывает: {count}"],
   "activity.memberCompletion": ["{name} completion", "Выполнение: {name}"],
   "activity.needsDecision.one": [
-    "{count} task needs an owner or deadline decision",
+    "{count} task needs an assignee or deadline decision",
     "{count} задаче нужен исполнитель или срок",
   ],
   "activity.needsDecision.few": [
-    "{count} tasks need an owner or deadline decision",
+    "{count} tasks need an assignee or deadline decision",
     "{count} задачам нужен исполнитель или срок",
   ],
   "activity.needsDecision.many": [
-    "{count} tasks need an owner or deadline decision",
+    "{count} tasks need an assignee or deadline decision",
     "{count} задачам нужен исполнитель или срок",
   ],
   "activity.needsDecision.other": [
-    "{count} tasks need an owner or deadline decision",
+    "{count} tasks need an assignee or deadline decision",
     "{count} задачам нужен исполнитель или срок",
   ],
 

@@ -41,7 +41,7 @@ export const meetings = {
   "meetings.addTranscript": ["Add transcript", "Добавить расшифровку"],
   "meetings.replaceTranscript": ["Replace transcript", "Заменить расшифровку"],
   "meetings.analyseTip": [
-    "Extract tasks, owners and decisions from the transcript",
+    "Extract tasks, assignees and decisions from the transcript",
     "Извлечь из расшифровки задачи, исполнителей и решения",
   ],
   "meetings.analyseNeedsKey": [
@@ -178,7 +178,7 @@ export const meetings = {
     "Вставьте разговор для «{title}». Он сохранится как ручная расшифровка, отдельно от того, что получено из Google.",
   ],
   "transcript.formatHint": [
-    "Ownership detection works from speaker labels, so keep the {format} format if you can. One turn per line.",
+    "Assignee detection works from speaker labels, so keep the {format} format if you can. One turn per line.",
     "Исполнители определяются по именам говорящих, поэтому по возможности держите формат {format}. Одна реплика на строку.",
   ],
   "transcript.formatExample": ["Name: what they said", "Имя: что сказали"],

@@ -112,7 +112,7 @@ export function TaskToolbar({
 
           <div className="max-h-[22rem] space-y-3 overflow-y-auto p-3">
             {showOwnerFilter && (
-              <FacetGroup label={t("tasks.facet.owner")}>
+              <FacetGroup label={t("tasks.facet.assignee")}>
                 {members.map((member) => (
                   <FacetRow
                     key={member.id}
