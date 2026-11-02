@@ -302,13 +302,6 @@ export const tasks = {
     "Proposed from a conversation and confirmed by a person.",
     "Предложено на основе разговора и подтверждено человеком.",
   ],
-  "detail.notes": ["Notes", "Заметки"],
-  "detail.notes.loading": ["Loading notes…", "Загружаем заметки…"],
-  "detail.notes.empty": ["No notes yet.", "Заметок пока нет."],
-  "detail.notes.placeholder": ["Add a note…", "Добавить заметку…"],
-  "detail.notes.shortcut": ["⌘↵ to save", "⌘↵ — сохранить"],
-  "detail.notes.add": ["Add note", "Добавить заметку"],
-  "detail.notes.saveFailed": ["Could not save that note", "Не удалось сохранить заметку"],
   "detail.lastUpdated": ["Last updated {when}", "Обновлено: {when}"],
 
   "priority.explanation": ["{priority} priority", "Приоритет: {priority}"],

@@ -9,7 +9,12 @@ import {
   assertTaskInWorkspace,
   requireSessionForAction,
 } from "@/backend/auth/guards";
-import { getTask, listComments, type CommentView } from "@/backend/data/tasks";
+import { getComment, getTask, listComments, type CommentView } from "@/backend/data/tasks";
+import { isAiConfigured } from "@/backend/ai/client";
+import { adviseOnTask } from "@/backend/ai/advise";
+import type { ExtractedAdvice } from "@/backend/ai/schema";
+import { mentionsIn } from "@/shared/domain/mentions";
+import { hasAdvice, type Advice } from "@/shared/domain/sketch";
 import {
   TASK_CATEGORIES,
   TASK_PRIORITIES,
@@ -438,13 +443,24 @@ export async function removeDependency(input: {
 }
 
 // ---------------------------------------------------------------------------
-// Comments
+// Discussion
 // ---------------------------------------------------------------------------
+
+/** The posted thread, plus the message the assistant still owes an answer to. */
+export type PostedComment = {
+  comments: CommentView[];
+  /**
+   * The id of the message that mentioned `@ai`, when it did. The client posts
+   * first and asks second, so a message appears the moment it is sent instead
+   * of waiting behind a model call that takes most of a minute.
+   */
+  awaitingAiFor: string | null;
+};
 
 export async function addComment(input: {
   taskId: string;
   body: string;
-}): Promise<ActionResult<CommentView[]>> {
+}): Promise<ActionResult<PostedComment>> {
   return guarded(async () => {
     const session = await requireSessionForAction();
     const body = input.body.trim();
@@ -453,8 +469,21 @@ export async function addComment(input: {
 
     const task = await assertTaskInWorkspace(input.taskId, session.workspace.id);
 
-    await db.taskComment.create({
-      data: { taskId: input.taskId, authorMemberId: session.member.id, body },
+    // Resolved against the roster here rather than trusted from the client:
+    // what the message says is what decides who was called in, so a payload
+    // claiming a mention nobody typed cannot pull someone into a thread.
+    const { memberIds, mentionsAi } = mentionsIn(body, session.workspace.members);
+
+    const created = await db.taskComment.create({
+      data: {
+        taskId: input.taskId,
+        authorMemberId: session.member.id,
+        kind: "MESSAGE",
+        body,
+        mentionedMemberIds: memberIds,
+        mentionsAi,
+      },
+      select: { id: true },
     });
 
     await logActivity({
@@ -463,6 +492,91 @@ export async function addComment(input: {
       type: "TASK_COMMENTED",
       summary: `commented on “${task.title}”`,
       taskId: input.taskId,
+      metadata: memberIds.length > 0 ? { mentioned: memberIds } : undefined,
+    });
+
+    refresh();
+    return ok({
+      comments: await listComments(input.taskId, session.workspace.id),
+      awaitingAiFor: mentionsAi && isAiConfigured() ? created.id : null,
+    });
+  });
+}
+
+/**
+ * Answers an `@ai` mention, and posts the answer into the thread.
+ *
+ * Split from `addComment` on purpose. The model call costs tens of seconds, and
+ * holding the person's own message hostage to it would make the discussion feel
+ * broken every time the assistant is asked something. So the message lands
+ * first, this runs second, and a failure here loses the answer rather than what
+ * they wrote.
+ *
+ * Idempotent through the unique `answersId`: a second call for a question that
+ * has already been answered returns the thread unchanged instead of answering
+ * twice, which is what makes a retry — or a double click — harmless.
+ */
+export async function answerWithAi(input: {
+  taskId: string;
+  commentId: string;
+}): Promise<ActionResult<CommentView[]>> {
+  return guarded(async () => {
+    const session = await requireSessionForAction();
+    await assertTaskInWorkspace(input.taskId, session.workspace.id);
+
+    if (!isAiConfigured()) return fail(await message("errors.discussion.needsKey"));
+
+    const question = await getComment(input.commentId, session.workspace.id);
+    if (!question) return fail(await message("errors.discussion.questionGone"));
+    if (!question.mentionsAi) return fail(await message("errors.discussion.notForAi"));
+
+    const existing = await db.taskComment.findUnique({
+      where: { answersId: question.id },
+      select: { id: true },
+    });
+    if (existing) {
+      return ok(await listComments(input.taskId, session.workspace.id));
+    }
+
+    const task = await getTask(input.taskId, session.workspace.id);
+    if (!task) return fail(await message("errors.task.goneShort"));
+
+    const thread = await listComments(input.taskId, session.workspace.id);
+    const result = await adviseOnTask({
+      task,
+      members: session.workspace.members,
+      thread: thread
+        .filter((entry) => entry.createdAt < question.createdAt)
+        .map((entry) => ({
+          authorName: entry.author?.name ?? null,
+          isAi: entry.kind === "AI_ANSWER",
+          body: entry.body,
+        })),
+      question: {
+        authorName: question.author?.name ?? "Someone",
+        body: question.body,
+      },
+      today: new Date().toISOString().slice(0, 10),
+    });
+
+    const advice = toAdvice(result.advice);
+    const reply = result.advice.reply.trim();
+    if (!reply && !hasAdvice(advice)) {
+      return fail(await message("errors.discussion.emptyAnswer"));
+    }
+
+    await db.taskComment.create({
+      data: {
+        taskId: input.taskId,
+        // No author: an assistant message belongs to no member, which is what
+        // `kind` makes unambiguous against a comment whose author has left.
+        authorMemberId: null,
+        kind: "AI_ANSWER",
+        body: reply,
+        answersId: question.id,
+        advice: advice as never,
+        model: result.model,
+      },
     });
 
     refresh();
@@ -470,7 +584,61 @@ export async function addComment(input: {
   });
 }
 
-/** Loads comments on demand when the detail drawer opens. */
+/**
+ * Narrows the model's answer to what the thread renders.
+ *
+ * Everything is trimmed and bounded here rather than in the renderer: a reply
+ * with forty recommendations is a reply nobody reads, and the schema can ask
+ * for restraint but cannot enforce it.
+ */
+function toAdvice(extracted: ExtractedAdvice): Advice {
+  const text = (value: string, limit: number) => value.trim().slice(0, limit);
+  const lines = (values: string[], limit: number) =>
+    values.map((value) => text(value, 240)).filter(Boolean).slice(0, limit);
+
+  const screens = extracted.wantsSketch
+    ? extracted.sketch.screens.slice(0, 3).map((screen) => ({
+        title: text(screen.title, 60),
+        caption: text(screen.caption, 140),
+        blocks: screen.blocks.slice(0, 6).map((block) => ({
+          kind: block.kind,
+          label: text(block.label, 48),
+          lines: lines(block.lines, 6),
+          emphasis: block.emphasis,
+        })),
+      }))
+    : [];
+
+  const flow = extracted.wantsSketch
+    ? extracted.sketch.flow.slice(0, 8).map((step) => ({
+        actor: step.actor,
+        label: text(step.label, 48),
+        detail: text(step.detail, 180),
+      }))
+    : [];
+
+  return {
+    recommendations: extracted.recommendations.slice(0, 6).map((item) => ({
+      title: text(item.title, 120),
+      detail: text(item.detail, 600),
+      effort: item.effort,
+      tradeoff: text(item.tradeoff, 240),
+    })),
+    risks: lines(extracted.risks, 5),
+    openQuestions: lines(extracted.openQuestions, 5),
+    sketch:
+      screens.length > 0 || flow.length > 0
+        ? {
+            title: text(extracted.sketch.title, 80),
+            caption: text(extracted.sketch.caption, 160),
+            screens,
+            flow,
+          }
+        : null,
+  };
+}
+
+/** Loads the discussion on demand when the detail drawer opens. */
 export async function fetchComments(taskId: string): Promise<ActionResult<CommentView[]>> {
   return guarded(async () => {
     const session = await requireSessionForAction();

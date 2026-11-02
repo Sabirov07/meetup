@@ -109,6 +109,23 @@ export const errors = {
   "errors.task.emptyNote": ["Write something first.", "Сначала что-нибудь напишите."],
   "errors.task.noteTooLong": ["That note is too long.", "Заметка слишком длинная."],
 
+  "errors.discussion.needsKey": [
+    "Set ANTHROPIC_API_KEY on the server to bring the assistant into a discussion.",
+    "Чтобы звать ассистента в обсуждение, задайте ANTHROPIC_API_KEY на сервере.",
+  ],
+  "errors.discussion.questionGone": [
+    "That message is no longer there.",
+    "Этого сообщения больше нет.",
+  ],
+  "errors.discussion.notForAi": [
+    "That message did not ask the assistant anything.",
+    "В этом сообщении ассистента ни о чём не спрашивали.",
+  ],
+  "errors.discussion.emptyAnswer": [
+    "The assistant had nothing useful to say about that. Try asking it something narrower.",
+    "Ассистенту нечего добавить по этому вопросу. Попробуйте спросить конкретнее.",
+  ],
+
   "errors.meeting.invalid": ["That meeting is not valid.", "Встреча заполнена неверно."],
   "errors.meeting.titleTooShort": [
     "Give the meeting a title.",

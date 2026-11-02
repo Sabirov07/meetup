@@ -16,6 +16,7 @@ import { errors } from "./errors";
 import { knowledge } from "./knowledge";
 import { team } from "./team";
 import { spaces } from "./spaces";
+import { discussion } from "./discussion";
 
 /**
  * Every translatable string in the product, in one object.
@@ -43,4 +44,5 @@ export const strings = {
   ...knowledge,
   ...team,
   ...spaces,
+  ...discussion,
 } as const;

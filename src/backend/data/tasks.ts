@@ -2,7 +2,8 @@ import "server-only";
 
 import { db } from "@/backend/db";
 import { toMemberSummary } from "@/backend/auth/guards";
-import type { TaskView } from "@/shared/domain/types";
+import type { CommentKind, TaskView } from "@/shared/domain/types";
+import type { Advice } from "@/shared/domain/sketch";
 
 /**
  * Reads for the task surfaces.
@@ -141,41 +142,102 @@ export async function getTask(taskId: string, workspaceId: string): Promise<Task
   return row ? toTaskView(row) : null;
 }
 
+/** One message in a task's discussion, as the drawer renders it. */
 export type CommentView = {
   id: string;
+  kind: CommentKind;
   body: string;
   author: { id: string; name: string; initials: string; accentToken: string } | null;
+  /** Members called in by name, in the order they were mentioned. */
+  mentionedMemberIds: string[];
+  mentionsAi: boolean;
+  /** The message this one answers, for an assistant reply. */
+  answersId: string | null;
+  /** The structured half of an assistant reply: advice and the sketch. */
+  advice: Advice | null;
+  model: string | null;
   createdAt: string;
 };
 
+const commentSelect = {
+  id: true,
+  kind: true,
+  body: true,
+  mentionedMemberIds: true,
+  mentionsAi: true,
+  answersId: true,
+  advice: true,
+  model: true,
+  createdAt: true,
+  author: { select: memberSelect },
+} as const;
+
+type CommentRow = {
+  id: string;
+  kind: CommentKind;
+  body: string;
+  mentionedMemberIds: string[];
+  mentionsAi: boolean;
+  answersId: string | null;
+  advice: unknown;
+  model: string | null;
+  createdAt: Date;
+  author: Parameters<typeof toMemberSummary>[0] | null;
+};
+
+function toCommentView(row: CommentRow): CommentView {
+  const author = row.author ? toMemberSummary(row.author) : null;
+  return {
+    id: row.id,
+    kind: row.kind,
+    body: row.body,
+    author: author
+      ? {
+          id: author.id,
+          name: author.name,
+          initials: author.initials,
+          accentToken: author.accentToken,
+        }
+      : null,
+    mentionedMemberIds: row.mentionedMemberIds,
+    mentionsAi: row.mentionsAi,
+    answersId: row.answersId,
+    // Written by this app from a schema-validated model response, so it is
+    // cast rather than re-parsed. The renderer still reads it defensively,
+    // because a row written by an older shape of that schema outlives it.
+    advice: (row.advice as Advice | null) ?? null,
+    model: row.model,
+    createdAt: row.createdAt.toISOString(),
+  };
+}
+
+/** The whole thread, oldest first — it is read as a conversation. */
 export async function listComments(taskId: string, workspaceId: string): Promise<CommentView[]> {
   const rows = await db.taskComment.findMany({
     where: { taskId, task: { workspaceId } },
     orderBy: { createdAt: "asc" },
-    select: {
-      id: true,
-      body: true,
-      createdAt: true,
-      author: { select: memberSelect },
-    },
+    select: commentSelect,
   });
 
-  return rows.map((row) => {
-    const author = row.author ? toMemberSummary(row.author) : null;
-    return {
-      id: row.id,
-      body: row.body,
-      author: author
-        ? {
-            id: author.id,
-            name: author.name,
-            initials: author.initials,
-            accentToken: author.accentToken,
-          }
-        : null,
-      createdAt: row.createdAt.toISOString(),
-    };
+  return rows.map(toCommentView);
+}
+
+/**
+ * One message, confirmed to be on a task in this workspace.
+ *
+ * The workspace filter goes through the task rather than sitting on the
+ * comment, because `task_comments` carries no workspace of its own — the task
+ * is what it belongs to, and that is the only tenancy there is to check.
+ */
+export async function getComment(
+  commentId: string,
+  workspaceId: string,
+): Promise<CommentView | null> {
+  const row = await db.taskComment.findFirst({
+    where: { id: commentId, task: { workspaceId } },
+    select: commentSelect,
   });
+  return row ? toCommentView(row) : null;
 }
 
 /** Id + title pairs for the dependency picker. */

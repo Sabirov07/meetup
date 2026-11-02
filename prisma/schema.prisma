@@ -122,6 +122,13 @@ enum ProposalStatus {
   REJECTED
 }
 
+/// Who wrote a message in a task discussion: a person, or the assistant
+/// answering an `@ai` mention.
+enum CommentKind {
+  MESSAGE
+  AI_ANSWER
+}
+
 enum ActivityType {
   TASK_CREATED
   TASK_UPDATED
@@ -696,15 +703,44 @@ model Attachment {
   @@map("attachments")
 }
 
+/// One message in a task's discussion.
+///
+/// The same table carries what people write and what the assistant answers,
+/// because the thread reads as one conversation and splitting it in two would
+/// mean merging it back together on every read. `kind` is what tells them
+/// apart: an assistant message has no author, and a null `authorMemberId` on a
+/// MESSAGE means the person who wrote it has since left the workspace.
 model TaskComment {
-  id             String   @id @default(cuid())
+  id             String      @id @default(cuid())
   taskId         String
   authorMemberId String?
+  kind           CommentKind @default(MESSAGE)
   body           String
-  createdAt      DateTime @default(now())
+  /// Members named with an @mention, resolved when the message was posted.
+  ///
+  /// Stored rather than re-derived on read because a mention is a record of
+  /// who was called into the conversation at that moment: renaming someone, or
+  /// their leaving, must not quietly rewrite who was asked.
+  mentionedMemberIds String[] @default([])
+  /// Whether the message addressed the assistant with `@ai`.
+  mentionsAi     Boolean     @default(false)
+  /// For an assistant message, the message it answers.
+  answersId      String?     @unique
+  /// For an assistant message: its recommendations, risks, open questions and
+  /// the interface sketch, shaped by `Advice` in `shared/domain/sketch.ts`.
+  ///
+  /// Held as JSON rather than as tables because none of it is ever queried —
+  /// it is read back only to re-render the one message it belongs to, and its
+  /// shape is owned by the model schema that produced it.
+  advice         Json?
+  /// The model that answered, so an old reply is not mistaken for this one's.
+  model          String?
+  createdAt      DateTime    @default(now())
 
-  task   Task             @relation(fields: [taskId], references: [id], onDelete: Cascade)
-  author WorkspaceMember? @relation(fields: [authorMemberId], references: [id], onDelete: SetNull)
+  task    Task             @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  author  WorkspaceMember? @relation(fields: [authorMemberId], references: [id], onDelete: SetNull)
+  answers TaskComment?     @relation("CommentAnswer", fields: [answersId], references: [id], onDelete: Cascade)
+  answer  TaskComment?     @relation("CommentAnswer")
 
   @@index([taskId, createdAt])
   @@map("task_comments")

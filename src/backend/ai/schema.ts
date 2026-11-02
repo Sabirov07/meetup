@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { TASK_CATEGORIES, TASK_PRIORITIES } from "@/shared/domain/types";
+import { EFFORTS, SKETCH_ACTORS, SKETCH_BLOCKS } from "@/shared/domain/sketch";
 
 /**
  * The contract for transcript analysis.
@@ -180,3 +181,97 @@ export const breakdownSchema = z.object({
 
 export type ExtractedBreakdown = z.infer<typeof breakdownSchema>;
 export type DraftedTask = z.infer<typeof draftedTaskSchema>;
+
+// ---------------------------------------------------------------------------
+// Discussion: answering an @ai mention
+// ---------------------------------------------------------------------------
+
+/**
+ * The contract for an answer in a task discussion.
+ *
+ * Shaped like the two schemas above — nothing optional, nothing nullable — for
+ * the same reason: a model held to a schema says "none" far more reliably with
+ * an empty array than with an absent key. `wantsSketch` is the one flag that
+ * governs a whole sub-object, so the model can decline to draw without having
+ * to produce a convincing empty drawing.
+ *
+ * The block vocabulary comes from `shared/domain/sketch.ts`, so the set the
+ * model may choose from and the set the renderer can draw are the same list.
+ */
+const sketchBlockSchema = z.object({
+  kind: z.enum(SKETCH_BLOCKS).describe("The part of the screen this is."),
+  label: z
+    .string()
+    .describe("What this part is called, two or three words. Not a sentence."),
+  lines: z
+    .array(z.string())
+    .describe(
+      "What is inside it — rows, fields, columns, tiles — each in a few words. Two to five of them. Real content from this task, never 'Item 1'.",
+    ),
+  emphasis: z
+    .boolean()
+    .describe("True for the one block the screen exists for. At most one per screen."),
+});
+
+const sketchScreenSchema = z.object({
+  title: z.string().describe("The screen's name, two or three words."),
+  caption: z.string().describe("What the person is doing here, in one short line."),
+  blocks: z.array(sketchBlockSchema).describe("Two to five blocks, in the order they appear."),
+});
+
+const sketchStepSchema = z.object({
+  actor: z
+    .enum(SKETCH_ACTORS)
+    .describe("PERSON when someone acts, SYSTEM when the app does, AI for a model step."),
+  label: z.string().describe("The step, in a few words."),
+  detail: z.string().describe("What happens, or what it waits on. One sentence."),
+});
+
+const sketchSchema = z.object({
+  title: z.string().describe("What the drawing shows. Empty when wantsSketch is false."),
+  caption: z.string().describe("One line of context under the title."),
+  screens: z
+    .array(sketchScreenSchema)
+    .describe("One to three screens. Empty when wantsSketch is false."),
+  flow: z
+    .array(sketchStepSchema)
+    .describe("Three to six steps end to end. Empty when there is no sequence worth drawing."),
+});
+
+export const adviceSchema = z.object({
+  reply: z
+    .string()
+    .describe(
+      "The answer itself, in Markdown — headings, short paragraphs, lists. Address the people in the thread directly and answer what they actually asked. No preamble, no restating the question, no sign-off.",
+    ),
+  recommendations: z
+    .array(
+      z.object({
+        title: z.string().describe("The recommendation as an instruction, under 70 characters."),
+        detail: z.string().describe("Why, and what it means in practice. One to three sentences."),
+        effort: z.enum(EFFORTS).describe("SMALL is hours, MEDIUM is days, LARGE is a week or more."),
+        tradeoff: z
+          .string()
+          .describe("What this costs or gives up, in one line. Empty when there is nothing to trade."),
+      }),
+    )
+    .describe("Two to five, strongest first. Empty when the question was not asking for advice."),
+  risks: z
+    .array(z.string())
+    .describe(
+      "What goes wrong if this is built the obvious way — each a specific failure, not a platitude. Empty when there is nothing real to flag.",
+    ),
+  openQuestions: z
+    .array(z.string())
+    .describe(
+      "What the team has to settle before this can be built, each addressed to them. Empty when nothing is genuinely unresolved.",
+    ),
+  wantsSketch: z
+    .boolean()
+    .describe(
+      "True only when an interface or a sequence is being decided and a drawing would settle something words cannot.",
+    ),
+  sketch: sketchSchema,
+});
+
+export type ExtractedAdvice = z.infer<typeof adviceSchema>;

@@ -39,6 +39,10 @@ export type AccentToken = (typeof ACCENT_TOKENS)[number];
 export const EVIDENCE_LEVELS = ["CONFIRMED", "INFERRED", "RECOMMENDED"] as const;
 export type EvidenceLevel = (typeof EVIDENCE_LEVELS)[number];
 
+/** Who wrote a message in a task discussion. */
+export const COMMENT_KINDS = ["MESSAGE", "AI_ANSWER"] as const;
+export type CommentKind = (typeof COMMENT_KINDS)[number];
+
 export const MEETING_STATUSES = [
   "SCHEDULED",
   "READY_TO_JOIN",

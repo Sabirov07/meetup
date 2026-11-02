@@ -4,8 +4,6 @@ import {
   Check,
   GitBranch,
   Link2,
-  Loader2,
-  MessageSquare,
   Pencil,
   Plus,
   Quote,
@@ -14,16 +12,9 @@ import {
   X,
 } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useRef, useState } from "react";
 import { toast } from "sonner";
-import {
-  addComment,
-  addDependency,
-  fetchComments,
-  removeDependency,
-  updateTask,
-} from "@/backend/actions/tasks";
-import type { CommentView } from "@/backend/data/tasks";
+import { addDependency, removeDependency, updateTask } from "@/backend/actions/tasks";
 import {
   NO_SPACE,
   TASK_CATEGORIES,
@@ -53,9 +44,9 @@ import {
   SelectContent,
   SelectItem,
   SelectTrigger,
-  Textarea,
 } from "@/frontend/components/ui/field";
 import { spaceDot } from "@/frontend/components/spaces/space-color";
+import { Discussion } from "./discussion";
 import { TaskDoc } from "./task-doc";
 import { TaskFormDialog } from "./task-form-dialog";
 import { useTasks } from "./task-store";
@@ -109,24 +100,7 @@ function TaskDetail({
   const [titleDraft, setTitleDraft] = useState(task.title);
   const [editOpen, setEditOpen] = useState(false);
 
-  const [comments, setComments] = useState<CommentView[] | null>(null);
-  const [commentDraft, setCommentDraft] = useState("");
-  const [savingComment, startComment] = useTransition();
-
   const [addingDependency, setAddingDependency] = useState(false);
-
-  // Comments are not part of the list payload, so fetch them on open. The
-  // component is keyed by task id, so `comments` already starts as null.
-  useEffect(() => {
-    let cancelled = false;
-    void fetchComments(task.id).then((result) => {
-      if (cancelled) return;
-      setComments(result.ok ? result.data : []);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [task.id]);
 
   async function save(change: Parameters<typeof updateTask>[0]) {
     const result = await updateTask(change);
@@ -597,84 +571,9 @@ function TaskDetail({
           </>
         )}
 
-        {/* Notes */}
+        {/* The conversation on this task */}
         <Separator />
-        <section className="px-4 py-3.5">
-          <p className="eyebrow mb-2 flex items-center gap-1.5">
-            <MessageSquare className="h-3 w-3" />
-            {t("detail.notes")}
-          </p>
-
-          {comments === null ? (
-            <div className="flex items-center gap-2 text-2xs text-text-faint">
-              <Loader2 className="h-3 w-3 animate-spin" />
-              {t("detail.notes.loading")}
-            </div>
-          ) : (
-            <div className="space-y-2.5">
-              {comments.map((comment) => (
-                <div key={comment.id} className="flex gap-2">
-                  <Avatar
-                    member={
-                      comment.author
-                        ? {
-                            name: comment.author.name,
-                            initials: comment.author.initials,
-                            accentToken: comment.author.accentToken,
-                          }
-                        : null
-                    }
-                    size="md"
-                  />
-                  <div className="min-w-0 flex-1">
-                    <p className="flex items-baseline gap-1.5">
-                      <span className="text-2xs font-medium text-text">
-                        {comment.author?.name ?? t("activity.someone")}
-                      </span>
-                      <span className="text-2xs text-text-faint">
-                        <RelativeTime value={comment.createdAt} />
-                      </span>
-                    </p>
-                    <p className="mt-0.5 whitespace-pre-wrap text-2xs leading-5 text-text-secondary">
-                      {comment.body}
-                    </p>
-                  </div>
-                </div>
-              ))}
-
-              {comments.length === 0 && (
-                <p className="text-2xs text-text-faint">{t("detail.notes.empty")}</p>
-              )}
-
-              <div className="flex gap-2 pt-0.5">
-                <Textarea
-                  value={commentDraft}
-                  onChange={(event) => setCommentDraft(event.target.value)}
-                  placeholder={t("detail.notes.placeholder")}
-                  className="min-h-[52px] text-xs"
-                  onKeyDown={(event) => {
-                    if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
-                      event.preventDefault();
-                      submitComment();
-                    }
-                  }}
-                />
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-2xs text-text-faint">{t("detail.notes.shortcut")}</span>
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  disabled={!commentDraft.trim()}
-                  loading={savingComment}
-                  onClick={submitComment}
-                >
-                  {t("detail.notes.add")}
-                </Button>
-              </div>
-            </div>
-          )}
-        </section>
+        <Discussion task={task} />
 
         <div className="px-4 pb-5 pt-1 text-2xs text-text-faint">
           {t("detail.lastUpdated", { when: f.dateTime(task.updatedAt, now) })}
@@ -691,21 +590,6 @@ function TaskDetail({
       />
     </>
   );
-
-  function submitComment() {
-    const body = commentDraft.trim();
-    if (!body) return;
-    startComment(async () => {
-      const result = await addComment({ taskId: task.id, body });
-      if (result.ok) {
-        setComments(result.data);
-        setCommentDraft("");
-        upsertTask({ ...task, commentCount: result.data.length });
-      } else {
-        toast.error(t("detail.notes.saveFailed"), { description: result.error });
-      }
-    });
-  }
 }
 
 function Property({ label, children }: { label: string; children: React.ReactNode }) {
