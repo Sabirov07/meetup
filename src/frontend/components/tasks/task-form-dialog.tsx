@@ -79,6 +79,7 @@ export function TaskFormDialog({
   defaultPriority,
   onSaved,
   onDescribeTasks,
+  quiet,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -98,8 +99,11 @@ export function TaskFormDialog({
    * someone editing one task does not want a batch of new ones.
    */
   onDescribeTasks?: () => void;
+  /** This dialog took over from the describe-the-work dialog a frame ago. */
+  quiet?: boolean;
 }) {
   const editing = Boolean(task);
+  const showSwitch = !editing && Boolean(onDescribeTasks);
   const router = useRouter();
   const t = useT();
 
@@ -195,21 +199,27 @@ export function TaskFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-xl">
+      {/* The two ways of creating work share a size while both are on offer,
+          so switching between them moves nothing but the fields themselves. */}
+      <DialogContent
+        className={showSwitch ? "h-[min(90vh,43.5rem)] max-w-2xl" : "max-w-xl"}
+        quiet={quiet}
+      >
         <form
           onSubmit={form.handleSubmit(onSubmit)}
           className="flex min-h-0 flex-col"
         >
-          <DialogHeader>
-            {!editing && onDescribeTasks && (
+          {/* Centred over the title; see the same header in the intake dialog. */}
+          <DialogHeader className={showSwitch ? "pr-5" : undefined}>
+            {showSwitch && (
               <CreateModeSwitch
                 value="FORM"
                 onChange={(mode) => {
                   if (mode === "FORM") return;
                   onOpenChange(false);
-                  onDescribeTasks();
+                  onDescribeTasks?.();
                 }}
-                className="mb-3 w-fit"
+                className="mx-auto mb-4 w-fit"
               />
             )}
             <DialogTitle>{t(editing ? "form.title.edit" : "form.title.create")}</DialogTitle>

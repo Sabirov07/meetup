@@ -64,6 +64,30 @@ export function AppShell({
   const [meetingOpen, setMeetingOpen] = useState(false);
   const [taskOpen, setTaskOpen] = useState(false);
   const [intakeOpen, setIntakeOpen] = useState(false);
+  /**
+   * The create dialog that just opened took over from the other one, rather
+   * than being opened from a button.
+   *
+   * The two ways of creating work are one decision with two faces, so moving
+   * between them should feel like a tab. Both state changes happen in the same
+   * event, so React swaps the panels in a single commit and nothing ever
+   * blinks away. What was left was the arrival — a fresh scrim fading in and a
+   * panel scaling up from nothing, which is what read as a load. This turns
+   * that into a cross-fade in place.
+   */
+  const [handover, setHandover] = useState(false);
+
+  const openTaskForm = useCallback((fromSwitch = false) => {
+    setHandover(fromSwitch);
+    setIntakeOpen(false);
+    setTaskOpen(true);
+  }, []);
+
+  const openIntake = useCallback((fromSwitch = false) => {
+    setHandover(fromSwitch);
+    setTaskOpen(false);
+    setIntakeOpen(true);
+  }, []);
 
   const toggleCollapsed = useCallback(() => {
     setCollapsed((prev) => {
@@ -93,10 +117,10 @@ export function AppShell({
 
       if (event.key === "c") {
         event.preventDefault();
-        setTaskOpen(true);
+        openTaskForm();
       } else if (event.key === "C") {
         event.preventDefault();
-        setIntakeOpen(true);
+        openIntake();
       } else if (event.key === "m") {
         event.preventDefault();
         setMeetingOpen(true);
@@ -107,11 +131,15 @@ export function AppShell({
     }
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [toggleCollapsed]);
+  }, [toggleCollapsed, openTaskForm, openIntake]);
 
   // Stable, so a page's create form does not re-render on every shell state
-  // change just because it holds this.
-  const createActions = useMemo(() => ({ describeTasks: () => setIntakeOpen(true) }), []);
+  // change just because it holds this. It is reached only from that form's own
+  // mode switch, so the arrival is always a handover.
+  const createActions = useMemo(
+    () => ({ describeTasks: () => openIntake(true) }),
+    [openIntake],
+  );
 
   const sidebar = (
     <Sidebar
@@ -124,7 +152,7 @@ export function AppShell({
       counts={counts}
       collapsed={collapsed}
       onToggle={toggleCollapsed}
-      onNewTask={() => setTaskOpen(true)}
+      onNewTask={() => openTaskForm()}
     />
   );
 
@@ -160,7 +188,7 @@ export function AppShell({
               collapsed={false}
               onToggle={() => setMobileOpen(false)}
               onNavigate={() => setMobileOpen(false)}
-              onNewTask={() => setTaskOpen(true)}
+              onNewTask={() => openTaskForm()}
             />
           </DialogPrimitive.Content>
         </DialogPrimitive.Portal>
@@ -176,7 +204,7 @@ export function AppShell({
           onOpenSidebar={() => setMobileOpen(true)}
           onOpenSearch={() => setSearchOpen(true)}
           onStartMeeting={() => setMeetingOpen(true)}
-          onNewTask={() => setTaskOpen(true)}
+          onNewTask={() => openTaskForm()}
         />
         <main className="min-w-0 flex-1">
           <CreateActionsProvider value={createActions}>{children}</CreateActionsProvider>
@@ -199,7 +227,8 @@ export function AppShell({
         members={workspace.members}
         spaces={spaces}
         defaultOwnerId={member.id}
-        onDescribeTasks={() => setIntakeOpen(true)}
+        onDescribeTasks={() => openIntake(true)}
+        quiet={handover}
       />
 
       <TaskIntakeDialog
@@ -208,7 +237,8 @@ export function AppShell({
         members={workspace.members}
         currentMemberId={member.id}
         aiConfigured={aiConfigured}
-        onSwitchToForm={() => setTaskOpen(true)}
+        onSwitchToForm={() => openTaskForm(true)}
+        quiet={handover}
       />
     </div>
   );

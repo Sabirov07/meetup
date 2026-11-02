@@ -10,11 +10,14 @@ export const Dialog = DialogPrimitive.Root;
 export const DialogTrigger = DialogPrimitive.Trigger;
 export const DialogClose = DialogPrimitive.Close;
 
-function Overlay({ className }: { className?: string }) {
+function Overlay({ quiet, className }: { quiet?: boolean; className?: string }) {
   return (
     <DialogPrimitive.Overlay
       className={cn(
-        "fixed inset-0 z-50 bg-scrim data-[state=open]:animate-fade-in",
+        "fixed inset-0 z-50 bg-scrim",
+        // A quiet dialog is replacing one that was already open: the scrim was
+        // never gone, so fading it in again would read as a second opening.
+        !quiet && "data-[state=open]:animate-fade-in",
         className,
       )}
     />
@@ -26,16 +29,29 @@ export function DialogContent({
   className,
   children,
   showClose = true,
+  quiet,
   ...props
-}: ComponentProps<typeof DialogPrimitive.Content> & { showClose?: boolean }) {
+}: ComponentProps<typeof DialogPrimitive.Content> & {
+  showClose?: boolean;
+  /**
+   * This dialog took over from another one that was open a frame ago — two
+   * tabs of the same decision, not a new thing appearing. Scaling in from
+   * nothing would announce a reopening and read as a load, so the panel only
+   * cross-fades in place and the scrim is left untouched.
+   */
+  quiet?: boolean;
+}) {
   const t = useT();
 
   return (
     <DialogPrimitive.Portal>
-      <Overlay />
+      <Overlay quiet={quiet} />
       <DialogPrimitive.Content
         className={cn(
-          "fixed left-1/2 top-1/2 z-50 flex max-h-[min(90vh,46rem)] w-[calc(100%-2rem)] max-w-lg -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-xl border border-line-strong bg-surface shadow-modal focus:outline-none data-[state=open]:animate-scale-in",
+          "fixed left-1/2 top-1/2 z-50 flex max-h-[min(90vh,46rem)] w-[calc(100%-2rem)] max-w-lg -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-xl border border-line-strong bg-surface shadow-modal focus:outline-none",
+          quiet
+            ? "data-[state=open]:animate-fade-in"
+            : "data-[state=open]:animate-scale-in",
           className,
         )}
         {...props}

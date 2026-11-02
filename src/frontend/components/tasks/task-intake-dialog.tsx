@@ -67,6 +67,8 @@ export function TaskIntakeDialog({
   aiConfigured,
   /** Opens the plain create form instead, for someone who wants the fields. */
   onSwitchToForm,
+  /** This dialog took over from the create form a frame ago. */
+  quiet,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -75,6 +77,7 @@ export function TaskIntakeDialog({
   currentMemberId: string;
   aiConfigured: boolean;
   onSwitchToForm?: () => void;
+  quiet?: boolean;
 }) {
   const t = useT();
   const router = useRouter();
@@ -209,20 +212,33 @@ export function TaskIntakeDialog({
   }, [members, currentMemberId, t]);
 
   const tooShort = brief.trim().length < MIN_BRIEF_LENGTH;
+  // Only while there is still nothing to lose: once the model has answered,
+  // the review is the thing on screen and swapping it out is not a tab change.
+  const showSwitch = !breakdown && Boolean(onSwitchToForm);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
-        <DialogHeader>
-          {!breakdown && onSwitchToForm && (
+      {/* While both ways of creating work are on offer, the panel keeps the
+          same size in either one, so switching moves nothing but the fields:
+          the box does not grow, and the switch itself never shifts under the
+          pointer that just used it. */}
+      <DialogContent
+        className={cn("max-w-2xl", showSwitch && "h-[min(90vh,43.5rem)]")}
+        quiet={quiet}
+      >
+        {/* The switch is centred over the title, so the header drops the room
+            it normally keeps clear for the close button; the two never meet,
+            because the switch is far narrower than the dialog. */}
+        <DialogHeader className={showSwitch ? "pr-5" : undefined}>
+          {showSwitch && (
             <CreateModeSwitch
               value="DESCRIBE"
               onChange={(mode) => {
                 if (mode === "DESCRIBE") return;
                 onOpenChange(false);
-                onSwitchToForm();
+                onSwitchToForm?.();
               }}
-              className="mb-3 w-fit"
+              className="mx-auto mb-4 w-fit"
             />
           )}
           <DialogTitle className="flex items-center gap-1.5">
@@ -333,7 +349,7 @@ export function TaskIntakeDialog({
           </>
         ) : (
           <>
-            <DialogBody className="space-y-3">
+            <DialogBody className="flex min-h-0 flex-col gap-3">
               <Field
                 label={t("intake.field.brief")}
                 htmlFor="intake-brief"
@@ -341,6 +357,7 @@ export function TaskIntakeDialog({
                   count: brief.length,
                   max: MAX_BRIEF_LENGTH,
                 })}
+                className="flex min-h-0 flex-1 flex-col gap-1.5 space-y-0"
               >
                 <Textarea
                   id="intake-brief"
@@ -349,7 +366,7 @@ export function TaskIntakeDialog({
                   maxLength={MAX_BRIEF_LENGTH}
                   onChange={(event) => setBrief(event.target.value)}
                   placeholder={placeholder}
-                  className="min-h-[13rem] leading-6"
+                  className="min-h-[13rem] flex-1 resize-none leading-6"
                 />
               </Field>
 

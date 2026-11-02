@@ -45,7 +45,7 @@ export function CreateModeSwitch({
       role="group"
       aria-label={t("intake.mode.label")}
       className={cn(
-        "flex items-center gap-0.5 rounded-lg border border-line bg-canvas/60 p-0.5",
+        "flex items-center gap-1 rounded-xl border border-line bg-canvas/60 p-1",
         className,
       )}
     >
@@ -62,7 +62,10 @@ export function CreateModeSwitch({
               onClick={() => onChange(mode)}
               aria-pressed={active}
               className={cn(
-                "flex h-7 items-center gap-1.5 rounded-md px-2.5 text-xs font-medium transition-colors",
+                // The switch is the first thing in the dialog and the only
+                // decision made before reading anything, so it is sized to be
+                // read at a glance rather than tucked into a corner.
+                "flex h-9 items-center gap-2 rounded-lg px-3.5 text-sm font-medium transition-colors duration-150",
                 active
                   ? "bg-raised text-text"
                   : "text-text-muted hover:bg-hover hover:text-text",
@@ -70,7 +73,7 @@ export function CreateModeSwitch({
             >
               <Icon
                 className={cn(
-                  "h-3.5 w-3.5 transition-colors",
+                  "h-4 w-4 transition-colors duration-150",
                   active && mode === "DESCRIBE" ? "text-accent-bright" : undefined,
                 )}
               />
