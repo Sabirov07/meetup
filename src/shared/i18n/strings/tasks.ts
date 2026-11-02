@@ -304,6 +304,21 @@ export const tasks = {
   ],
   "detail.lastUpdated": ["Last updated {when}", "Обновлено: {when}"],
 
+  "detail.link.copy": ["Copy a link to this task", "Скопировать ссылку на задачу"],
+  "detail.link.copied": ["Link copied", "Ссылка скопирована"],
+  "detail.link.copyFailed": [
+    "Could not reach the clipboard. Here is the link:",
+    "Не удалось обратиться к буферу обмена. Вот ссылка:",
+  ],
+  "detail.link.notHere": [
+    "That task is not in this workspace",
+    "Этой задачи нет в текущем пространстве",
+  ],
+  "detail.link.notHereWhy": [
+    "The link may be from another workspace, or the task has been deleted.",
+    "Возможно, ссылка из другого пространства или задачу удалили.",
+  ],
+
   "priority.explanation": ["{priority} priority", "Приоритет: {priority}"],
   "priority.explanationWith": ["{base} · {factors}", "{base} · {factors}"],
   "priority.factor.completed": ["Completed", "Завершено"],

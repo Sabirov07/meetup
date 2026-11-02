@@ -7,12 +7,13 @@ import {
   Pencil,
   Plus,
   Quote,
+  Share2,
   Sparkles,
   Trash2,
   X,
 } from "lucide-react";
 import Link from "next/link";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { addDependency, removeDependency, updateTask } from "@/backend/actions/tasks";
 import {
@@ -49,16 +50,37 @@ import { spaceDot } from "@/frontend/components/spaces/space-color";
 import { Discussion } from "./discussion";
 import { TaskDoc } from "./task-doc";
 import { TaskFormDialog } from "./task-form-dialog";
-import { useTasks } from "./task-store";
+import { taskLink, useTasks } from "./task-store";
 
 export function TaskDetailSheet() {
   const { tasks, openTaskId, setOpenTaskId } = useTasks();
+  const t = useT();
   const task = openTaskId ? (tasks.find((t) => t.id === openTaskId) ?? null) : null;
 
   // While the document editor is open it owns Escape; the drawer gets the
   // next one. Radix dismisses from a capture-phase listener, so this has to
   // be decided here rather than by stopping the event further down.
   const docCapturesEscape = useRef(false);
+
+  /**
+   * A link naming a task this workspace does not have.
+   *
+   * Usually a link from a workspace the reader is not in, or one sent after
+   * the task was deleted. Either way the address bar is making a promise the
+   * page cannot keep, so it is corrected and the reason said out loud — an
+   * ordinary-looking list with no drawer would read as the link being ignored.
+   *
+   * Every surface holds the whole workspace list, so a miss here is genuinely
+   * "not here" rather than "not on this page".
+   */
+  const reportedMissing = useRef<string | null>(null);
+  useEffect(() => {
+    if (!openTaskId || task) return;
+    if (reportedMissing.current === openTaskId) return;
+    reportedMissing.current = openTaskId;
+    toast.error(t("detail.link.notHere"), { description: t("detail.link.notHereWhy") });
+    setOpenTaskId(null);
+  }, [openTaskId, task, setOpenTaskId, t]);
 
   return (
     <Dialog open={Boolean(task)} onOpenChange={(open) => !open && setOpenTaskId(null)}>
@@ -199,6 +221,7 @@ function TaskDetail({
         </div>
 
         <div className="flex shrink-0 items-center gap-1">
+          <CopyLinkButton task={task} />
           <Tooltip content={t("detail.editAllFields")}>
             <Button
               variant="ghost"
@@ -589,6 +612,52 @@ function TaskDetail({
         onSaved={upsertTask}
       />
     </>
+  );
+}
+
+/**
+ * Copies a link that opens this task for anyone in the workspace.
+ *
+ * The clipboard needs a secure context, which localhost and HTTPS both are —
+ * but it can still be refused by permission policy, so a failure falls back to
+ * showing the address rather than leaving the click with nothing to show for
+ * it.
+ */
+function CopyLinkButton({ task }: { task: TaskView }) {
+  const t = useT();
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    if (!copied) return;
+    const id = setTimeout(() => setCopied(false), 1600);
+    return () => clearTimeout(id);
+  }, [copied]);
+
+  async function copy() {
+    const url = new URL(taskLink(task.id), window.location.origin).toString();
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+    } catch {
+      toast.message(t("detail.link.copyFailed"), { description: url });
+    }
+  }
+
+  return (
+    <Tooltip content={t(copied ? "detail.link.copied" : "detail.link.copy")}>
+      <Button
+        variant="ghost"
+        size="icon-sm"
+        aria-label={t("detail.link.copy")}
+        onClick={() => void copy()}
+      >
+        {copied ? (
+          <Check className="h-3.5 w-3.5 text-success" />
+        ) : (
+          <Share2 className="h-3.5 w-3.5" />
+        )}
+      </Button>
+    </Tooltip>
   );
 }
 

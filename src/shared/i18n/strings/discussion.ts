@@ -24,6 +24,10 @@ export const discussion = {
   "discussion.shortcut": ["⌘↵ to send", "⌘↵ — отправить"],
   "discussion.mention": ["Mention someone", "Позвать коллегу"],
   "discussion.askAi": ["Ask the assistant", "Спросить ассистента"],
+  "discussion.loadFailed": [
+    "Could not load the discussion",
+    "Не удалось загрузить обсуждение",
+  ],
   "discussion.sendFailed": [
     "Could not send that message",
     "Не удалось отправить сообщение",

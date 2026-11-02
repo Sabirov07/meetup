@@ -48,6 +48,15 @@ export function Discussion({ task }: { task: TaskView }) {
   const { t } = useI18n();
 
   const [comments, setComments] = useState<CommentView[] | null>(null);
+  /**
+   * Why the thread could not be read.
+   *
+   * Kept apart from an empty thread rather than folded into it. A failed load
+   * that renders as "nothing here yet" is the worst kind of bug: it looks like
+   * an answer, so nobody reports it, and the person concludes their colleague
+   * never replied.
+   */
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
   const [posting, startPosting] = useTransition();
   /** The message the assistant is currently answering. */
@@ -57,16 +66,18 @@ export function Discussion({ task }: { task: TaskView }) {
 
   // Not part of the task list payload, so the thread loads when the drawer
   // opens. The component is keyed by task id upstream, so this starts as null.
+  const [reloads, setReloads] = useState(0);
   useEffect(() => {
     let cancelled = false;
     void fetchComments(task.id).then((result) => {
       if (cancelled) return;
-      setComments(result.ok ? result.data : []);
+      if (result.ok) setComments(result.data);
+      else setLoadError(result.error);
     });
     return () => {
       cancelled = true;
     };
-  }, [task.id]);
+  }, [task.id, reloads]);
 
   const endRef = useRef<HTMLDivElement>(null);
   const count = comments?.length ?? task.commentCount;
@@ -120,7 +131,27 @@ export function Discussion({ task }: { task: TaskView }) {
         {count > 0 && <Count>{count}</Count>}
       </div>
 
-      {comments === null ? (
+      {loadError !== null ? (
+        <div className="flex items-start justify-between gap-2 rounded-md border border-line bg-canvas px-2 py-1.5">
+          <div className="min-w-0">
+            <p className="text-2xs text-text">{t("discussion.loadFailed")}</p>
+            <p className="mt-0.5 text-2xs leading-4 text-text-muted">{loadError}</p>
+          </div>
+          <Button
+            variant="ghost"
+            size="xs"
+            className="shrink-0"
+            onClick={() => {
+              setComments(null);
+              setLoadError(null);
+              setReloads((value) => value + 1);
+            }}
+          >
+            <RefreshCw className="h-3 w-3" />
+            {t("common.retry")}
+          </Button>
+        </div>
+      ) : comments === null ? (
         <div className="flex items-center gap-2 text-2xs text-text-faint">
           <Loader2 className="h-3 w-3 animate-spin" />
           {t("discussion.loading")}
