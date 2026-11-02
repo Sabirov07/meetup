@@ -159,8 +159,14 @@ async function createAccountFromInvite(
       select: { id: true },
     });
 
+    // The workspace they were invited to is the only one they have, so it is
+    // both where they land and the one they belong to.
     await tx.userPreference.create({
-      data: { userId: user.id, lastWorkspaceId: invite.workspaceId },
+      data: {
+        userId: user.id,
+        lastWorkspaceId: invite.workspaceId,
+        primaryWorkspaceId: invite.workspaceId,
+      },
     });
 
     await tx.activityEvent.create({
@@ -203,7 +209,11 @@ async function createAccount(
     });
 
     await tx.userPreference.create({
-      data: { userId: user.id, lastWorkspaceId: workspace.id },
+      data: {
+        userId: user.id,
+        lastWorkspaceId: workspace.id,
+        primaryWorkspaceId: workspace.id,
+      },
     });
 
     await tx.activityEvent.create({

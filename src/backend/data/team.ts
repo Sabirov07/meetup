@@ -135,21 +135,27 @@ export async function listMyWorkspaces(
   userId: string,
   activeWorkspaceId: string,
 ): Promise<WorkspaceOption[]> {
-  const memberships = await db.workspaceMember.findMany({
-    where: { userId },
-    select: {
-      role: true,
-      workspace: {
-        select: {
-          id: true,
-          name: true,
-          slug: true,
-          _count: { select: { members: true } },
+  const [memberships, preference] = await Promise.all([
+    db.workspaceMember.findMany({
+      where: { userId },
+      select: {
+        role: true,
+        workspace: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+            _count: { select: { members: true } },
+          },
         },
       },
-    },
-    orderBy: { createdAt: "asc" },
-  });
+      orderBy: { createdAt: "asc" },
+    }),
+    db.userPreference.findUnique({
+      where: { userId },
+      select: { primaryWorkspaceId: true },
+    }),
+  ]);
 
   return memberships.map((m) => ({
     id: m.workspace.id,
@@ -158,5 +164,6 @@ export async function listMyWorkspaces(
     role: m.role,
     memberCount: m.workspace._count.members,
     isActive: m.workspace.id === activeWorkspaceId,
+    isPrimary: m.workspace.id === preference?.primaryWorkspaceId,
   }));
 }

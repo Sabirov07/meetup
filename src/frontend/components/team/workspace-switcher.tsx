@@ -3,12 +3,13 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { Check, Plus, Users } from "lucide-react";
+import { Check, Plus, Star, Users } from "lucide-react";
 import { toast } from "sonner";
-import { createWorkspace, switchWorkspace } from "@/backend/actions/team";
+import { createWorkspace, setMainWorkspace, switchWorkspace } from "@/backend/actions/team";
 import type { WorkspaceOption } from "@/shared/domain/types";
 import { useT } from "@/frontend/i18n";
 import { Logo } from "@/frontend/components/brand";
+import { Badge } from "@/frontend/components/ui/badge";
 import { Button } from "@/frontend/components/ui/button";
 import {
   Dialog,
@@ -49,6 +50,8 @@ export function WorkspaceSwitcher({
   const [creating, setCreating] = useState(false);
   const [switching, startSwitch] = useTransition();
 
+  const active = workspaces.find((workspace) => workspace.isActive);
+
   function pick(workspace: WorkspaceOption) {
     if (workspace.isActive) return;
     startSwitch(async () => {
@@ -61,6 +64,23 @@ export function WorkspaceSwitcher({
         router.refresh();
       } else {
         toast.error(t("team.switcher.switchFailed"), { description: result.error });
+      }
+    });
+  }
+
+  /**
+   * Marking the workspace you are already looking at, rather than one picked
+   * from the list — "make this my main one" is a thing you decide about where
+   * you are, and it keeps each row in the list to a single action.
+   */
+  function makeMain(workspace: WorkspaceOption) {
+    startSwitch(async () => {
+      const result = await setMainWorkspace(workspace.id);
+      if (result.ok) {
+        toast.success(t("team.switcher.mainSet", { name: workspace.name }));
+        router.refresh();
+      } else {
+        toast.error(t("team.switcher.setMainFailed"), { description: result.error });
       }
     });
   }
@@ -91,7 +111,14 @@ export function WorkspaceSwitcher({
             >
               <Logo size={18} />
               <span className="min-w-0 flex-1">
-                <span className="block truncate">{workspace.name}</span>
+                <span className="flex min-w-0 items-center gap-1.5">
+                  <span className="truncate">{workspace.name}</span>
+                  {workspace.isPrimary && (
+                    <Badge tone="tone-accent" variant="outline">
+                      {t("team.switcher.main")}
+                    </Badge>
+                  )}
+                </span>
                 <span className="block truncate text-2xs text-text-faint">
                   {t("team.members.count", { count: workspace.memberCount })}
                 </span>
@@ -102,6 +129,12 @@ export function WorkspaceSwitcher({
             </MenuItem>
           ))}
           <MenuSeparator />
+          {active && !active.isPrimary && (
+            <MenuItem onSelect={() => makeMain(active)}>
+              <Star className="h-3.5 w-3.5" />
+              {t("team.switcher.setMain")}
+            </MenuItem>
+          )}
           <MenuItem asChild>
             <Link href="/team">
               <Users className="h-3.5 w-3.5" />

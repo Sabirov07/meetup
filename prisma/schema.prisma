@@ -223,8 +223,15 @@ model UserPreference {
   userId           String       @unique
   defaultSort      TaskSortMode @default(SMART)
   sidebarCollapsed Boolean      @default(false)
-  /// Last workspace the person had open.
+  /// Last workspace the person had open. Overwritten by every switch, so it
+  /// resumes where they left off and says nothing about which one matters.
   lastWorkspaceId  String?
+  /// The workspace this person treats as their main one, set deliberately
+  /// rather than by moving around. It is where a session lands when there is
+  /// nothing to resume — which is why an account that belongs to a real team
+  /// and an abandoned personal workspace no longer depends on which one
+  /// happens to be older.
+  primaryWorkspaceId String?
   updatedAt        DateTime     @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)

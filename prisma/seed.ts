@@ -112,8 +112,13 @@ async function main() {
   for (const userId of [employer.id, employee.id]) {
     await db.userPreference.upsert({
       where: { userId },
-      update: { lastWorkspaceId: workspace.id },
-      create: { userId, lastWorkspaceId: workspace.id, defaultSort: "SMART" },
+      update: { lastWorkspaceId: workspace.id, primaryWorkspaceId: workspace.id },
+      create: {
+        userId,
+        lastWorkspaceId: workspace.id,
+        primaryWorkspaceId: workspace.id,
+        defaultSort: "SMART",
+      },
     });
   }
 

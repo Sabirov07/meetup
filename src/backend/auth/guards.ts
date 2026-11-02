@@ -45,6 +45,20 @@ const memberSelect = {
   user: { select: { id: true, name: true, email: true, accentToken: true } },
 } as const;
 
+/**
+ * The membership behind a remembered workspace id, or null when the id is
+ * stale — a workspace they have left, or one that has been deleted. Looking it
+ * up by membership rather than trusting the pointer is what lets both pointers
+ * be plain nullable columns with no foreign key behind them.
+ */
+async function membershipIn(userId: string, workspaceId: string | null | undefined) {
+  if (!workspaceId) return null;
+  return db.workspaceMember.findFirst({
+    where: { userId, workspaceId },
+    select: { ...memberSelect, workspaceId: true },
+  });
+}
+
 /** Resolves the signed-in person and their active workspace, or null. */
 export async function getSessionContext(): Promise<SessionContext | null> {
   const user = await resolveUserFromCookie();
@@ -52,16 +66,16 @@ export async function getSessionContext(): Promise<SessionContext | null> {
 
   const preference = await db.userPreference.findUnique({
     where: { userId: user.id },
-    select: { lastWorkspaceId: true },
+    select: { lastWorkspaceId: true, primaryWorkspaceId: true },
   });
 
+  // In order: where they were, then the one they call their main one, then
+  // whatever they belong to. The last step is creation order, which for an
+  // account that signed up alone and joined a team later means the empty
+  // personal workspace — so it is a floor, not a preference.
   const membership =
-    (preference?.lastWorkspaceId
-      ? await db.workspaceMember.findFirst({
-          where: { userId: user.id, workspaceId: preference.lastWorkspaceId },
-          select: { ...memberSelect, workspaceId: true },
-        })
-      : null) ??
+    (await membershipIn(user.id, preference?.lastWorkspaceId)) ??
+    (await membershipIn(user.id, preference?.primaryWorkspaceId)) ??
     (await db.workspaceMember.findFirst({
       where: { userId: user.id },
       orderBy: { createdAt: "asc" },

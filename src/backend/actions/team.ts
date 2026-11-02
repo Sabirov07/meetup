@@ -15,9 +15,11 @@ import {
   INVITE_DAYS,
   acceptInvite,
   createInviteToken,
+  forgetWorkspace,
   inviteLink,
   rememberInvite,
   setLastWorkspace,
+  setPrimaryWorkspace,
 } from "@/backend/team/invites";
 import { WORKSPACE_ROLES } from "@/shared/domain/types";
 import { fail, guarded, logActivity, ok, type ActionResult } from "./shared";
@@ -237,12 +239,9 @@ export async function removeMember(
 
     await db.workspaceMember.delete({ where: { id: member.id } });
 
-    // Their next page load must not land back here. Clearing the pointer sends
-    // `getSessionContext` to whichever workspace they do still belong to.
-    await db.userPreference.updateMany({
-      where: { userId: member.userId, lastWorkspaceId: session.workspace.id },
-      data: { lastWorkspaceId: null },
-    });
+    // Their next page load must not land back here. Clearing the pointers
+    // sends `getSessionContext` to whichever workspace they do still belong to.
+    await forgetWorkspace(member.userId, session.workspace.id);
 
     refresh();
     return ok(undefined);
@@ -277,10 +276,7 @@ export async function leaveWorkspace(): Promise<ActionResult<undefined>> {
     });
 
     await db.workspaceMember.delete({ where: { id: session.member.id } });
-    await db.userPreference.updateMany({
-      where: { userId: session.userId, lastWorkspaceId: session.workspace.id },
-      data: { lastWorkspaceId: null },
-    });
+    await forgetWorkspace(session.userId, session.workspace.id);
 
     refresh();
     return ok(undefined);
@@ -306,13 +302,41 @@ export async function switchWorkspace(workspaceId: string): Promise<ActionResult
   });
 }
 
+/**
+ * Names a workspace as this person's main one.
+ *
+ * Switching is about right now; this is about where they belong. The two are
+ * only the same until an account has a real team and a personal workspace it
+ * never opens — at which point the main one is the answer to "where should I
+ * be" and the last one open is not.
+ */
+export async function setMainWorkspace(workspaceId: string): Promise<ActionResult<undefined>> {
+  return guarded(async () => {
+    const session = await requireSessionForAction();
+
+    // Same rule as switching: an id from the browser is only as good as a row
+    // saying this person belongs to it.
+    const membership = await db.workspaceMember.findFirst({
+      where: { userId: session.userId, workspaceId },
+      select: { id: true },
+    });
+    if (!membership) return fail(await message("errors.team.notAMember"));
+
+    await setPrimaryWorkspace(session.userId, workspaceId);
+    refresh();
+    return ok(undefined);
+  });
+}
+
 const createWorkspaceInput = z.string().trim().min(2).max(80);
 
 /**
  * Starts a second workspace — a different company, client or side project.
  *
  * The creator is its administrator, and it becomes the active one, because
- * nobody creates a workspace in order to carry on looking at another.
+ * nobody creates a workspace in order to carry on looking at another. It does
+ * not become their main one: a side project should not quietly displace the
+ * company they work at. `setMainWorkspace` is how that moves.
  */
 export async function createWorkspace(name: string): Promise<ActionResult<undefined>> {
   return guarded(async () => {

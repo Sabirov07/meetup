@@ -243,6 +243,41 @@ export async function setLastWorkspace(userId: string, workspaceId: string): Pro
 }
 
 /**
+ * Marks a workspace as this person's main one, and opens it.
+ *
+ * Both pointers move together because naming your main workspace while being
+ * left looking at a different one would be a strange thing to do to someone.
+ */
+export async function setPrimaryWorkspace(userId: string, workspaceId: string): Promise<void> {
+  await db.userPreference.upsert({
+    where: { userId },
+    create: { userId, lastWorkspaceId: workspaceId, primaryWorkspaceId: workspaceId },
+    update: { lastWorkspaceId: workspaceId, primaryWorkspaceId: workspaceId },
+  });
+}
+
+/**
+ * Drops every reference to a workspace someone no longer belongs to.
+ *
+ * Called when a membership ends, from either side. Missing one of the two
+ * pointers would send them straight back to a workspace they have just been
+ * removed from — `getSessionContext` only reads the id, and the membership
+ * check that would catch it is the very row that has gone.
+ */
+export async function forgetWorkspace(userId: string, workspaceId: string): Promise<void> {
+  await db.$transaction([
+    db.userPreference.updateMany({
+      where: { userId, lastWorkspaceId: workspaceId },
+      data: { lastWorkspaceId: null },
+    }),
+    db.userPreference.updateMany({
+      where: { userId, primaryWorkspaceId: workspaceId },
+      data: { primaryWorkspaceId: null },
+    }),
+  ]);
+}
+
+/**
  * Accepts whatever invite is sitting in the cookie, if any, and clears it.
  *
  * Called on every way in — password sign-in, password sign-up and Google — so

@@ -312,6 +312,8 @@ export type WorkspaceOption = {
   role: WorkspaceRole;
   memberCount: number;
   isActive: boolean;
+  /** Their main workspace: where a session with nothing to resume lands. */
+  isPrimary: boolean;
 };
 
 /** A member as the Team page shows them: the person, plus their workload. */

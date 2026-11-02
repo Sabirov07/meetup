@@ -171,6 +171,16 @@ export const team = {
     "Не удалось создать пространство",
   ],
   "team.switcher.manage": ["Manage team", "Управление командой"],
+  "team.switcher.main": ["Main", "Основное"],
+  "team.switcher.setMain": ["Make this the main workspace", "Сделать пространство основным"],
+  "team.switcher.mainSet": [
+    "{name} is now your main workspace",
+    "Основным пространством теперь будет «{name}»",
+  ],
+  "team.switcher.setMainFailed": [
+    "Could not set the main workspace",
+    "Не удалось сменить основное пространство",
+  ],
 
   // --- The join page ----------------------------------------------------
   "join.title": ["You have been invited", "Вас пригласили"],
