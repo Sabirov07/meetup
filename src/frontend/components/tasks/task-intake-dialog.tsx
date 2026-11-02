@@ -205,7 +205,10 @@ export function TaskIntakeDialog({
     const others = members.filter((candidate) => candidate.id !== currentMemberId);
     const first = others[0]?.name.split(" ")[0];
     const second = others[1]?.name.split(" ")[0];
+    const third = others[2]?.name.split(" ")[0];
 
+    if (first && second && third)
+      return t("intake.field.placeholder.trio", { first, second, third });
     if (first && second) return t("intake.field.placeholder.pair", { first, second });
     if (first) return t("intake.field.placeholder.single", { first });
     return t("intake.field.placeholder.solo");
