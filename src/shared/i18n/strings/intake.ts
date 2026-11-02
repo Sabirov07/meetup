@@ -27,22 +27,22 @@ export const intake = {
   /**
    * The example is written with the real people in the workspace, and with
    * the reader as the one speaking. A placeholder full of strangers teaches
-   * nothing; one that says "{first} is picking up…" and "I'll take…" shows
+   * nothing; one that says "{first} is paying…" and "I'll make…" shows
    * both ways of assigning work in the only names that matter here.
    *
    * Three shapes, because a workspace may have two people in it or twenty.
    */
   "intake.field.placeholder.pair": [
-    "{first} is picking up the billing migration this week — it has to be live before the 14th. {second} should write the customer email, and I'll take the updated terms to legal myself. Also the staging database keeps falling over, which is blocking the migration.",
-    "{first} берёт на себя перенос биллинга на этой неделе — нужно запустить до 14-го. {second} напишет письмо клиентам, а обновлённые условия отнесу юристам я. Плюс база на стенде постоянно падает, из-за этого перенос стоит.",
+    "{first} is paying for the subscriptions this week — they renew on the 14th. I'll make the changes to the catalog myself, and {second} should review them. Also the staging database keeps falling over, which is blocking the catalog work.",
+    "{first} оплачивает подписки на этой неделе — продление 14-го. Правки в каталог внесу я, а {second} их проверит. Плюс база на стенде постоянно падает, из-за этого правки стоят.",
   ],
   "intake.field.placeholder.single": [
-    "{first} is picking up the billing migration this week — it has to be live before the 14th. Someone needs to write the customer email, and I'll take the updated terms to legal myself. Also the staging database keeps falling over, which is blocking the migration.",
-    "{first} берёт на себя перенос биллинга на этой неделе — нужно запустить до 14-го. Кто-то должен написать письмо клиентам, а обновлённые условия отнесу юристам я. Плюс база на стенде постоянно падает, из-за этого перенос стоит.",
+    "{first} is paying for the subscriptions this week — they renew on the 14th. I'll make the changes to the catalog myself, and someone needs to review them. Also the staging database keeps falling over, which is blocking the catalog work.",
+    "{first} оплачивает подписки на этой неделе — продление 14-го. Правки в каталог внесу я, и кто-то должен их проверить. Плюс база на стенде постоянно падает, из-за этого правки стоят.",
   ],
   "intake.field.placeholder.solo": [
-    "The billing migration has to be live before the 14th. I'll write the customer email myself, and we still owe legal the updated terms. Also the staging database keeps falling over, which is blocking the migration.",
-    "Перенос биллинга нужно запустить до 14-го. Письмо клиентам напишу я, и мы ещё не отдали юристам обновлённые условия. Плюс база на стенде постоянно падает, из-за этого перенос стоит.",
+    "The subscriptions have to be paid for before they renew on the 14th. I'll make the changes to the catalog myself, and they still need reviewing. Also the staging database keeps falling over, which is blocking the catalog work.",
+    "Подписки нужно оплатить до продления 14-го. Правки в каталог внесу я, и их ещё нужно проверить. Плюс база на стенде постоянно падает, из-за этого правки стоят.",
   ],
   "intake.field.briefHint": ["{count} of {max} characters", "{count} из {max} символов"],
   "intake.you": ["you", "вы"],
