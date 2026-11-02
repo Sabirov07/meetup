@@ -27,22 +27,22 @@ export const intake = {
   /**
    * The example is written with the real people in the workspace, and with
    * the reader as the one speaking. A placeholder full of strangers teaches
-   * nothing; one that says "{first} is paying…" and "I'll make…" shows
+   * nothing; one that says "{second} should make…" and "I'll review…" shows
    * both ways of assigning work in the only names that matter here.
    *
    * Three shapes, because a workspace may have two people in it or twenty.
    */
   "intake.field.placeholder.pair": [
-    "{first} is paying for the subscriptions this week — they renew on the 14th. I'll make the changes to the catalog myself, and {second} should review them. Also the staging database keeps falling over, which is blocking the catalog work.",
-    "{first} оплачивает подписки на этой неделе — продление 14-го. Правки в каталог внесу я, а {second} их проверит. Плюс база на стенде постоянно падает, из-за этого правки стоят.",
+    "{second} should make the changes to the catalog this week — they have to be live before the 14th. I'll review them myself, and {first} is paying for the subscriptions before they renew. Also the staging database keeps falling over, which is blocking the catalog work.",
+    "{second} вносит правки в каталог на этой неделе — нужно выкатить до 14-го. Проверю их я, а {first} оплачивает подписки до продления. Плюс база на стенде постоянно падает, из-за этого правки стоят.",
   ],
   "intake.field.placeholder.single": [
-    "{first} is paying for the subscriptions this week — they renew on the 14th. I'll make the changes to the catalog myself, and someone needs to review them. Also the staging database keeps falling over, which is blocking the catalog work.",
-    "{first} оплачивает подписки на этой неделе — продление 14-го. Правки в каталог внесу я, и кто-то должен их проверить. Плюс база на стенде постоянно падает, из-за этого правки стоят.",
+    "{first} should make the changes to the catalog this week — they have to be live before the 14th. I'll review them myself, and someone needs to pay for the subscriptions before they renew. Also the staging database keeps falling over, which is blocking the catalog work.",
+    "{first} вносит правки в каталог на этой неделе — нужно выкатить до 14-го. Проверю их я, и кто-то должен оплатить подписки до продления. Плюс база на стенде постоянно падает, из-за этого правки стоят.",
   ],
   "intake.field.placeholder.solo": [
-    "The subscriptions have to be paid for before they renew on the 14th. I'll make the changes to the catalog myself, and they still need reviewing. Also the staging database keeps falling over, which is blocking the catalog work.",
-    "Подписки нужно оплатить до продления 14-го. Правки в каталог внесу я, и их ещё нужно проверить. Плюс база на стенде постоянно падает, из-за этого правки стоят.",
+    "The changes to the catalog have to be live before the 14th. I'll make them myself, and the subscriptions still need paying for before they renew. Also the staging database keeps falling over, which is blocking the catalog work.",
+    "Правки в каталог нужно выкатить до 14-го. Внесу их я, а подписки ещё нужно оплатить до продления. Плюс база на стенде постоянно падает, из-за этого правки стоят.",
   ],
   "intake.field.briefHint": ["{count} of {max} characters", "{count} из {max} символов"],
   "intake.you": ["you", "вы"],
