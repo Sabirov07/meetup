@@ -98,7 +98,12 @@ export const tasks = {
   "tasks.order.saveFailed": ["Could not save that order", "Не удалось сохранить порядок"],
 
   "tasks.table.groupBy": ["Group by", "Группировать по"],
-  "tasks.table.groupByActive": ["Group by {mode}", "Группировка: {mode}"],
+  // The button says the whole thing, rather than "Group by" plus a mode name:
+  // Russian needs "по" and the dative, which a joined-up label cannot carry.
+  "tasks.table.groupedBy.STATUS": ["Group by status", "Группировать по статусу"],
+  "tasks.table.groupedBy.ASSIGNEE": ["Group by assignee", "Группировать по исполнителю"],
+  "tasks.table.groupedBy.PRIORITY": ["Group by priority", "Группировать по приоритету"],
+  "tasks.table.groupedBy.NONE": ["Not grouped", "Без группировки"],
   "tasks.table.group.STATUS": ["Status", "Статусу"],
   "tasks.table.group.ASSIGNEE": ["Assignee", "Исполнителю"],
   "tasks.table.group.PRIORITY": ["Priority", "Приоритету"],

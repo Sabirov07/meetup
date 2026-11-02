@@ -83,11 +83,16 @@ const MIN_WIDTH = "min-w-[54rem]";
 const GROUP_BY = ["STATUS", "ASSIGNEE", "PRIORITY", "NONE"] as const;
 type GroupBy = (typeof GROUP_BY)[number];
 
-const groupByMeta: Record<GroupBy, { label: TranslationKey }> = {
-  STATUS: { label: "tasks.table.group.STATUS" },
-  ASSIGNEE: { label: "tasks.table.group.ASSIGNEE" },
-  PRIORITY: { label: "tasks.table.group.PRIORITY" },
-  NONE: { label: "tasks.table.group.NONE" },
+/**
+ * `label` names the dimension for the menu; `trigger` is the whole phrase the
+ * button says. They are separate strings because "Group by" + a mode name only
+ * reads as a sentence in English.
+ */
+const groupByMeta: Record<GroupBy, { label: TranslationKey; trigger: TranslationKey }> = {
+  STATUS: { label: "tasks.table.group.STATUS", trigger: "tasks.table.groupedBy.STATUS" },
+  ASSIGNEE: { label: "tasks.table.group.ASSIGNEE", trigger: "tasks.table.groupedBy.ASSIGNEE" },
+  PRIORITY: { label: "tasks.table.group.PRIORITY", trigger: "tasks.table.groupedBy.PRIORITY" },
+  NONE: { label: "tasks.table.group.NONE", trigger: "tasks.table.groupedBy.NONE" },
 };
 
 /** Fields a quick-add row inherits from the group it sits in. */
@@ -221,9 +226,7 @@ export function TaskTable({
           <MenuTrigger asChild>
             <Button variant="ghost" size="sm" className="ml-auto">
               <Layers className="h-3.5 w-3.5" />
-              {t("tasks.table.groupByActive", {
-                mode: t(groupByMeta[groupBy].label).toLowerCase(),
-              })}
+              {t(groupByMeta[groupBy].trigger)}
             </Button>
           </MenuTrigger>
           <MenuContent className="w-[13rem]">
