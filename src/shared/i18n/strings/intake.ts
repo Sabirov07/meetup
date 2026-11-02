@@ -24,11 +24,28 @@ export const intake = {
     "Напишите или вставьте что угодно — заметки, сообщение, список. Текст разделится на задачи с исполнителями, и вы проверите их перед сохранением.",
   ],
   "intake.field.brief": ["What needs doing", "Что нужно сделать"],
-  "intake.field.briefPlaceholder": [
-    "Ann is picking up the billing migration this week — it has to be live before the 14th. Someone needs to write the customer email, and we still owe legal the updated terms. Also the staging database keeps falling over, which is blocking the migration.",
-    "Анна берёт на себя перенос биллинга на этой неделе — нужно запустить до 14-го. Кто-то должен написать письмо клиентам, и мы ещё не отдали юристам обновлённые условия. Плюс база на стенде постоянно падает, из-за этого перенос стоит.",
+  /**
+   * The example is written with the real people in the workspace, and with
+   * the reader as the one speaking. A placeholder full of strangers teaches
+   * nothing; one that says "{first} is picking up…" and "I'll take…" shows
+   * both ways of assigning work in the only names that matter here.
+   *
+   * Three shapes, because a workspace may have two people in it or twenty.
+   */
+  "intake.field.placeholder.pair": [
+    "{first} is picking up the billing migration this week — it has to be live before the 14th. {second} should write the customer email, and I'll take the updated terms to legal myself. Also the staging database keeps falling over, which is blocking the migration.",
+    "{first} берёт на себя перенос биллинга на этой неделе — нужно запустить до 14-го. {second} напишет письмо клиентам, а обновлённые условия отнесу юристам я. Плюс база на стенде постоянно падает, из-за этого перенос стоит.",
+  ],
+  "intake.field.placeholder.single": [
+    "{first} is picking up the billing migration this week — it has to be live before the 14th. Someone needs to write the customer email, and I'll take the updated terms to legal myself. Also the staging database keeps falling over, which is blocking the migration.",
+    "{first} берёт на себя перенос биллинга на этой неделе — нужно запустить до 14-го. Кто-то должен написать письмо клиентам, а обновлённые условия отнесу юристам я. Плюс база на стенде постоянно падает, из-за этого перенос стоит.",
+  ],
+  "intake.field.placeholder.solo": [
+    "The billing migration has to be live before the 14th. I'll write the customer email myself, and we still owe legal the updated terms. Also the staging database keeps falling over, which is blocking the migration.",
+    "Перенос биллинга нужно запустить до 14-го. Письмо клиентам напишу я, и мы ещё не отдали юристам обновлённые условия. Плюс база на стенде постоянно падает, из-за этого перенос стоит.",
   ],
   "intake.field.briefHint": ["{count} of {max} characters", "{count} из {max} символов"],
+  "intake.you": ["you", "вы"],
   "intake.roster": [
     "Splitting across {count} in this workspace",
     "Делится между участниками: {count}",

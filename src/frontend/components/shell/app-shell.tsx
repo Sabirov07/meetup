@@ -200,6 +200,7 @@ export function AppShell({
         open={intakeOpen}
         onOpenChange={setIntakeOpen}
         members={workspace.members}
+        currentMemberId={member.id}
         aiConfigured={aiConfigured}
         onSwitchToForm={() => setTaskOpen(true)}
       />

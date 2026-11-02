@@ -63,6 +63,7 @@ export function TaskIntakeDialog({
   open,
   onOpenChange,
   members,
+  currentMemberId,
   aiConfigured,
   /** Opens the plain create form instead, for someone who wants the fields. */
   onSwitchToForm,
@@ -70,6 +71,8 @@ export function TaskIntakeDialog({
   open: boolean;
   onOpenChange: (open: boolean) => void;
   members: MemberSummary[];
+  /** Whose "I" the brief is written in, and whose chip is marked as theirs. */
+  currentMemberId: string;
   aiConfigured: boolean;
   onSwitchToForm?: () => void;
 }) {
@@ -186,6 +189,24 @@ export function TaskIntakeDialog({
       return next;
     });
   }
+
+  /**
+   * The example, in the names of the people here.
+   *
+   * It has to demonstrate both ways of saying who owns something — naming a
+   * colleague, and claiming it yourself — because those are the two the model
+   * treats as stated rather than guessed. Written with strangers in it, the
+   * placeholder teaches neither.
+   */
+  const placeholder = useMemo(() => {
+    const others = members.filter((candidate) => candidate.id !== currentMemberId);
+    const first = others[0]?.name.split(" ")[0];
+    const second = others[1]?.name.split(" ")[0];
+
+    if (first && second) return t("intake.field.placeholder.pair", { first, second });
+    if (first) return t("intake.field.placeholder.single", { first });
+    return t("intake.field.placeholder.solo");
+  }, [members, currentMemberId, t]);
 
   const tooShort = brief.trim().length < MIN_BRIEF_LENGTH;
 
@@ -327,7 +348,7 @@ export function TaskIntakeDialog({
                   value={brief}
                   maxLength={MAX_BRIEF_LENGTH}
                   onChange={(event) => setBrief(event.target.value)}
-                  placeholder={t("intake.field.briefPlaceholder")}
+                  placeholder={placeholder}
                   className="min-h-[13rem] leading-6"
                 />
               </Field>
@@ -336,16 +357,21 @@ export function TaskIntakeDialog({
                 <span className="text-2xs text-text-faint">
                   {t("intake.roster", { count: members.length })}
                 </span>
-                {members.map((member) => (
-                  <Tooltip
-                    key={member.id}
-                    content={member.jobTitle ?? member.name}
-                  >
-                    <span className="flex items-center gap-1 rounded-full border border-line bg-raised py-px pl-px pr-1.5">
-                      <Avatar member={member} size="xs" />
+                {members.map((person) => (
+                  <Tooltip key={person.id} content={person.jobTitle ?? person.name}>
+                    <span
+                      className={cn(
+                        "flex items-center gap-1 rounded-full border bg-raised py-px pl-px pr-1.5",
+                        person.id === currentMemberId ? "border-line-accent" : "border-line",
+                      )}
+                    >
+                      <Avatar member={person} size="xs" />
                       <span className="text-2xs text-text-secondary">
-                        {member.name.split(" ")[0]}
+                        {person.name.split(" ")[0]}
                       </span>
+                      {person.id === currentMemberId && (
+                        <span className="text-2xs text-text-faint">{t("intake.you")}</span>
+                      )}
                     </span>
                   </Tooltip>
                 ))}
