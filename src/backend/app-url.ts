@@ -1,5 +1,7 @@
 import "server-only";
 
+import { headers } from "next/headers";
+
 /**
  * The app's public origin, resolved once and guaranteed to be a valid absolute
  * URL.
@@ -65,6 +67,27 @@ export function appUrl(fallback: string = DEV_FALLBACK): string {
     }
   }
   return resolved ?? normaliseOrigin(fallback) ?? DEV_FALLBACK;
+}
+
+/**
+ * The origin the current request actually arrived on.
+ *
+ * `APP_URL` still wins wherever it is set — this is the fallback for a
+ * deployment where nobody remembered to set it, which would otherwise hand a
+ * person an invite link pointing at `http://localhost:3100`. A link nobody can
+ * open is a worse failure than the one this guards against: the forwarded host
+ * is in principle attacker-controlled, but the only thing built from it here is
+ * a link rendered straight back to the administrator who made the request, in
+ * the response to that same request, so the only host anyone can poison is
+ * their own.
+ */
+export async function requestOrigin(): Promise<string | undefined> {
+  const incoming = await headers();
+  const host = incoming.get("x-forwarded-host") ?? incoming.get("host");
+  if (!host) return undefined;
+
+  const protocol = incoming.get("x-forwarded-proto") ?? "https";
+  return normaliseOrigin(`${protocol}://${host}`) ?? undefined;
 }
 
 /** Builds an absolute URL under the app's origin. Never throws on config. */

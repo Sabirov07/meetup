@@ -3,6 +3,7 @@
 import { refresh } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
+import { requestOrigin } from "@/backend/app-url";
 import { db, isUniqueViolationOn } from "@/backend/db";
 import {
   requireAdministrator,
@@ -114,7 +115,7 @@ export async function createInvite(
     });
 
     refresh();
-    return ok({ link: inviteLink(token) });
+    return ok({ link: inviteLink(token, await requestOrigin()) });
   });
 }
 

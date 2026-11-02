@@ -2,6 +2,7 @@ import "server-only";
 
 import { db } from "@/backend/db";
 import { toMemberSummary } from "@/backend/auth/guards";
+import { requestOrigin } from "@/backend/app-url";
 import { inviteLink } from "@/backend/team/invites";
 import type {
   InviteView,
@@ -83,6 +84,10 @@ export async function getTeam(
       : Promise.resolve([]),
   ]);
 
+  // Falls back to this request's own origin when APP_URL is not configured,
+  // so a copied link always points somewhere the recipient can reach.
+  const origin = isAdmin && invites.length > 0 ? await requestOrigin() : undefined;
+
   const tally = (
     groups: { ownerMemberId: string | null; _count: { _all: number } }[],
   ): Map<string, number> =>
@@ -108,7 +113,7 @@ export async function getTeam(
 
   const inviteViews: InviteView[] = invites.map((row) => ({
     id: row.id,
-    link: inviteLink(row.token),
+    link: inviteLink(row.token, origin),
     email: row.email,
     role: row.role,
     jobTitle: row.jobTitle,
