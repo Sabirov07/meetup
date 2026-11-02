@@ -106,6 +106,5 @@ export const intake = {
   "intake.created.other": ["{count} tasks created", "Создано {count} задачи"],
   "intake.createFailed": ["Could not create those tasks", "Не удалось создать задачи"],
 
-  "sidebar.create": ["New", "Создать"],
-  "sidebar.createLabel": ["Create something", "Что-то создать"],
+  "sidebar.addTask": ["Add task", "Добавить задачу"],
 } satisfies Entries;

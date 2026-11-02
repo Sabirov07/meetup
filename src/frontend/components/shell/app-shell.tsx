@@ -109,12 +109,6 @@ export function AppShell({
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [toggleCollapsed]);
 
-  const createHandlers = {
-    onNewTask: () => setTaskOpen(true),
-    onDescribeTasks: () => setIntakeOpen(true),
-    onStartMeeting: () => setMeetingOpen(true),
-  };
-
   // Stable, so a page's create form does not re-render on every shell state
   // change just because it holds this.
   const createActions = useMemo(() => ({ describeTasks: () => setIntakeOpen(true) }), []);
@@ -130,7 +124,7 @@ export function AppShell({
       counts={counts}
       collapsed={collapsed}
       onToggle={toggleCollapsed}
-      {...createHandlers}
+      onNewTask={() => setTaskOpen(true)}
     />
   );
 
@@ -166,7 +160,7 @@ export function AppShell({
               collapsed={false}
               onToggle={() => setMobileOpen(false)}
               onNavigate={() => setMobileOpen(false)}
-              {...createHandlers}
+              onNewTask={() => setTaskOpen(true)}
             />
           </DialogPrimitive.Content>
         </DialogPrimitive.Portal>
