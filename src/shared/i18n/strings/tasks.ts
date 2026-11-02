@@ -306,6 +306,7 @@ export const tasks = {
   "detail.subtasks.markTodo": ["Mark “{title}” not done", "Снять отметку: «{title}»"],
   "detail.subtasks.rename": ["Rename “{title}”", "Переименовать: «{title}»"],
   "detail.subtasks.remove": ["Remove “{title}”", "Удалить: «{title}»"],
+  "detail.subtasks.reorder": ["Reorder “{title}”", "Переместить: «{title}»"],
   "detail.subtasks.addFailed": ["Could not add that", "Не удалось добавить"],
   "detail.dependencies": ["Dependencies", "Зависимости"],
   "detail.dependencies.empty": [

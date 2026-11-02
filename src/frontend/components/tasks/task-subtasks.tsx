@@ -1,12 +1,30 @@
 "use client";
 
-import { Check, ListChecks, Plus, X } from "lucide-react";
+import {
+  DndContext,
+  KeyboardSensor,
+  PointerSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  arrayMove,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import { Check, GripVertical, ListChecks, Plus, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import {
   addSubtasks,
   deleteSubtask,
   renameSubtask,
+  reorderSubtasks,
   setSubtaskDone,
 } from "@/backend/actions/subtasks";
 import { parseSubtaskLines, subtaskProgress } from "@/shared/domain/subtasks";
@@ -33,6 +51,11 @@ import { useTasks } from "./task-store";
  * before it is written. Pasting several lines into the one-by-one field
  * switches to it rather than silently creating them, because a clipboard is
  * the easiest way to create twenty of something by accident.
+ *
+ * The order is hand-arranged and nothing re-sorts it, because a checklist is
+ * a sequence — first this, then that — in a way a board of independent tasks
+ * is not. That is also why reordering needs no "manual order" mode the way
+ * the board does: there is no automatic order here to override.
  */
 
 type Mode = "ONE" | "RAW";
@@ -67,6 +90,8 @@ export function TaskSubtasks({
   /** Ticks applied locally, so a checkbox responds to the click, not the server. */
   const [ticks, setTicks] = useState<Record<string, boolean>>({});
   const [removed, setRemoved] = useState<string[]>([]);
+  /** A hand-arranged order, held until the server has it. */
+  const [arranged, setArranged] = useState<string[] | null>(null);
 
   const lineRef = useRef<HTMLInputElement>(null);
   const bulkRef = useRef<HTMLTextAreaElement>(null);
@@ -82,8 +107,20 @@ export function TaskSubtasks({
     ...subtask,
     done: ticks[subtask.id] ?? subtask.done,
   }));
+  // A drag reorders the list here first, so it does not snap back to the
+  // server's order for the length of a round trip.
+  const ordered = arranged
+    ? [...visible].sort((a, b) => arranged.indexOf(a.id) - arranged.indexOf(b.id))
+    : visible;
   const progress = subtaskProgress(visible);
   const bulkCount = parseSubtaskLines(bulk).length;
+
+  const sensors = useSensors(
+    // Travel before a drag starts, so clicking a title to rename it — or the
+    // tick — still reads as a click.
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
 
   /**
    * Writes a batch of steps, which is one typed line or a whole pasted list.
@@ -178,6 +215,27 @@ export function TaskSubtasks({
     });
   }
 
+  function onDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    const ids = ordered.map((subtask) => subtask.id);
+    const from = ids.indexOf(String(active.id));
+    const to = ids.indexOf(String(over.id));
+    if (from === -1 || to === -1) return;
+
+    const next = arrayMove(ids, from, to);
+    setArranged(next);
+
+    void reorderSubtasks({ taskId: task.id, orderedIds: next }).then((result) => {
+      if (result.ok) upsertTask(result.data);
+      else toast.error(t("tasks.order.saveFailed"), { description: result.error });
+      // Cleared in the same tick as the task it belongs to, so the list is
+      // never rendered between the two orders. A failure reverts here.
+      setArranged(null);
+    });
+  }
+
   async function rename(subtask: SubtaskRef, title: string) {
     const result = await renameSubtask({ id: subtask.id, title });
     if (result.ok) upsertTask(result.data);
@@ -219,18 +277,32 @@ export function TaskSubtasks({
         />
       )}
 
-      {visible.length > 0 && (
-        <ul className="space-y-px">
-          {visible.map((subtask) => (
-            <SubtaskRow
-              key={subtask.id}
-              subtask={subtask}
-              onToggle={(done) => toggle(subtask, done)}
-              onRename={(title) => void rename(subtask, title)}
-              onRemove={() => remove(subtask)}
-            />
-          ))}
-        </ul>
+      {ordered.length > 0 && (
+        <DndContext
+          // The drawer renders inside the board's own context; a stable id of
+          // its own keeps the two apart.
+          id="meetup-subtasks"
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={onDragEnd}
+        >
+          <SortableContext
+            items={ordered.map((subtask) => subtask.id)}
+            strategy={verticalListSortingStrategy}
+          >
+            <ul className="space-y-px">
+              {ordered.map((subtask) => (
+                <SubtaskRow
+                  key={subtask.id}
+                  subtask={subtask}
+                  onToggle={(done) => toggle(subtask, done)}
+                  onRename={(title) => void rename(subtask, title)}
+                  onRemove={() => remove(subtask)}
+                />
+              ))}
+            </ul>
+          </SortableContext>
+        </DndContext>
       )}
 
       {pending.length > 0 && (
@@ -249,7 +321,7 @@ export function TaskSubtasks({
         </ul>
       )}
 
-      {visible.length === 0 && pending.length === 0 && !composing && (
+      {ordered.length === 0 && pending.length === 0 && !composing && (
         <>
           <button
             onClick={() => open("ONE")}
@@ -456,6 +528,9 @@ function SubtaskRow({
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(subtask.title);
 
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
+    useSortable({ id: subtask.id });
+
   function commit() {
     setEditing(false);
     const next = draft.trim();
@@ -464,7 +539,25 @@ function SubtaskRow({
   }
 
   return (
-    <li className="group/subtask -mx-1 flex items-center gap-2 rounded px-1 py-1 hover:bg-hover">
+    <li
+      ref={setNodeRef}
+      style={{ transform: CSS.Transform.toString(transform), transition }}
+      className={cn(
+        "group/subtask -mx-1 flex items-center gap-1.5 rounded px-1 py-1 hover:bg-hover",
+        isDragging && "relative z-10 bg-raised shadow-popover",
+      )}
+    >
+      {/* A handle rather than the whole row: the row's other half is a title
+          you click to rename and a tick you click to finish. */}
+      <button
+        {...attributes}
+        {...listeners}
+        aria-label={t("detail.subtasks.reorder", { title: subtask.title })}
+        className="grab -ml-0.5 shrink-0 rounded p-0.5 text-text-faint opacity-0 transition-opacity hover:text-text-muted focus-visible:opacity-100 group-hover/subtask:opacity-100"
+      >
+        <GripVertical className="h-3 w-3" />
+      </button>
+
       <button
         onClick={() => onToggle(!subtask.done)}
         aria-label={t(
