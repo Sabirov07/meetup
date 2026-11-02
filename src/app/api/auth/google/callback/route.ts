@@ -2,6 +2,11 @@ import { cookies, headers } from "next/headers";
 import { NextResponse, type NextRequest } from "next/server";
 import { resolveGoogleSignIn } from "@/backend/auth/provision";
 import { createSession } from "@/backend/auth/session";
+import {
+  consumeRememberedInvite,
+  forgetInvite,
+  readRememberedInvite,
+} from "@/backend/team/invites";
 import { appUrl } from "@/backend/app-url";
 import { GOOGLE_AUTH_STATE_COOKIE, exchangeCodeForIdentity } from "@/backend/google/identity";
 
@@ -37,11 +42,23 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(loginUrl(request, "state-mismatch"));
   }
 
+  // An invite opened before signing in is remembered in a cookie, because the
+  // redirect URI registered with Google is fixed and cannot carry a token.
+  const inviteToken = await readRememberedInvite();
+
   try {
     const identity = await exchangeCodeForIdentity(code);
-    const { userId } = await resolveGoogleSignIn(identity);
+    const { userId, created } = await resolveGoogleSignIn(identity, inviteToken);
     const userAgent = (await headers()).get("user-agent") ?? undefined;
     await createSession(userId, userAgent);
+
+    if (created) {
+      // A brand new account joined the inviting workspace during provisioning.
+      if (inviteToken) await forgetInvite();
+    } else {
+      // A returning account has to accept the invite as a second membership.
+      await consumeRememberedInvite({ id: userId, email: identity.email });
+    }
   } catch (error) {
     if (process.env.NODE_ENV === "development") console.error("[google-signin]", error);
     return NextResponse.redirect(loginUrl(request, "failed"));

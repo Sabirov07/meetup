@@ -29,6 +29,15 @@ enum WorkspaceRole {
   MEMBER
 }
 
+enum InviteStatus {
+  /// Live: the link still works.
+  PENDING
+  /// Someone joined with it. A link is single-use.
+  ACCEPTED
+  /// An administrator cancelled it before anyone used it.
+  REVOKED
+}
+
 enum TaskStatus {
   TODO
   IN_PROGRESS
@@ -127,7 +136,11 @@ enum ActivityType {
   ANALYSIS_COMPLETED
   PROPOSAL_APPROVED
   PROPOSAL_REJECTED
+  MEMBER_INVITED
   MEMBER_JOINED
+  MEMBER_ROLE_CHANGED
+  MEMBER_REMOVED
+  MEMBER_LEFT
   KNOWLEDGE_CREATED
   KNOWLEDGE_UPDATED
   KNOWLEDGE_DELETED
@@ -254,6 +267,7 @@ model Workspace {
   recommendations Recommendation[]
   attachments     Attachment[]
   knowledgeDocs   KnowledgeDoc[]
+  invites         WorkspaceInvite[]
 
   @@map("workspaces")
 }
@@ -281,10 +295,55 @@ model WorkspaceMember {
   comments             TaskComment[]
   proposalsOwned       TaskProposal[]       @relation("ProposalSuggestedOwner")
   proposalsReviewed    TaskProposal[]       @relation("ProposalReviewer")
+  sentInvites          WorkspaceInvite[]    @relation("InviteAuthor")
 
   @@unique([workspaceId, userId])
   @@index([workspaceId])
   @@map("workspace_members")
+}
+
+/// An invitation to join a workspace, carried by a link.
+///
+/// `token` is stored as it appears in the link rather than hashed, which is a
+/// deliberate departure from `Session.tokenHash`. An invite has to be
+/// re-readable: the administrator who created it expects to come back to the
+/// Team page and copy the same link again, which is impossible once only a
+/// digest is kept. The exposure that buys is small and bounded — the token
+/// grants membership of one workspace at one role, it is single-use, it
+/// expires, and it can be revoked — and anyone who can read this table can
+/// already read every task in every workspace.
+///
+/// `email`, when set, pins the invite to one address: whoever opens the link
+/// must be signed in as (or sign up with) that address. Left null, the link is
+/// a general "anyone with this link may join", which is what makes it usable
+/// over chat where addresses are not known in advance.
+model WorkspaceInvite {
+  id          String       @id @default(cuid())
+  workspaceId String
+  token       String       @unique
+  /// Lower-cased. Null means the link is not tied to one person.
+  email       String?
+  role        WorkspaceRole @default(MEMBER)
+  /// Pre-filled on the membership this invite creates, so a new joiner shows up
+  /// in the team list already labelled rather than as an untitled stranger.
+  jobTitle    String?
+  status      InviteStatus @default(PENDING)
+
+  invitedByMemberId String?
+  /// Who actually used it. Kept after acceptance for the audit trail.
+  acceptedByUserId  String?
+
+  expiresAt  DateTime
+  acceptedAt DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  workspace Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  invitedBy WorkspaceMember? @relation("InviteAuthor", fields: [invitedByMemberId], references: [id], onDelete: SetNull)
+
+  @@index([workspaceId, status])
+  @@index([email])
+  @@map("workspace_invites")
 }
 
 // ---------------------------------------------------------------------------

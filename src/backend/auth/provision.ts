@@ -1,6 +1,7 @@
 import "server-only";
 
 import { db, isUniqueViolationOn } from "@/backend/db";
+import { emailMatches, findUsableInvite } from "@/backend/team/invites";
 import { ACCENT_TOKENS } from "@/shared/domain/types";
 
 /**
@@ -9,9 +10,16 @@ import { ACCENT_TOKENS } from "@/shared/domain/types";
  *
  * A person is useless to this product without a workspace — `getSessionContext`
  * returns null when there is no membership, which `requireSession` turns into a
- * redirect back to /login. So a new account always gets its own workspace and
- * is its administrator. Everything else (inviting the other person, renaming
- * the workspace) happens in Settings afterwards.
+ * redirect back to /login. So a new account always ends up in exactly one of
+ * two places:
+ *
+ *  * signing up from an invite link, it joins the workspace that invited it;
+ *  * otherwise it gets a workspace of its own and is its administrator.
+ *
+ * The first case deliberately does NOT also create a personal workspace. An
+ * invited colleague who arrives to find "Alex's workspace" sitting empty next
+ * to the one they were asked to join has been handed a puzzle, not a product;
+ * they can always start one later from the workspace switcher.
  */
 
 /** Stable accent per account, so the same person is always the same colour. */
@@ -63,6 +71,12 @@ export type ProvisionInput = {
   /** Null for a Google-only account. */
   passwordHash: string | null;
   googleSub?: string | null;
+  /**
+   * The invite this account is being created in order to accept, if any. An
+   * unusable token is ignored rather than fatal: the person still gets an
+   * account, in a workspace of their own.
+   */
+  inviteToken?: string | null;
 };
 
 /**
@@ -71,6 +85,11 @@ export type ProvisionInput = {
  * can sign in but has nowhere to land.
  */
 export async function provisionAccount(input: ProvisionInput): Promise<{ userId: string }> {
+  if (input.inviteToken) {
+    const joined = await createAccountFromInvite(input, input.inviteToken);
+    if (joined) return joined;
+  }
+
   const base = slugBase(input.name, input.email);
 
   // `uniqueSlug` reads before the transaction writes, so two sign-ups a
@@ -86,6 +105,75 @@ export async function provisionAccount(input: ProvisionInput): Promise<{ userId:
       throw error;
     }
   }
+}
+
+/**
+ * Creates an account that joins an existing workspace instead of starting one.
+ *
+ * Returns null when the token turns out not to be usable — expired, revoked,
+ * already spent, or pinned to a different address than the one signing up — so
+ * the caller falls back to the ordinary path. The invite is marked ACCEPTED
+ * inside the same transaction as the membership, and only `WHERE status =
+ * 'PENDING'`, so two people racing one link cannot both get in on it.
+ */
+async function createAccountFromInvite(
+  input: ProvisionInput,
+  token: string,
+): Promise<{ userId: string } | null> {
+  const lookup = await findUsableInvite(token);
+  if (!lookup.ok) return null;
+
+  const invite = lookup.invite;
+  if (!emailMatches(invite, input.email)) return null;
+
+  return db.$transaction(async (tx) => {
+    const spent = await tx.workspaceInvite.updateMany({
+      where: { id: invite.id, status: "PENDING" },
+      data: { status: "ACCEPTED", acceptedAt: new Date() },
+    });
+    if (spent.count === 0) return null;
+
+    const user = await tx.user.create({
+      data: {
+        email: input.email,
+        name: input.name,
+        passwordHash: input.passwordHash,
+        googleSub: input.googleSub ?? null,
+        accentToken: accentFor(input.email),
+      },
+      select: { id: true },
+    });
+
+    await tx.workspaceInvite.update({
+      where: { id: invite.id },
+      data: { acceptedByUserId: user.id },
+    });
+
+    const member = await tx.workspaceMember.create({
+      data: {
+        workspaceId: invite.workspaceId,
+        userId: user.id,
+        role: invite.role,
+        jobTitle: invite.jobTitle,
+      },
+      select: { id: true },
+    });
+
+    await tx.userPreference.create({
+      data: { userId: user.id, lastWorkspaceId: invite.workspaceId },
+    });
+
+    await tx.activityEvent.create({
+      data: {
+        workspaceId: invite.workspaceId,
+        actorMemberId: member.id,
+        type: "MEMBER_JOINED",
+        summary: `${input.name} joined the workspace`,
+      },
+    });
+
+    return { userId: user.id };
+  });
 }
 
 async function createAccount(
@@ -150,11 +238,10 @@ export type GoogleSignInOutcome = {
  *     check, anyone could claim an account by signing up for a Google address.
  *  3. otherwise, a new account.
  */
-export async function resolveGoogleSignIn(identity: {
-  subject: string;
-  email: string;
-  name: string;
-}): Promise<GoogleSignInOutcome> {
+export async function resolveGoogleSignIn(
+  identity: { subject: string; email: string; name: string },
+  inviteToken?: string | null,
+): Promise<GoogleSignInOutcome> {
   const bySub = await db.user.findUnique({
     where: { googleSub: identity.subject },
     select: { id: true },
@@ -183,6 +270,7 @@ export async function resolveGoogleSignIn(identity: {
     name: identity.name,
     passwordHash: null,
     googleSub: identity.subject,
+    inviteToken,
   });
   return { userId, created: true };
 }

@@ -3,6 +3,16 @@ import type { Entries } from "./entry";
 /** Sign-in, sign-up and the Google OAuth notices either one can show. */
 export const auth = {
   "auth.signIn.title": ["Sign in to Meetup", "Вход в Meetup"],
+  /** Shown instead of the usual heading when an invite is waiting. */
+  "auth.invited.title": ["Join {workspace}", "Присоединиться к «{workspace}»"],
+  "auth.invited.signUpSubtitle": [
+    "Create your account and you will land straight in the workspace.",
+    "Создайте аккаунт — и вы сразу окажетесь в пространстве.",
+  ],
+  "auth.invited.signInSubtitle": [
+    "Sign in and you will be added to the workspace.",
+    "Войдите — и вас добавят в пространство.",
+  ],
   "auth.signIn.subtitle": [
     "Your shared workspace for turning conversations into clear ownership.",
     "Общее пространство, где разговоры превращаются в понятную ответственность.",

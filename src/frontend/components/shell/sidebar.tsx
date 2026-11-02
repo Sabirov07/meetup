@@ -2,16 +2,21 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Check, ChevronsLeft, LogOut, PanelLeft } from "lucide-react";
+import { ChevronsLeft, LogOut, PanelLeft, Users } from "lucide-react";
 import { signOut } from "@/backend/actions/auth";
-import type { MemberSummary, WorkspaceSummary } from "@/shared/domain/types";
+import type {
+  MemberSummary,
+  WorkspaceOption,
+  WorkspaceSummary,
+} from "@/shared/domain/types";
 import { cn } from "@/frontend/lib/utils";
 import { Logo } from "@/frontend/components/brand";
 import { Avatar } from "@/frontend/components/ui/avatar";
 import { Button } from "@/frontend/components/ui/button";
 import { Count } from "@/frontend/components/ui/badge";
 import { Tooltip } from "@/frontend/components/ui/feedback";
-import { Menu, MenuContent, MenuItem, MenuLabel, MenuSeparator, MenuTrigger } from "@/frontend/components/ui/menu";
+import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from "@/frontend/components/ui/menu";
+import { WorkspaceSwitcher } from "@/frontend/components/team/workspace-switcher";
 import { useI18n } from "@/frontend/i18n";
 import { LanguageMenuSection } from "./language-switch";
 import { navSections, type NavItem } from "./nav";
@@ -20,6 +25,7 @@ export type NavCounts = { pendingReview: number; myOpen: number; theirOpen: numb
 
 export function Sidebar({
   workspace,
+  workspaces,
   member,
   counterpart,
   counts,
@@ -28,6 +34,8 @@ export function Sidebar({
   onNavigate,
 }: {
   workspace: WorkspaceSummary;
+  /** Every workspace this person belongs to, for the switcher. */
+  workspaces: WorkspaceOption[];
   member: MemberSummary;
   counterpart: MemberSummary | null;
   counts: NavCounts;
@@ -40,7 +48,7 @@ export function Sidebar({
 
   /** The counterpart's own name beats a generic label in a two-person workspace. */
   function labelFor(item: NavItem): string {
-    if (item.href !== "/employer-tasks") return t(item.labelKey);
+    if (item.href !== "/team-tasks") return t(item.labelKey);
     if (workspace.members.length > 2) return t("nav.teamTasks");
     return counterpart
       ? t("nav.personTasks", { name: counterpart.name.split(" ")[0]! })
@@ -72,30 +80,7 @@ export function Sidebar({
           </Tooltip>
         ) : (
           <>
-            <Menu>
-              <MenuTrigger asChild>
-                <button className="flex min-w-0 flex-1 items-center gap-2 rounded-md px-1.5 py-1 text-left transition-colors hover:bg-hover">
-                  <Logo />
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate text-[13px] font-semibold tracking-[-0.015em] text-text">
-                      {workspace.name}
-                    </span>
-                  </span>
-                </button>
-              </MenuTrigger>
-              <MenuContent align="start" className="w-60">
-                <MenuLabel>{t("sidebar.workspaceHeading")}</MenuLabel>
-                <MenuItem className="gap-2">
-                  <Logo size={18} />
-                  <span className="min-w-0 flex-1 truncate">{workspace.name}</span>
-                  <Check className="h-3.5 w-3.5 shrink-0 text-accent-bright" />
-                </MenuItem>
-                <MenuSeparator />
-                <div className="px-2 py-1.5 text-2xs leading-4 text-text-faint">
-                  {t("sidebar.workspaceNote")}
-                </div>
-              </MenuContent>
-            </Menu>
+            <WorkspaceSwitcher workspaces={workspaces} activeName={workspace.name} />
             <Tooltip content={t("sidebar.collapse")} side="right">
               <Button
                 variant="ghost"
@@ -228,6 +213,12 @@ export function Sidebar({
             <MenuSeparator />
             <LanguageMenuSection />
             <MenuSeparator />
+            <MenuItem asChild>
+              <Link href="/team">
+                <Users className="h-3.5 w-3.5" />
+                {t("team.switcher.manage")}
+              </Link>
+            </MenuItem>
             <MenuItem asChild>
               <Link href="/settings">{t("sidebar.workspaceSettings")}</Link>
             </MenuItem>

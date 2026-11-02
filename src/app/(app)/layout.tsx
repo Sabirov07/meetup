@@ -2,6 +2,7 @@ import { connection } from "next/server";
 import { db } from "@/backend/db";
 import { requireSession } from "@/backend/auth/guards";
 import { getShellData } from "@/backend/data/overview";
+import { listMyWorkspaces } from "@/backend/data/team";
 import { googleIntegrationStatus } from "@/backend/google/config";
 import { getConnectedAccount } from "@/backend/google/oauth";
 import { AppShell } from "@/frontend/components/shell/app-shell";
@@ -21,8 +22,9 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
   const now = new Date();
 
   const session = await requireSession();
-  const [shell, preference, googleAccount] = await Promise.all([
+  const [shell, workspaces, preference, googleAccount] = await Promise.all([
     getShellData(session, now),
+    listMyWorkspaces(session.userId, session.workspace.id),
     db.userPreference.findUnique({
       where: { userId: session.userId },
       select: { sidebarCollapsed: true },
@@ -35,6 +37,7 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
   return (
     <AppShell
       workspace={session.workspace}
+      workspaces={workspaces}
       member={session.member}
       counterpart={shell.counterpart}
       counts={shell.counts}

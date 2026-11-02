@@ -64,6 +64,8 @@ export type TranscriptStatus = (typeof TRANSCRIPT_STATUSES)[number];
 export type AnalysisStatus = "PENDING" | "RUNNING" | "COMPLETED" | "FAILED";
 export type ProposalStatus = "PENDING" | "APPROVED" | "REJECTED";
 export type WorkspaceRole = "ADMINISTRATOR" | "MEMBER";
+export const WORKSPACE_ROLES = ["ADMINISTRATOR", "MEMBER"] as const;
+export type InviteStatus = "PENDING" | "ACCEPTED" | "REVOKED";
 export type MeetingSource = "MANUAL" | "GOOGLE_MEET";
 
 export const SORT_MODES = [
@@ -106,7 +108,11 @@ export type ActivityType =
   | "ANALYSIS_COMPLETED"
   | "PROPOSAL_APPROVED"
   | "PROPOSAL_REJECTED"
+  | "MEMBER_INVITED"
   | "MEMBER_JOINED"
+  | "MEMBER_ROLE_CHANGED"
+  | "MEMBER_REMOVED"
+  | "MEMBER_LEFT"
   | "KNOWLEDGE_CREATED"
   | "KNOWLEDGE_UPDATED"
   | "KNOWLEDGE_DELETED";
@@ -292,6 +298,51 @@ export type WorkspaceSummary = {
   name: string;
   slug: string;
   members: MemberSummary[];
+};
+
+/**
+ * One workspace in the switcher. Deliberately not a `WorkspaceSummary`: the
+ * switcher is drawn on every page, and shipping every member of every
+ * workspace a person belongs to in order to label a menu item would be absurd.
+ */
+export type WorkspaceOption = {
+  id: string;
+  name: string;
+  slug: string;
+  role: WorkspaceRole;
+  memberCount: number;
+  isActive: boolean;
+};
+
+/** A member as the Team page shows them: the person, plus their workload. */
+export type TeamMember = MemberSummary & {
+  openTasks: number;
+  overdueTasks: number;
+  completedTasks: number;
+  joinedAt: string;
+};
+
+/** A pending invitation, with the link ready to copy. */
+export type InviteView = {
+  id: string;
+  /** Absolute `/join/<token>` URL. Only ever sent to an administrator. */
+  link: string;
+  /** Null for a link anyone may use. */
+  email: string | null;
+  role: WorkspaceRole;
+  jobTitle: string | null;
+  invitedBy: MemberSummary | null;
+  expiresAt: string;
+  createdAt: string;
+};
+
+/** Everything the Team page renders. */
+export type TeamView = {
+  members: TeamMember[];
+  /** Pending invites only, and only when the viewer may manage them. */
+  invites: InviteView[];
+  /** Unowned open tasks — the backlog nobody has picked up. */
+  unassignedTasks: number;
 };
 
 export type SessionContext = {

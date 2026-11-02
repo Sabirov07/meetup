@@ -2,7 +2,11 @@
 
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { setSidebarCollapsed } from "@/backend/actions/preferences";
-import type { MemberSummary, WorkspaceSummary } from "@/shared/domain/types";
+import type {
+  MemberSummary,
+  WorkspaceOption,
+  WorkspaceSummary,
+} from "@/shared/domain/types";
 import { cn } from "@/frontend/lib/utils";
 import { Dialog, DialogTitle } from "@/frontend/components/ui/dialog";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
@@ -21,6 +25,7 @@ import { Sidebar, type NavCounts } from "./sidebar";
  */
 export function AppShell({
   workspace,
+  workspaces,
   member,
   counterpart,
   counts,
@@ -30,6 +35,8 @@ export function AppShell({
   children,
 }: {
   workspace: WorkspaceSummary;
+  /** Every workspace this person belongs to, for the sidebar switcher. */
+  workspaces: WorkspaceOption[];
   member: MemberSummary;
   counterpart: MemberSummary | null;
   counts: NavCounts;
@@ -89,6 +96,7 @@ export function AppShell({
   const sidebar = (
     <Sidebar
       workspace={workspace}
+      workspaces={workspaces}
       member={member}
       counterpart={counterpart}
       counts={counts}
@@ -120,6 +128,7 @@ export function AppShell({
             <DialogTitle className="sr-only">{t("sidebar.openNavigation")}</DialogTitle>
             <Sidebar
               workspace={workspace}
+              workspaces={workspaces}
               member={member}
               counterpart={counterpart}
               counts={counts}

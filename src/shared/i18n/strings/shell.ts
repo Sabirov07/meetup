@@ -5,11 +5,6 @@ export const shell = {
   "sidebar.expand": ["Expand sidebar", "Развернуть панель"],
   "sidebar.collapse": ["Collapse sidebar", "Свернуть панель"],
   "sidebar.openNavigation": ["Open navigation", "Открыть навигацию"],
-  "sidebar.workspaceHeading": ["Workspace", "Рабочее пространство"],
-  "sidebar.workspaceNote": [
-    "Additional workspaces are supported by the data model. Creating them from the UI is not part of this release.",
-    "Модель данных поддерживает несколько рабочих пространств. Создавать их из интерфейса в этом выпуске нельзя.",
-  ],
   "sidebar.accountMenu": ["Account menu", "Меню аккаунта"],
   "sidebar.workspaceSettings": ["Workspace settings", "Настройки пространства"],
   "sidebar.signOut": ["Sign out", "Выйти"],

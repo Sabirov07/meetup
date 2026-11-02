@@ -88,7 +88,7 @@ export function Header({
   const navItem = findNavItem(pathname);
 
   const title =
-    navItem?.href === "/employer-tasks"
+    navItem?.href === "/team-tasks"
       ? workspace.members.length > 2
         ? t("nav.teamTasks")
         : counterpart

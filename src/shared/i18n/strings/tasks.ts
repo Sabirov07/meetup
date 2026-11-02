@@ -10,7 +10,7 @@ export const tasks = {
     "Everything assigned to you. Drag a card between columns to change its status.",
     "Всё, что назначено вам. Перетащите карточку между колонками, чтобы сменить статус.",
   ],
-  "tasks.page.employer.description": [
+  "tasks.page.person.description": [
     "What sits with them. Useful for seeing what you are waiting on.",
     "Что лежит у них. Удобно смотреть, чего вы ждёте.",
   ],

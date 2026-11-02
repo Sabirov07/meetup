@@ -15,29 +15,49 @@ export const instant = false;
 
 export async function generateMetadata(): Promise<Metadata> {
   const { t } = await getTranslator();
-  return { title: t("nav.employerTasks") };
+  return { title: t("nav.teamTasks") };
 }
 
-export default function EmployerTasksPage() {
+export default function TeamTasksPage(props: PageProps<"/team-tasks">) {
   return (
     <Suspense fallback={<BoardSkeleton />}>
-      <EmployerTasksData />
+      <TeamTasksData searchParams={props.searchParams} />
     </Suspense>
   );
 }
 
-async function EmployerTasksData() {
+/**
+ * Everyone else's work.
+ *
+ * `?owner=<memberId>` narrows it to one person, which is what the Team page
+ * links to — the same surface answers "what is the team carrying?" and "what
+ * is Anna carrying?" rather than needing a route per colleague. An id that
+ * names nobody is ignored rather than erroring: a stale bookmark should show
+ * the team, not a crash.
+ */
+async function TeamTasksData({
+  searchParams,
+}: {
+  searchParams: PageProps<"/team-tasks">["searchParams"];
+}) {
   await connection();
   const now = new Date();
-  const session = await requireSession();
+  const [session, search] = await Promise.all([requireSession(), searchParams]);
 
   const [tasks, meetings] = await Promise.all([
     listTasks(session.workspace.id),
     listMeetings(session.workspace.id),
   ]);
 
+  const requested = Array.isArray(search.owner) ? search.owner[0] : search.owner;
   const others = session.workspace.members.filter((m) => m.id !== session.member.id);
-  const counterpart = others.length === 1 ? others[0]! : null;
+
+  // An explicit ?owner= wins. Failing that, a two-person workspace has exactly
+  // one "them", and naming that person beats a generic heading.
+  const focus =
+    (requested ? session.workspace.members.find((m) => m.id === requested) : undefined) ??
+    (others.length === 1 ? others[0] : undefined) ??
+    null;
 
   return (
     <TaskStoreProvider
@@ -45,18 +65,14 @@ async function EmployerTasksData() {
       members={session.workspace.members}
       currentMemberId={session.member.id}
       serverNow={now.toISOString()}
-      initialFilters={counterpart ? undefined : { owners: others.map((m) => m.id) }}
+      initialFilters={focus ? undefined : { owners: others.map((m) => m.id) }}
     >
       <TaskPage
-        heading={counterpart ? "nav.personTasks" : "nav.teamTasks"}
-        headingName={counterpart?.name}
-        description={
-          counterpart ? "tasks.page.employer.description" : "tasks.page.team.description"
-        }
-        // With more than two people this becomes an owner-filtered view of all
-        // tasks rather than a single person's board.
-        ownerFilter={counterpart?.id}
-        owner={counterpart}
+        heading={focus ? "nav.personTasks" : "nav.teamTasks"}
+        headingName={focus?.name}
+        description={focus ? "tasks.page.person.description" : "tasks.page.team.description"}
+        ownerFilter={focus?.id}
+        owner={focus}
         meetings={meetings.map((m) => ({ id: m.id, title: m.title }))}
       />
     </TaskStoreProvider>

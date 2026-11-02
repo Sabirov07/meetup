@@ -8,6 +8,7 @@ import {
   Sparkles,
   SquareCheckBig,
   Users,
+  UsersRound,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import type { TranslationKey } from "@/shared/i18n";
@@ -32,8 +33,8 @@ export const navSections: NavSection[] = [
     items: [
       { href: "/my-tasks", labelKey: "nav.myTasks", icon: SquareCheckBig, badge: "myOpen" },
       {
-        href: "/employer-tasks",
-        labelKey: "nav.employerTasks",
+        href: "/team-tasks",
+        labelKey: "nav.teamTasks",
         icon: Users,
         badge: "theirOpen",
       },
@@ -50,6 +51,7 @@ export const navSections: NavSection[] = [
   {
     headingKey: "nav.section.workspace",
     items: [
+      { href: "/team", labelKey: "nav.team", icon: UsersRound },
       { href: "/knowledge", labelKey: "nav.knowledge", icon: Library },
       { href: "/activity", labelKey: "nav.activity", icon: Activity },
       { href: "/settings", labelKey: "nav.settings", icon: Settings },

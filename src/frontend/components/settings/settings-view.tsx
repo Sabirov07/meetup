@@ -1,12 +1,15 @@
 "use client";
 
+import Link from "next/link";
 import {
   AlertTriangle,
+  ArrowRight,
   Check,
   CircleCheck,
   ExternalLink,
   Sparkles,
   Unplug,
+  Users,
   Video,
 } from "lucide-react";
 import { useState, useTransition } from "react";
@@ -15,7 +18,6 @@ import { setDefaultSort } from "@/backend/actions/preferences";
 import {
   disconnectGoogleAccount,
   renameWorkspace,
-  setMemberRole,
   updateMemberProfile,
 } from "@/backend/actions/workspace";
 import {
@@ -125,21 +127,24 @@ export function SettingsView({
         )}
       </Section>
 
-      {/* People */}
+      {/* Your profile. The roster, roles and invites live on the Team page:
+          one place to answer "who can see this workspace?". */}
       <Section
-        title={t("settings.people.title")}
-        description={t("settings.people.description")}
+        title={t("settings.profile.title")}
+        description={t("settings.profile.description")}
       >
-        <div className="space-y-2">
-          {workspace.members.map((person) => (
-            <MemberRow
-              key={person.id}
-              person={person}
-              canEdit={isAdmin || person.id === member.id}
-              canChangeRole={isAdmin}
-              isSelf={person.id === member.id}
-            />
-          ))}
+        <MemberRow person={member} />
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-line bg-canvas px-3 py-2.5">
+          <p className="flex items-center gap-2 text-[13px] text-text-secondary">
+            <Users className="h-4 w-4 shrink-0 text-text-faint" />
+            {t("settings.profile.teamPointer", { count: workspace.members.length })}
+          </p>
+          <Button variant="secondary" size="sm" asChild>
+            <Link href="/team">
+              {t("team.switcher.manage")}
+              <ArrowRight className="h-3 w-3" />
+            </Link>
+          </Button>
         </div>
       </Section>
 
@@ -413,17 +418,7 @@ function EnvChecklist({ missing }: { missing: string[] }) {
   );
 }
 
-function MemberRow({
-  person,
-  canEdit,
-  canChangeRole,
-  isSelf,
-}: {
-  person: MemberSummary;
-  canEdit: boolean;
-  canChangeRole: boolean;
-  isSelf: boolean;
-}) {
+function MemberRow({ person }: { person: MemberSummary }) {
   const t = useT();
   const [name, setName] = useState(person.name);
   const [jobTitle, setJobTitle] = useState(person.jobTitle ?? "");
@@ -442,18 +437,17 @@ function MemberRow({
 
         <div className="grid min-w-0 flex-1 gap-2.5 sm:grid-cols-2">
           <Field label={t("settings.people.name")}>
-            <Input value={name} disabled={!canEdit} onChange={(e) => setName(e.target.value)} />
+            <Input value={name} onChange={(e) => setName(e.target.value)} />
           </Field>
           <Field label={t("settings.people.jobTitle")} hint={t("common.optional")}>
             <Input
               value={jobTitle}
-              disabled={!canEdit}
               placeholder={t("settings.people.jobTitlePlaceholder")}
               onChange={(e) => setJobTitle(e.target.value)}
             />
           </Field>
 
-          <div className="space-y-1.5">
+          <div className="space-y-1.5 sm:col-span-2">
             <p className="text-xs font-medium text-text-secondary">
               {t("settings.people.avatarColour")}
             </p>
@@ -462,12 +456,11 @@ function MemberRow({
                 <button
                   key={token}
                   type="button"
-                  disabled={!canEdit}
                   onClick={() => setAccent(token)}
                   aria-label={t("settings.people.useColour", { colour: token })}
                   aria-pressed={accent === token}
                   className={cn(
-                    "rounded-full p-0.5 transition-all disabled:opacity-50",
+                    "rounded-full p-0.5 transition-all",
                     accent === token ? "ring-2 ring-accent" : "hover:opacity-80",
                   )}
                 >
@@ -479,87 +472,43 @@ function MemberRow({
               ))}
             </div>
           </div>
-
-          <div className="space-y-1.5">
-            <p className="text-xs font-medium text-text-secondary">
-              {t("settings.people.role")}
-            </p>
-            {canChangeRole ? (
-              <Select
-                value={person.role}
-                onValueChange={(value) =>
-                  void setMemberRole({
-                    memberId: person.id,
-                    role: value as "ADMINISTRATOR" | "MEMBER",
-                  }).then((result) => {
-                    if (result.ok) toast.success(t("settings.people.roleUpdated"));
-                    else {
-                      toast.error(t("settings.people.roleFailed"), {
-                        description: result.error,
-                      });
-                    }
-                  })
-                }
-              >
-                <SelectTrigger size="sm" className="w-full">
-                  {t(
-                    person.role === "ADMINISTRATOR"
-                      ? "sidebar.role.administrator"
-                      : "sidebar.role.member",
-                  )}
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="ADMINISTRATOR">
-                    {t("sidebar.role.administrator")}
-                  </SelectItem>
-                  <SelectItem value="MEMBER">{t("sidebar.role.member")}</SelectItem>
-                </SelectContent>
-              </Select>
-            ) : (
-              <p className="text-xs text-text-muted">
-                {t(
-                  person.role === "ADMINISTRATOR"
-                    ? "sidebar.role.administrator"
-                    : "sidebar.role.member",
-                )}
-              </p>
-            )}
-          </div>
         </div>
       </div>
 
       <div className="mt-2.5 flex items-center justify-between gap-2">
         <p className="truncate text-2xs text-text-faint">
-          {person.email}
-          {isSelf && t("settings.people.isYou")}
+          {person.email} ·{" "}
+          {t(
+            person.role === "ADMINISTRATOR"
+              ? "sidebar.role.administrator"
+              : "sidebar.role.member",
+          )}
         </p>
-        {canEdit && (
-          <Button
-            variant="secondary"
-            size="sm"
-            disabled={!dirty}
-            loading={pending}
-            onClick={() =>
-              startTransition(async () => {
-                const result = await updateMemberProfile({
-                  memberId: person.id,
-                  name,
-                  jobTitle: jobTitle.trim() || null,
-                  accentToken: accent as AccentToken,
+        <Button
+          variant="secondary"
+          size="sm"
+          disabled={!dirty}
+          loading={pending}
+          onClick={() =>
+            startTransition(async () => {
+              const result = await updateMemberProfile({
+                memberId: person.id,
+                name,
+                jobTitle: jobTitle.trim() || null,
+                accentToken: accent as AccentToken,
+              });
+              if (result.ok) toast.success(t("settings.people.profileSaved"));
+              else {
+                toast.error(t("settings.people.profileFailed"), {
+                  description: result.error,
                 });
-                if (result.ok) toast.success(t("settings.people.profileSaved"));
-                else {
-                  toast.error(t("settings.people.profileFailed"), {
-                    description: result.error,
-                  });
-                }
-              })
-            }
-          >
-            <Check className="h-3 w-3" />
-            {t("common.save")}
-          </Button>
-        )}
+              }
+            })
+          }
+        >
+          <Check className="h-3 w-3" />
+          {t("common.save")}
+        </Button>
       </div>
     </div>
   );

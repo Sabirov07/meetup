@@ -79,38 +79,6 @@ export async function updateMemberProfile(
   });
 }
 
-export async function setMemberRole(input: {
-  memberId: string;
-  role: "ADMINISTRATOR" | "MEMBER";
-}): Promise<ActionResult<undefined>> {
-  return guarded(async () => {
-    const session = await requireAdministrator();
-
-    const member = await db.workspaceMember.findFirst({
-      where: { id: input.memberId, workspaceId: session.workspace.id },
-      select: { id: true },
-    });
-    if (!member) return fail(await message("errors.member.notInWorkspace"));
-
-    // Never let the last administrator demote themselves out of the workspace.
-    if (input.role === "MEMBER") {
-      const admins = await db.workspaceMember.count({
-        where: { workspaceId: session.workspace.id, role: "ADMINISTRATOR" },
-      });
-      if (admins <= 1 && member.id === session.member.id) {
-        return fail(await message("errors.workspace.needsAdmin"));
-      }
-    }
-
-    await db.workspaceMember.update({
-      where: { id: member.id },
-      data: { role: input.role },
-    });
-    refresh();
-    return ok(undefined);
-  });
-}
-
 export async function disconnectGoogleAccount(): Promise<ActionResult<undefined>> {
   return guarded(async () => {
     const session = await requireSessionForAction();

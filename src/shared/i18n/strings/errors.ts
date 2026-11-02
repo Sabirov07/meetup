@@ -235,4 +235,53 @@ export const errors = {
     "The workspace needs at least one administrator.",
     "В пространстве должен остаться хотя бы один администратор.",
   ],
+  "errors.team.inviteEmailInvalid": [
+    "That is not a valid email address. Leave it empty for a link anyone may use.",
+    "Это не похоже на адрес почты. Оставьте поле пустым, чтобы ссылкой мог воспользоваться любой.",
+  ],
+  "errors.team.alreadyMember": [
+    "That person is already in this workspace.",
+    "Этот человек уже в пространстве.",
+  ],
+  "errors.team.inviteGone": [
+    "That invitation is no longer pending.",
+    "Это приглашение больше не ожидает принятия.",
+  ],
+  "errors.team.cannotRemoveSelf": [
+    "You cannot remove yourself. Leave the workspace instead.",
+    "Себя удалить нельзя — вместо этого покиньте пространство.",
+  ],
+  "errors.team.lastWorkspace": [
+    "This is your only workspace. Create or join another one before leaving this one.",
+    "Это ваше единственное пространство. Сначала создайте другое или присоединитесь к другому.",
+  ],
+  "errors.team.lastAdminLeaving": [
+    "You are the only administrator. Make someone else an administrator first.",
+    "Вы единственный администратор. Сначала назначьте администратором кого-то ещё.",
+  ],
+  "errors.team.notAMember": [
+    "You are not a member of that workspace.",
+    "Вы не участник этого пространства.",
+  ],
+
+  "errors.invite.unknown": [
+    "That invitation link is not valid.",
+    "Эта ссылка-приглашение недействительна.",
+  ],
+  "errors.invite.revoked": [
+    "That invitation was cancelled.",
+    "Это приглашение отменили.",
+  ],
+  "errors.invite.accepted": [
+    "That invitation has already been used.",
+    "Это приглашение уже использовано.",
+  ],
+  "errors.invite.expired": [
+    "That invitation has expired.",
+    "Это приглашение истекло.",
+  ],
+  "errors.invite.wrongEmail": [
+    "That invitation belongs to a different email address.",
+    "Это приглашение выдано на другой адрес почты.",
+  ],
 } satisfies Entries;

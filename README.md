@@ -30,7 +30,8 @@ Against a real Postgres database, with no stubs:
 | AI review | Summary, decisions, open questions and proposed tasks, each labelled Confirmed / Inferred / Suggested. Approve, edit, bulk-approve or reject. |
 | Recommendations | Derived from live task state; every one cites the tasks it came from. |
 | Activity | Full audit trail — status, owner, priority and deadline changes, with from → to. |
-| Settings | Rename people, change roles and avatar colours, see exactly which integration env vars are missing. |
+| Team | Invite by link, accept, roles, remove-with-handover, leave, and a per-member workload roster. One person can belong to several workspaces and switch between them. |
+| Settings | Your own profile and avatar colour, workspace name, default ordering, and exactly which integration env vars are missing. |
 
 Everything above was exercised end to end in a browser against the live
 database, including a full task lifecycle (create → in progress → waiting →
@@ -131,6 +132,59 @@ npm run db:studio    # browse the database
 ```
 
 ---
+
+## Working as a team
+
+The whole model is one sentence: **a workspace is the unit of access, and a
+membership is the only way in.** Everything — tasks, meetings, transcripts,
+pages, images — is scoped to a workspace id that comes from the session, never
+from the browser, so adding someone to a workspace is exactly what grants them
+sight of its work and nothing else.
+
+### Adding someone
+
+1. **Team → Invite someone.** Choose what they join as:
+   - **Member** — does the work. Sees everything, can create and reassign.
+   - **Administrator** — also invites, removes, changes roles and renames the
+     workspace.
+   Leave the email empty for a link anyone may use, or fill it in to pin the
+   invite to one address. A job title here means they arrive already labelled.
+2. **Copy the link and send it however you already talk.** No mail is sent
+   from the product — a flow that silently needs SMTP configured is worse than
+   one that hands you a link.
+3. They open it and either sign in or create an account. Both paths, and
+   **Continue with Google**, land in your workspace, because the token is held
+   in a short-lived httpOnly cookie across the round trip.
+4. A link **works once**, expires after **7 days**, and can be revoked from the
+   Team page before anyone uses it.
+
+Someone who signs up through an invite does *not* also get a personal
+workspace — they join yours and that is the only one they see, which is the
+point of inviting them.
+
+### Running the team
+
+- **Assigning work.** Every assignee picker — the task form, the row menu, the
+  drawer, and dragging a card between owner columns — lists every member of the
+  workspace. Reassignment is a move, never a copy, and lands in the activity
+  trail as `owner changed, from → to`.
+- **Seeing what people carry.** The Team page shows open / overdue / completed
+  per person. `Team tasks` is everyone else's board; `?owner=<id>` — what the
+  Team page links to — narrows it to one person.
+- **Nobody's tasks.** Unassigned open work is counted on the Team page rather
+  than left to rot in a pile no one checks.
+- **Removing someone.** You are asked where their open tasks go: to a named
+  colleague, or to the unassigned pile. Completed work and comments stay put.
+  Tasks outlive people.
+- **Leaving.** You can leave any workspace except your last one, and the last
+  administrator cannot leave or be demoted while anyone else is still there —
+  otherwise a workspace becomes unmanageable, or an account becomes unusable.
+
+### More than one workspace
+
+Click the workspace name in the sidebar: it lists every workspace you belong
+to, switches between them and creates a new one. A separate company, a client,
+a side project — same account, separate data.
 
 ## Trying the whole flow
 
@@ -253,10 +307,11 @@ Stated plainly rather than stubbed:
   implements space creation, conference records, transcripts and entries, and
   `Transcript` carries `retryCount` / `nextRetryAt` for backoff — but no
   scheduled job calls it yet. Transcripts are attached manually today.
-- **Multi-workspace UI.** The schema supports N workspaces and N members; the
-  UI assumes the one you are in.
-- **Invites.** Sign-up creates a workspace of your own; there is no way yet to
-  invite someone into an existing one, or to join one by link.
+- **Invite email.** Invites are links you send yourself. Nothing in the product
+  sends mail, so there is no "we have emailed them" to be untrue about.
+- **Guest / read-only access.** A membership is full read-write by design;
+  the only distinction is administrator or not. Per-task or per-project
+  permissions are not modelled.
 - **Password reset.** No email is sent anywhere in the product, so there is no
   recovery flow. An account that signed up with Google has no password at all,
   and the login form says so rather than claiming the password is wrong.

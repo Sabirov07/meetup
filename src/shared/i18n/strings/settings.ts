@@ -24,10 +24,26 @@ export const settings = {
     "Переименовать пространство может только администратор.",
   ],
 
-  "settings.people.title": ["People", "Люди"],
-  "settings.people.description": [
-    "Two members are seeded by default. Rename them to the real people here — the names seeded by prisma/seed.ts are only placeholders.",
-    "По умолчанию создаются два участника. Переименуйте их в реальных людей — имена из prisma/seed.ts это просто заглушки.",
+  "settings.profile.title": ["Your profile", "Ваш профиль"],
+  "settings.profile.description": [
+    "How you appear to everyone else in this workspace.",
+    "Как вас видят остальные в этом пространстве.",
+  ],
+  "settings.profile.teamPointer.one": [
+    "{count} person is in this workspace. Invite, remove and promote on the Team page.",
+    "В пространстве {count} человек. Приглашать, удалять и менять роли — на странице «Команда».",
+  ],
+  "settings.profile.teamPointer.few": [
+    "{count} people are in this workspace. Invite, remove and promote on the Team page.",
+    "В пространстве {count} человека. Приглашать, удалять и менять роли — на странице «Команда».",
+  ],
+  "settings.profile.teamPointer.many": [
+    "{count} people are in this workspace. Invite, remove and promote on the Team page.",
+    "В пространстве {count} человек. Приглашать, удалять и менять роли — на странице «Команда».",
+  ],
+  "settings.profile.teamPointer.other": [
+    "{count} people are in this workspace. Invite, remove and promote on the Team page.",
+    "В пространстве {count} человека. Приглашать, удалять и менять роли — на странице «Команда».",
   ],
   "settings.people.name": ["Name", "Имя"],
   "settings.people.jobTitle": ["Job title", "Должность"],

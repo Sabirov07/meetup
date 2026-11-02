@@ -20,11 +20,18 @@ export function AuthScreen({
   mode,
   googleConfigured,
   notice,
+  invitedTo,
   children,
 }: {
   mode: "signIn" | "signUp";
   googleConfigured: boolean;
   notice?: string;
+  /**
+   * The workspace an invite link is waiting on, when one is. "Create your
+   * workspace" is actively misleading to someone who was asked to join an
+   * existing one, so the heading changes rather than the page.
+   */
+  invitedTo?: string | null;
   children: ReactNode;
 }) {
   const t = useT();
@@ -36,10 +43,18 @@ export function AuthScreen({
         <div className="flex flex-col items-center text-center">
           <Logo size={34} />
           <h1 className="mt-5 text-lg font-semibold tracking-[-0.02em] text-text">
-            {t(`auth.${mode}.title`)}
+            {invitedTo
+              ? t("auth.invited.title", { workspace: invitedTo })
+              : t(`auth.${mode}.title`)}
           </h1>
           <p className="mt-1.5 text-[13px] leading-5 text-text-muted">
-            {t(`auth.${mode}.subtitle`)}
+            {invitedTo
+              ? t(
+                  mode === "signUp"
+                    ? "auth.invited.signUpSubtitle"
+                    : "auth.invited.signInSubtitle",
+                )
+              : t(`auth.${mode}.subtitle`)}
           </p>
         </div>
 

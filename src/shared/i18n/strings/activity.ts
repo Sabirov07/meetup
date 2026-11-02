@@ -88,7 +88,19 @@ export const activity = {
     "rejected the proposed task",
     "отклонил(а) предложенную задачу",
   ],
+  "activity.line.MEMBER_INVITED": ["invited {person}", "пригласил(а): {person}"],
   "activity.line.MEMBER_JOINED": ["joined the workspace", "присоединился(лась) к пространству"],
+  "activity.line.MEMBER_ROLE_CHANGED": [
+    "changed the role of {person}",
+    "изменил(а) роль: {person}",
+  ],
+  "activity.line.MEMBER_REMOVED": [
+    "removed {person} from the workspace",
+    "удалил(а) из пространства: {person}",
+  ],
+  "activity.line.MEMBER_LEFT": ["left the workspace", "покинул(а) пространство"],
+  /** Stands in for `{person}` when an older event did not record a name. */
+  "activity.somePerson": ["someone", "кого-то"],
   "activity.line.KNOWLEDGE_CREATED": ["added the page", "добавил(а) страницу"],
   "activity.line.KNOWLEDGE_UPDATED": ["edited the page", "изменил(а) страницу"],
   "activity.line.KNOWLEDGE_DELETED": ["deleted the page", "удалил(а) страницу"],

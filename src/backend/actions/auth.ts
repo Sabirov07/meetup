@@ -7,6 +7,11 @@ import { db, isUniqueViolationOn } from "@/backend/db";
 import { hashPassword, verifyPassword } from "@/backend/auth/password";
 import { provisionAccount } from "@/backend/auth/provision";
 import { createSession, destroyCurrentSession } from "@/backend/auth/session";
+import {
+  consumeRememberedInvite,
+  forgetInvite,
+  readRememberedInvite,
+} from "@/backend/team/invites";
 import { message } from "@/backend/i18n/message";
 import type { TranslationKey } from "@/shared/i18n";
 import { fail, guarded, ok, type ActionResult } from "./shared";
@@ -51,6 +56,10 @@ export async function signIn(raw: {
 
     const userAgent = (await headers()).get("user-agent") ?? undefined;
     await createSession(user.id, userAgent);
+
+    // Someone who opened an invite link and chose "I already have an account"
+    // expects to land in the workspace that invited them, not their own.
+    await consumeRememberedInvite({ id: user.id, email: parsed.data.email });
     return ok(undefined);
   });
 }
@@ -98,12 +107,17 @@ export async function signUp(raw: {
       return fail(await message("errors.auth.emailTaken"));
     }
 
+    // Read before the account exists: provisioning needs it to decide whether
+    // this person is joining a workspace or starting one.
+    const inviteToken = await readRememberedInvite();
+
     let userId: string;
     try {
       ({ userId } = await provisionAccount({
         email: input.email,
         name: input.name,
         passwordHash: await hashPassword(input.password),
+        inviteToken,
       }));
     } catch (error) {
       // Two sign-ups for the same email can race past the check above; the
@@ -113,6 +127,8 @@ export async function signUp(raw: {
       }
       throw error;
     }
+
+    if (inviteToken) await forgetInvite();
 
     const userAgent = (await headers()).get("user-agent") ?? undefined;
     await createSession(userId, userAgent);
