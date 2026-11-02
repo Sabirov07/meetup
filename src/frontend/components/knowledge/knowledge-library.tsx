@@ -14,11 +14,12 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useMemo, useState, useTransition } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { toast } from "sonner";
 import {
   createKnowledgeDoc,
   deleteKnowledgeDoc,
+  fetchKnowledgeDocs,
   updateKnowledgeDoc,
 } from "@/backend/actions/knowledge";
 import type { KnowledgeDocSummary } from "@/shared/domain/types";
@@ -30,6 +31,15 @@ import { EmptyState, Tooltip } from "@/frontend/components/ui/feedback";
 import { Input } from "@/frontend/components/ui/field";
 import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from "@/frontend/components/ui/menu";
 import { RelativeTime } from "@/frontend/components/ui/relative-time";
+
+/**
+ * How often an open library re-reads itself.
+ *
+ * Slow on purpose: the reads that matter are the ones on arrival and on the
+ * tab coming back, which cover the person who just wrote a page. The timer is
+ * only for the library left open on a second monitor while a colleague writes.
+ */
+const LIVE_INTERVAL_MS = 30_000;
 
 /**
  * The knowledge library: every page in the workspace, in one list.
@@ -47,6 +57,50 @@ export function KnowledgeLibrary({ docs: initial }: { docs: KnowledgeDocSummary[
   const [query, setQuery] = useState("");
   const [activeLabels, setActiveLabels] = useState<string[]>([]);
   const [creating, startCreating] = useTransition();
+
+  // A server render of this segment hands down a new list — on arrival, and
+  // again after a mutation calls `refresh()`. Adjusting state during render,
+  // rather than in an effect, is React's documented way to sync state with a
+  // changed prop: it re-renders before anything is painted.
+  const [seededFrom, setSeededFrom] = useState(initial);
+  if (seededFrom !== initial) {
+    setSeededFrom(initial);
+    setDocs(initial);
+  }
+
+  // Counts the changes made on this screen, so a list that was already in
+  // flight when one landed is dropped instead of painted over the newer one.
+  const localChanges = useRef(0);
+
+  /**
+   * Re-reads the library from the server.
+   *
+   * The client router holds on to the payload it last fetched for this route,
+   * so a page written in the editor — or by someone else in the workspace —
+   * is not in the list when you come back to it, and the only way to see it
+   * is to reload. Asking for the list on arrival, whenever the tab comes back
+   * and on a slow timer means nobody has to.
+   */
+  const sync = useCallback(async () => {
+    if (document.visibilityState !== "visible") return;
+    const before = localChanges.current;
+    const result = await fetchKnowledgeDocs();
+    if (!result.ok || localChanges.current !== before) return;
+    setDocs((previous) => (sameLibrary(previous, result.data) ? previous : result.data));
+  }, []);
+
+  useEffect(() => {
+    const run = () => void sync();
+    run();
+    const timer = setInterval(run, LIVE_INTERVAL_MS);
+    window.addEventListener("focus", run);
+    document.addEventListener("visibilitychange", run);
+    return () => {
+      clearInterval(timer);
+      window.removeEventListener("focus", run);
+      document.removeEventListener("visibilitychange", run);
+    };
+  }, [sync]);
 
   const labels = useMemo(() => {
     const counts = new Map<string, number>();
@@ -82,12 +136,17 @@ export function KnowledgeLibrary({ docs: initial }: { docs: KnowledgeDocSummary[
         toast.error(t("knowledge.createFailed"), { description: result.error });
         return;
       }
+      // Into the list before the editor opens, so the page is already there
+      // if the reader turns straight back around.
+      localChanges.current += 1;
+      setDocs((previous) => [result.data, ...previous]);
       router.push(`/knowledge/${result.data.id}`);
     });
   }
 
   async function togglePin(doc: KnowledgeDocSummary) {
     const next = !doc.isPinned;
+    localChanges.current += 1;
     setDocs((previous) =>
       previous.map((item) => (item.id === doc.id ? { ...item, isPinned: next } : item)),
     );
@@ -102,6 +161,7 @@ export function KnowledgeLibrary({ docs: initial }: { docs: KnowledgeDocSummary[
 
   async function remove(doc: KnowledgeDocSummary) {
     const snapshot = docs;
+    localChanges.current += 1;
     setDocs((previous) => previous.filter((item) => item.id !== doc.id));
     const result = await deleteKnowledgeDoc(doc.id);
     if (!result.ok) {
@@ -231,6 +291,27 @@ export function KnowledgeLibrary({ docs: initial }: { docs: KnowledgeDocSummary[
         </div>
       )}
     </div>
+  );
+}
+
+/**
+ * Whether two readings of the library would draw the same screen.
+ *
+ * `updatedAt` stands in for the title, the excerpt and the labels — none of
+ * them changes without the row being touched — which keeps a poll that found
+ * nothing from re-rendering every card on the page.
+ */
+function sameLibrary(a: KnowledgeDocSummary[], b: KnowledgeDocSummary[]): boolean {
+  return (
+    a.length === b.length &&
+    a.every((doc, index) => {
+      const other = b[index];
+      return (
+        doc.id === other.id &&
+        doc.updatedAt === other.updatedAt &&
+        doc.isPinned === other.isPinned
+      );
+    })
   );
 }
 

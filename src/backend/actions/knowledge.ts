@@ -78,7 +78,11 @@ export async function createKnowledgeDoc(
 
     const doc = await getKnowledgeDoc(created.id, session.workspace.id);
     if (!doc) return fail(await message("errors.page.createdNotReadable"));
-    refresh();
+
+    // No `refresh()` here. Every caller opens the new page the moment this
+    // returns, and refreshing first makes them wait for a re-render of the
+    // screen they are leaving. The library they came from puts the page in
+    // its list itself, and re-reads the list whenever it is looked at again.
     return ok(doc);
   });
 }
@@ -196,7 +200,14 @@ export async function deleteKnowledgeDoc(id: string): Promise<ActionResult<undef
   });
 }
 
-/** Re-reads the library after a change made somewhere else in the UI. */
+/**
+ * The library as it stands right now.
+ *
+ * The client router serves the payload it last fetched for `/knowledge`, so
+ * an open library would otherwise keep showing the list as it was when the
+ * tab first arrived — missing the page just written in the editor, and every
+ * page a colleague has added since. The list asks for itself instead.
+ */
 export async function fetchKnowledgeDocs(): Promise<ActionResult<KnowledgeDocSummary[]>> {
   return guarded(async () => {
     const session = await requireSessionForAction();
