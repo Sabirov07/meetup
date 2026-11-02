@@ -39,6 +39,7 @@ export async function logActivity(entry: {
   summary: string;
   taskId?: string | null;
   meetingId?: string | null;
+  knowledgeDocId?: string | null;
   metadata?: Record<string, unknown>;
 }): Promise<void> {
   await db.activityEvent.create({
@@ -49,6 +50,7 @@ export async function logActivity(entry: {
       summary: entry.summary,
       taskId: entry.taskId ?? null,
       meetingId: entry.meetingId ?? null,
+      knowledgeDocId: entry.knowledgeDocId ?? null,
       // Prisma's JSON input type does not accept a bare index signature.
       metadata: (entry.metadata ?? undefined) as never,
     },

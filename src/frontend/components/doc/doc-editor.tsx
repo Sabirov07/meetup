@@ -80,7 +80,7 @@ import { DocContent } from "./doc-content";
 export function DocEditor({
   value,
   onChange,
-  taskId,
+  attachTo,
   view = "write",
   autoFocus = false,
   grow = true,
@@ -95,8 +95,12 @@ export function DocEditor({
 }: {
   value: string;
   onChange: (next: string) => void;
-  /** Uploads are attached to this task and authorised against its workspace. */
-  taskId: string;
+  /**
+   * The document uploads belong to — a task or a knowledge page. The server
+   * authorises against it, so an image can never land somewhere the person
+   * cannot already see.
+   */
+  attachTo: { kind: "task" | "knowledge"; id: string };
   view?: "write" | "split";
   autoFocus?: boolean;
   /** True grows the box with the text; false fills the height it is given. */
@@ -211,7 +215,7 @@ export function DocEditor({
         setUploads((previous) => [...previous, { key, name: file.name || "image" }]);
         try {
           const form = new FormData();
-          form.set("taskId", taskId);
+          form.set(attachTo.kind === "task" ? "taskId" : "docId", attachTo.id);
           form.set("file", file);
 
           const response = await fetch(UPLOAD_ENDPOINT, { method: "POST", body: form });
@@ -245,7 +249,7 @@ export function DocEditor({
         }
       }
     },
-    [apply, readSelection, taskId],
+    [apply, attachTo, readSelection],
   );
 
   // ------------------------------------------------------------------ slash

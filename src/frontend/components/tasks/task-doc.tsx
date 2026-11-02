@@ -1,17 +1,7 @@
 "use client";
 
-import {
-  Check,
-  FileText,
-  Loader2,
-  Maximize2,
-  Pencil,
-  PenLine,
-  Columns2,
-  X,
-} from "lucide-react";
+import { Columns2, FileText, Maximize2, Pencil, PenLine, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { toast } from "sonner";
 import { updateTask } from "@/backend/actions/tasks";
 import { docStats, isEmptyDoc, toggleCheckboxLine } from "@/shared/doc/markdown";
 import type { TaskView } from "@/shared/domain/types";
@@ -21,22 +11,14 @@ import { Dialog, DialogContent, DialogTitle } from "@/frontend/components/ui/dia
 import { Tooltip } from "@/frontend/components/ui/feedback";
 import { DocContent } from "@/frontend/components/doc/doc-content";
 import { DocEditor } from "@/frontend/components/doc/doc-editor";
+import { DocStatsLine, SaveBadge } from "@/frontend/components/doc/doc-meta";
+import { useAutosavedDoc } from "@/frontend/components/doc/use-autosaved-doc";
 import { useTasks } from "./task-store";
-
-type SaveState = "idle" | "dirty" | "saving" | "saved" | "error";
-
-/** How long to sit on a keystroke before writing the body back. */
-const AUTOSAVE_DELAY = 900;
 
 /**
  * A task's document body: the drawer section, and the full-width view behind
- * the expand button.
- *
- * Saving is on a timer rather than a button, because a document is written in
- * passes and nobody should have to remember to commit one — the only explicit
- * save is ⌘↵, which also closes the editor. The draft is flushed when the
- * section unmounts (the drawer closing, or another task opening), so an
- * in-flight paragraph is never lost to a click elsewhere.
+ * the expand button. Autosave and the save indicator are shared with the
+ * knowledge library through `useAutosavedDoc`.
  */
 export function TaskDoc({
   task,
@@ -52,62 +34,28 @@ export function TaskDoc({
 }) {
   const { upsertTask } = useTasks();
 
-  const [draft, setDraft] = useState(task.description ?? "");
   const [editing, setEditing] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [expandedView, setExpandedView] = useState<"write" | "split">("split");
-  const [state, setState] = useState<SaveState>("idle");
-
-  // Refs so the debounce, ⌘↵ and the unmount flush all read the same truth
-  // without re-arming effects on every keystroke.
-  const draftRef = useRef(draft);
-  const savedRef = useRef(task.description ?? "");
-  useEffect(() => {
-    draftRef.current = draft;
-  }, [draft]);
 
   const save = useCallback(
     async (next: string) => {
-      if (next === savedRef.current) return;
-      setState("saving");
       const result = await updateTask({
         id: task.id,
         description: next.trim() ? next : null,
       });
-      if (result.ok) {
-        savedRef.current = next;
-        upsertTask(result.data);
-        setState("saved");
-      } else {
-        setState("error");
-        toast.error("Could not save the document", { description: result.error });
-      }
+      if (!result.ok) return result.error;
+      upsertTask(result.data);
+      return null;
     },
     [task.id, upsertTask],
   );
 
-  // Debounced autosave.
-  useEffect(() => {
-    if (draft === savedRef.current) return;
-    setState("dirty");
-    const timer = window.setTimeout(() => void save(draft), AUTOSAVE_DELAY);
-    return () => window.clearTimeout(timer);
-  }, [draft, save]);
-
-  // "Saved" is a confirmation, not a status; it fades back out.
-  useEffect(() => {
-    if (state !== "saved") return;
-    const timer = window.setTimeout(() => setState("idle"), 2000);
-    return () => window.clearTimeout(timer);
-  }, [state]);
-
-  // Flush on the way out — the drawer can close mid-sentence.
-  useEffect(
-    () => () => {
-      if (draftRef.current !== savedRef.current) void save(draftRef.current);
-    },
-    [save],
-  );
+  const { draft, setDraft, replace, state, flush } = useAutosavedDoc({
+    initial: task.description ?? "",
+    save,
+    errorTitle: "Could not save the document",
+  });
 
   // The block menu inside the expanded dialog has the same claim on Escape.
   const menuOpen = useRef(false);
@@ -124,18 +72,16 @@ export function TaskDoc({
   /** A checkbox clicked in the read view writes straight through. */
   const toggleCheckbox = useCallback(
     (line: number) => {
-      const next = toggleCheckboxLine(draftRef.current, line);
-      if (next === draftRef.current) return;
-      setDraft(next);
-      void save(next);
+      const next = toggleCheckboxLine(draft, line);
+      if (next !== draft) replace(next);
     },
-    [save],
+    [draft, replace],
   );
 
   function finish() {
     setEditing(false);
     setExpanded(false);
-    void save(draftRef.current);
+    flush();
   }
 
   return (
@@ -177,7 +123,7 @@ export function TaskDoc({
         <DocEditor
           value={draft}
           onChange={setDraft}
-          taskId={task.id}
+          attachTo={{ kind: "task", id: task.id }}
           autoFocus
           onSaveRequest={finish}
           onExitRequest={finish}
@@ -277,7 +223,7 @@ export function TaskDoc({
               <DocEditor
                 value={draft}
                 onChange={setDraft}
-                taskId={task.id}
+                attachTo={{ kind: "task", id: task.id }}
                 autoFocus
                 grow={false}
                 view={expandedView}
@@ -300,37 +246,4 @@ export function TaskDoc({
       </Dialog>
     </section>
   );
-}
-
-function DocStatsLine({ stats }: { stats: ReturnType<typeof docStats> }) {
-  const parts = [`${stats.words} ${stats.words === 1 ? "word" : "words"}`];
-  if (stats.images > 0) parts.push(`${stats.images} ${stats.images === 1 ? "image" : "images"}`);
-  if (stats.checklist) parts.push(`${stats.checklist.done}/${stats.checklist.total} done`);
-  if (stats.words > 120) parts.push(`~${stats.readingMinutes} min`);
-  return <span className="text-2xs text-text-faint">{parts.join(" · ")}</span>;
-}
-
-function SaveBadge({ state }: { state: SaveState }) {
-  if (state === "idle") return null;
-
-  if (state === "saving") {
-    return (
-      <span className="flex items-center gap-1 text-2xs text-text-faint">
-        <Loader2 className="h-3 w-3 animate-spin" />
-        Saving
-      </span>
-    );
-  }
-  if (state === "saved") {
-    return (
-      <span className="flex items-center gap-1 text-2xs text-success">
-        <Check className="h-3 w-3" />
-        Saved
-      </span>
-    );
-  }
-  if (state === "error") {
-    return <span className="text-2xs text-danger">Not saved</span>;
-  }
-  return <span className="text-2xs text-text-faint">Unsaved</span>;
 }

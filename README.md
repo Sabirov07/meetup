@@ -19,6 +19,7 @@ Against a real Postgres database, with no stubs:
 | Auth | Open sign-up with email + password, or **Continue with Google**. Server sessions (scrypt hashes, httpOnly cookie, opaque tokens). Sign in, sign out, route protection. |
 | Tasks | Create, edit, delete, comment, depend-on, complete. Optimistic updates with rollback. |
 | Documents | Every task has a Markdown document body: headings, checklists, quotes, code, dividers and images. Toolbar, `/` block menu, ⌘B/⌘I/⌘E/⌘K, list continuation on Enter, autosave, a full-width split view with live preview, and checklists that can be ticked straight from the read view. |
+| Knowledge | A workspace library of pages: the same document editor, organised by label rather than by folder, with pinning, full-text search across bodies, and the command palette finding a page by a phrase written inside it. |
 | Images | Pasted, dropped or picked into a document. Stored in Postgres and served from `/api/attachments/[id]`, which requires a session in the owning workspace — so a screenshot in a task is not readable by URL alone. |
 | Boards | Dashboard owner panels + per-page kanban. Drag between statuses and between owners; a move reassigns, never copies. |
 | Prioritisation | Smart priority engine with a visible, per-task explanation of *why* a task ranks where it does. |
@@ -163,6 +164,9 @@ prisma/schema.prisma      17 tables. Ownership is always a member reference,
 src/backend/              Server only — never reaches the browser.
   actions/                Server Functions. Validation, authorisation, activity.
   data/                   Reads → view models (dates serialised for the client).
+                          `knowledge.ts` derives each page's excerpt and counts
+                          server-side, so a library of long pages is not shipped
+                          whole to render a list of headlines.
   auth/                   Sessions, scrypt hashing, account provisioning,
                           the authorisation chokepoint.
   ai/                     Claude extraction behind a strict schema.
@@ -219,6 +223,12 @@ authorisation story. `task_attachments` rows carry the workspace id, and
 screenshot pasted into a task is behind the same check as the task. Uploads go
 through a Route Handler rather than a Server Function because Server Functions
 cap request bodies at 1 MB.
+
+**A knowledge page and a task description are the same document.** One
+Markdown format, one parser, one editor, one image pipeline — a page is just a
+body without a task attached to it. That is also why `attachments` carries
+`taskId` and `knowledgeDocId` with a CHECK that exactly one is set, rather than
+two parallel tables that would drift apart.
 
 **AI output is quarantined.** It is written to `meeting_analyses` and
 `task_proposals`, never to `tasks`. `Task.confirmedByHuman` records the moment a

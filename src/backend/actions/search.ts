@@ -2,6 +2,7 @@
 
 import { db } from "@/backend/db";
 import { requireSessionForAction } from "@/backend/auth/guards";
+import { plainText } from "@/shared/doc/markdown";
 import { guarded, ok, type ActionResult } from "./shared";
 import type { TaskPriority, TaskStatus } from "@/shared/domain/types";
 
@@ -14,7 +15,8 @@ export type SearchHit =
       priority: TaskPriority;
       ownerName: string | null;
     }
-  | { kind: "meeting"; id: string; title: string; scheduledAt: string | null };
+  | { kind: "meeting"; id: string; title: string; scheduledAt: string | null }
+  | { kind: "doc"; id: string; title: string; excerpt: string };
 
 /** Backs the command palette. Scoped to the caller's workspace. */
 export async function searchWorkspace(query: string): Promise<ActionResult<SearchHit[]>> {
@@ -23,7 +25,7 @@ export async function searchWorkspace(query: string): Promise<ActionResult<Searc
     const q = query.trim();
     if (q.length < 2) return ok([]);
 
-    const [tasks, meetings] = await Promise.all([
+    const [tasks, meetings, docs] = await Promise.all([
       db.task.findMany({
         where: {
           workspaceId: session.workspace.id,
@@ -52,6 +54,21 @@ export async function searchWorkspace(query: string): Promise<ActionResult<Searc
         orderBy: { createdAt: "desc" },
         take: 4,
       }),
+      // The library is searched by body as well as title: a page is usually
+      // remembered by something written inside it, not by what it was called.
+      db.knowledgeDoc.findMany({
+        where: {
+          workspaceId: session.workspace.id,
+          OR: [
+            { title: { contains: q, mode: "insensitive" } },
+            { body: { contains: q, mode: "insensitive" } },
+            { labels: { has: q.toLowerCase() } },
+          ],
+        },
+        select: { id: true, title: true, body: true },
+        orderBy: [{ isPinned: "desc" }, { updatedAt: "desc" }],
+        take: 4,
+      }),
     ]);
 
     return ok([
@@ -73,6 +90,15 @@ export async function searchWorkspace(query: string): Promise<ActionResult<Searc
           scheduledAt: m.scheduledAt?.toISOString() ?? null,
         }),
       ),
+      ...docs.map((d): SearchHit => {
+        const text = plainText(d.body);
+        return {
+          kind: "doc",
+          id: d.id,
+          title: d.title,
+          excerpt: text.length > 90 ? `${text.slice(0, 90).trimEnd()}…` : text,
+        };
+      }),
     ]);
   });
 }

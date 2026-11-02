@@ -106,7 +106,10 @@ export type ActivityType =
   | "ANALYSIS_COMPLETED"
   | "PROPOSAL_APPROVED"
   | "PROPOSAL_REJECTED"
-  | "MEMBER_JOINED";
+  | "MEMBER_JOINED"
+  | "KNOWLEDGE_CREATED"
+  | "KNOWLEDGE_UPDATED"
+  | "KNOWLEDGE_DELETED";
 
 // ---------------------------------------------------------------------------
 // View models — the exact shapes the UI consumes.
@@ -252,8 +255,36 @@ export type ActivityView = {
   actor: MemberSummary | null;
   taskId: string | null;
   meetingId: string | null;
+  knowledgeDocId: string | null;
   metadata: Record<string, unknown> | null;
   createdAt: string;
+};
+
+/**
+ * A page in the knowledge library, as the list shows it.
+ *
+ * The body is deliberately absent: a library of a hundred pages would
+ * otherwise ship every word of every one of them to render a list. The
+ * excerpt and the counts are derived on the server instead.
+ */
+export type KnowledgeDocSummary = {
+  id: string;
+  title: string;
+  /** First couple of lines, with the Markdown stripped out. */
+  excerpt: string;
+  labels: string[];
+  isPinned: boolean;
+  words: number;
+  images: number;
+  updatedBy: MemberSummary | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+/** One page, opened. */
+export type KnowledgeDocView = KnowledgeDocSummary & {
+  body: string | null;
+  createdBy: MemberSummary | null;
 };
 
 export type WorkspaceSummary = {

@@ -288,6 +288,7 @@ export async function listActivity(workspaceId: string, take = 80): Promise<Acti
       summary: true,
       taskId: true,
       meetingId: true,
+      knowledgeDocId: true,
       metadata: true,
       createdAt: true,
       actor: { select: memberSelect },
@@ -301,6 +302,7 @@ export async function listActivity(workspaceId: string, take = 80): Promise<Acti
     actor: row.actor ? toMemberSummary(row.actor) : null,
     taskId: row.taskId,
     meetingId: row.meetingId,
+    knowledgeDocId: row.knowledgeDocId,
     metadata:
       row.metadata && typeof row.metadata === "object" && !Array.isArray(row.metadata)
         ? (row.metadata as Record<string, unknown>)

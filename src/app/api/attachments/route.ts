@@ -11,7 +11,8 @@ import {
 import { readImageSize } from "@/backend/images/dimensions";
 
 /**
- * Receives an image pasted, dropped or picked inside a task's document.
+ * Receives an image pasted, dropped or picked inside a document — a task's, or
+ * a knowledge page's.
  *
  * A Route Handler rather than a Server Function because Server Functions cap
  * their request body at 1 MB by default, and a screenshot routinely exceeds
@@ -35,22 +36,45 @@ export async function POST(request: Request) {
   }
 
   const taskId = form.get("taskId");
+  const docId = form.get("docId");
   const file = form.get("file");
 
-  if (typeof taskId !== "string" || !taskId) {
-    return NextResponse.json({ error: "No task was named for this image." }, { status: 400 });
+  // Exactly one owner, matching the constraint the table itself carries.
+  const owner =
+    typeof taskId === "string" && taskId
+      ? ({ kind: "task", id: taskId } as const)
+      : typeof docId === "string" && docId
+        ? ({ kind: "knowledge", id: docId } as const)
+        : null;
+
+  if (!owner || (taskId && docId)) {
+    return NextResponse.json(
+      { error: "An image has to belong to exactly one document." },
+      { status: 400 },
+    );
   }
   if (!(file instanceof File)) {
     return NextResponse.json({ error: "No image was attached." }, { status: 400 });
   }
 
-  // Workspace isolation: the task has to be one this session can already see.
-  const task = await db.task.findFirst({
-    where: { id: taskId, workspaceId: session.workspace.id },
-    select: { id: true },
-  });
-  if (!task) {
-    return NextResponse.json({ error: "That task no longer exists in this workspace." }, { status: 404 });
+  // Workspace isolation: the document has to be one this session can already
+  // see, which is also what stops an upload landing in another workspace.
+  const exists =
+    owner.kind === "task"
+      ? await db.task.findFirst({
+          where: { id: owner.id, workspaceId: session.workspace.id },
+          select: { id: true },
+        })
+      : await db.knowledgeDoc.findFirst({
+          where: { id: owner.id, workspaceId: session.workspace.id },
+          select: { id: true },
+        });
+
+  if (!exists) {
+    return NextResponse.json(
+      { error: "That document no longer exists in this workspace." },
+      { status: 404 },
+    );
   }
 
   if (!isAcceptedImage(file.type)) {
@@ -75,10 +99,11 @@ export async function POST(request: Request) {
   const size = readImageSize(bytes);
   const filename = safeFilename(file.name);
 
-  const row = await db.taskAttachment.create({
+  const row = await db.attachment.create({
     data: {
       workspaceId: session.workspace.id,
-      taskId: task.id,
+      taskId: owner.kind === "task" ? owner.id : null,
+      knowledgeDocId: owner.kind === "knowledge" ? owner.id : null,
       uploadedByMemberId: session.member.id,
       filename,
       mimeType: file.type.toLowerCase(),

@@ -6,9 +6,9 @@ import { db } from "@/backend/db";
  *
  * This route is the whole reason the bytes live in Postgres instead of under
  * `public/`: a file in `public/` is readable by anyone who has the URL, and an
- * image pasted into a task is often a screenshot of something that should not
- * be. Here the row is fetched with the caller's workspace id, so a member of
- * another workspace gets a 404 even with the exact attachment id.
+ * image pasted into a document is often a screenshot of something that should
+ * not be. Here the row is fetched with the caller's workspace id, so a member
+ * of another workspace gets a 404 even with the exact attachment id.
  *
  * The id is content-addressed in practice — a row's bytes are never rewritten —
  * so the response can be cached hard, privately, and revalidated by ETag.
@@ -26,7 +26,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     return new Response(null, { status: 304, headers: { ETag: etag } });
   }
 
-  const row = await db.taskAttachment.findFirst({
+  const row = await db.attachment.findFirst({
     where: { id, workspaceId: session.workspace.id },
     select: { data: true, mimeType: true, filename: true, byteSize: true },
   });

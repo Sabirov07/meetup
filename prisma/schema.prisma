@@ -128,6 +128,9 @@ enum ActivityType {
   PROPOSAL_APPROVED
   PROPOSAL_REJECTED
   MEMBER_JOINED
+  KNOWLEDGE_CREATED
+  KNOWLEDGE_UPDATED
+  KNOWLEDGE_DELETED
 }
 
 enum RecommendationKind {
@@ -249,7 +252,8 @@ model Workspace {
   meetings        Meeting[]
   activity        ActivityEvent[]
   recommendations Recommendation[]
-  attachments     TaskAttachment[]
+  attachments     Attachment[]
+  knowledgeDocs   KnowledgeDoc[]
 
   @@map("workspaces")
 }
@@ -266,15 +270,17 @@ model WorkspaceMember {
   workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  ownedTasks           Task[]              @relation("TaskOwner")
-  createdTasks         Task[]              @relation("TaskCreator")
-  uploads              TaskAttachment[]
-  createdMeetings      Meeting[]           @relation("MeetingCreator")
+  ownedTasks           Task[]               @relation("TaskOwner")
+  createdTasks         Task[]               @relation("TaskCreator")
+  uploads              Attachment[]
+  authoredKnowledge    KnowledgeDoc[]       @relation("KnowledgeAuthor")
+  editedKnowledge      KnowledgeDoc[]       @relation("KnowledgeEditor")
+  createdMeetings      Meeting[]            @relation("MeetingCreator")
   meetingParticipation MeetingParticipant[]
   activity             ActivityEvent[]
   comments             TaskComment[]
-  proposalsOwned       TaskProposal[]      @relation("ProposalSuggestedOwner")
-  proposalsReviewed    TaskProposal[]      @relation("ProposalReviewer")
+  proposalsOwned       TaskProposal[]       @relation("ProposalSuggestedOwner")
+  proposalsReviewed    TaskProposal[]       @relation("ProposalReviewer")
 
   @@unique([workspaceId, userId])
   @@index([workspaceId])
@@ -321,12 +327,12 @@ model Meeting {
 }
 
 model MeetingParticipant {
-  id          String  @id @default(cuid())
-  meetingId   String
-  memberId    String?
+  id           String  @id @default(cuid())
+  meetingId    String
+  memberId     String?
   /// Used for guests who are not workspace members.
-  displayName String
-  email       String?
+  displayName  String
+  email        String?
   /// Speaker label as it appears in the transcript, used to map speech to people.
   speakerLabel String?
 
@@ -338,22 +344,22 @@ model MeetingParticipant {
 }
 
 model Transcript {
-  id        String           @id @default(cuid())
-  meetingId String           @unique
-  status    TranscriptStatus @default(NOT_REQUESTED)
+  id                   String           @id @default(cuid())
+  meetingId            String           @unique
+  status               TranscriptStatus @default(NOT_REQUESTED)
   /// Full transcript text. Only readable by workspace members.
-  content   String?
+  content              String?
   /// Structured [{ speaker, text, startedAt }] entries when available.
-  entries   Json?
-  source    MeetingSource    @default(MANUAL)
+  entries              Json?
+  source               MeetingSource    @default(MANUAL)
   /// Google transcript resource name.
   googleTranscriptName String?
-  fetchedAt     DateTime?
-  failureReason String?
-  retryCount    Int      @default(0)
-  nextRetryAt   DateTime?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  fetchedAt            DateTime?
+  failureReason        String?
+  retryCount           Int              @default(0)
+  nextRetryAt          DateTime?
+  createdAt            DateTime         @default(now())
+  updatedAt            DateTime         @updatedAt
 
   meeting Meeting @relation(fields: [meetingId], references: [id], onDelete: Cascade)
 
@@ -366,12 +372,12 @@ model Transcript {
 // ---------------------------------------------------------------------------
 
 model MeetingAnalysis {
-  id        String         @id @default(cuid())
-  meetingId String         @unique
-  status    AnalysisStatus @default(PENDING)
-  summary   String?
+  id            String         @id @default(cuid())
+  meetingId     String         @unique
+  status        AnalysisStatus @default(PENDING)
+  summary       String?
   /// [{ text, evidence, excerpt }]
-  decisions Json?
+  decisions     Json?
   /// [{ text, excerpt }] — things the model could not resolve.
   openQuestions Json?
   /// Model identifier actually used, for auditability.
@@ -381,10 +387,10 @@ model MeetingAnalysis {
   failureReason String?
   /// True when this row is seeded illustrative content rather than a real
   /// transcript analysis. The UI labels these unmistakably.
-  isSample  Boolean  @default(false)
-  startedAt DateTime?
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  isSample      Boolean        @default(false)
+  startedAt     DateTime?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
 
   meeting   Meeting        @relation(fields: [meetingId], references: [id], onDelete: Cascade)
   proposals TaskProposal[]
@@ -393,7 +399,7 @@ model MeetingAnalysis {
 }
 
 model TaskProposal {
-  id         String @id @default(cuid())
+  id         String  @id @default(cuid())
   meetingId  String
   analysisId String?
 
@@ -408,9 +414,9 @@ model TaskProposal {
   /// ("I'll do X") rather than an assignment the model inferred.
   isExplicitCommitment   Boolean       @default(false)
 
-  suggestedPriority  TaskPriority  @default(MEDIUM)
-  priorityEvidence   EvidenceLevel @default(RECOMMENDED)
-  priorityRationale  String?
+  suggestedPriority TaskPriority  @default(MEDIUM)
+  priorityEvidence  EvidenceLevel @default(RECOMMENDED)
+  priorityRationale String?
 
   suggestedDueDate String? // ISO date; kept as text because the model may be imprecise.
   dueDateEvidence  EvidenceLevel @default(RECOMMENDED)
@@ -425,13 +431,13 @@ model TaskProposal {
   /// Titles of other proposals this one depends on, resolved on approval.
   dependsOnTitles   String[] @default([])
 
-  status         ProposalStatus @default(PENDING)
-  needsReview    Boolean        @default(false)
+  status             ProposalStatus @default(PENDING)
+  needsReview        Boolean        @default(false)
   reviewedByMemberId String?
-  reviewedAt     DateTime?
-  createdTaskId  String?        @unique
+  reviewedAt         DateTime?
+  createdTaskId      String?        @unique
   /// Seeded illustrative content. Labelled as sample data in the UI.
-  isSample       Boolean        @default(false)
+  isSample           Boolean        @default(false)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -451,7 +457,7 @@ model TaskProposal {
 // ---------------------------------------------------------------------------
 
 model Task {
-  id          String       @id @default(cuid())
+  id          String  @id @default(cuid())
   workspaceId String
   title       String
   /// The task's document body, held as Markdown. Images inside it are
@@ -467,7 +473,7 @@ model Task {
   category TaskCategory @default(GENERAL)
   labels   String[]     @default([])
 
-  dueDate        DateTime?
+  dueDate         DateTime?
   estimateMinutes Int?
 
   /// What the model would have chosen, kept alongside the human value so the
@@ -501,7 +507,7 @@ model Task {
   dependents   TaskDependency[] @relation("BlockingTask")
 
   comments    TaskComment[]
-  attachments TaskAttachment[]
+  attachments Attachment[]
   activity    ActivityEvent[]
   proposal    TaskProposal?
 
@@ -512,7 +518,7 @@ model Task {
 }
 
 model TaskDependency {
-  id String @id @default(cuid())
+  id              String   @id @default(cuid())
   /// The task that is blocked.
   taskId          String
   /// The task that must finish first.
@@ -527,19 +533,23 @@ model TaskDependency {
   @@map("task_dependencies")
 }
 
-/// An image embedded in a task's document body.
+/// An image embedded in a document body — a task's, or a knowledge page's.
 ///
 /// The bytes live in Postgres rather than in `public/` or a bucket so that an
-/// upload is covered by exactly the same workspace check as the task it sits
-/// in — a file under `public/` is readable by anyone who guesses the URL, and
-/// an image pasted into a task can easily be a screenshot of something
+/// upload is covered by exactly the same workspace check as the document it
+/// sits in — a file under `public/` is readable by anyone who guesses the URL,
+/// and an image pasted into a task can easily be a screenshot of something
 /// private. `/api/attachments/[id]` is the only way to read one back, and it
 /// requires a session in the owning workspace. The size cap in
-/// `lib/doc/attachments.ts` is what keeps the table from growing unbounded.
-model TaskAttachment {
-  id                 String  @id @default(cuid())
+/// `shared/doc/attachments.ts` is what keeps the table from growing unbounded.
+///
+/// Exactly one of `taskId` / `knowledgeDocId` is set; a database CHECK
+/// enforces it, so an orphaned or doubly-owned row cannot exist.
+model Attachment {
+  id                 String   @id @default(cuid())
   workspaceId        String
-  taskId             String
+  taskId             String?
+  knowledgeDocId     String?
   uploadedByMemberId String?
   /// Original file name, shown in the alt text and on download.
   filename           String
@@ -552,13 +562,15 @@ model TaskAttachment {
   data               Bytes
   createdAt          DateTime @default(now())
 
-  workspace  Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  task       Task             @relation(fields: [taskId], references: [id], onDelete: Cascade)
-  uploadedBy WorkspaceMember? @relation(fields: [uploadedByMemberId], references: [id], onDelete: SetNull)
+  workspace    Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  task         Task?            @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  knowledgeDoc KnowledgeDoc?    @relation(fields: [knowledgeDocId], references: [id], onDelete: Cascade)
+  uploadedBy   WorkspaceMember? @relation(fields: [uploadedByMemberId], references: [id], onDelete: SetNull)
 
   @@index([taskId, createdAt])
+  @@index([knowledgeDocId, createdAt])
   @@index([workspaceId])
-  @@map("task_attachments")
+  @@map("attachments")
 }
 
 model TaskComment {
@@ -580,42 +592,84 @@ model TaskComment {
 // ---------------------------------------------------------------------------
 
 model ActivityEvent {
-  id            String       @id @default(cuid())
-  workspaceId   String
-  actorMemberId String?
-  type          ActivityType
+  id             String       @id @default(cuid())
+  workspaceId    String
+  actorMemberId  String?
+  type           ActivityType
   /// Human-readable one-liner rendered in the feed.
-  summary       String
-  taskId        String?
-  meetingId     String?
+  summary        String
+  taskId         String?
+  meetingId      String?
+  knowledgeDocId String?
   /// { field, from, to } for change events.
-  metadata      Json?
-  createdAt     DateTime     @default(now())
+  metadata       Json?
+  createdAt      DateTime     @default(now())
 
-  workspace Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  actor     WorkspaceMember? @relation(fields: [actorMemberId], references: [id], onDelete: SetNull)
-  task      Task?            @relation(fields: [taskId], references: [id], onDelete: Cascade)
-  meeting   Meeting?         @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  workspace    Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  actor        WorkspaceMember? @relation(fields: [actorMemberId], references: [id], onDelete: SetNull)
+  task         Task?            @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  meeting      Meeting?         @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  knowledgeDoc KnowledgeDoc?    @relation(fields: [knowledgeDocId], references: [id], onDelete: Cascade)
 
   @@index([workspaceId, createdAt])
   @@map("activity_events")
 }
 
-model Recommendation {
-  id          String               @id @default(cuid())
+// ---------------------------------------------------------------------------
+// Knowledge library
+// ---------------------------------------------------------------------------
+
+/// A page in the workspace's knowledge library: the place useful information
+/// goes when it is worth more than one task.
+///
+/// The body is the same Markdown document format `Task.description` uses, so
+/// the editor, the renderer and the image pipeline are shared rather than
+/// reimplemented. Pages are organised by `labels` instead of a folder tree:
+/// a tree forces one filing decision per page and then hides everything that
+/// was filed badly, while a tag can say "onboarding" and "billing" at once.
+model KnowledgeDoc {
+  id          String   @id @default(cuid())
   workspaceId String
-  kind        RecommendationKind
   title       String
-  body        String
+  /// Markdown. Images inside it are `/api/attachments/<id>` references.
+  body        String?
+  labels      String[] @default([])
+  /// Pinned pages lead the library, for the handful everyone needs.
+  isPinned    Boolean  @default(false)
+
+  createdByMemberId String?
+  /// Who touched it last — the library's version of "ask this person".
+  updatedByMemberId String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  workspace   Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  createdBy   WorkspaceMember? @relation("KnowledgeAuthor", fields: [createdByMemberId], references: [id], onDelete: SetNull)
+  updatedBy   WorkspaceMember? @relation("KnowledgeEditor", fields: [updatedByMemberId], references: [id], onDelete: SetNull)
+  attachments Attachment[]
+  activity    ActivityEvent[]
+
+  @@index([workspaceId, updatedAt])
+  @@index([workspaceId, isPinned])
+  @@map("knowledge_docs")
+}
+
+model Recommendation {
+  id              String               @id @default(cuid())
+  workspaceId     String
+  kind            RecommendationKind
+  title           String
+  body            String
   /// Always populated — a recommendation with no grounding is not shown.
-  relatedTaskIds String[]          @default([])
-  evidence    EvidenceLevel        @default(RECOMMENDED)
-  status      RecommendationStatus @default(OPEN)
+  relatedTaskIds  String[]             @default([])
+  evidence        EvidenceLevel        @default(RECOMMENDED)
+  status          RecommendationStatus @default(OPEN)
   /// True when derived from live workspace data by the deterministic engine
   /// rather than from a model call.
-  isDeterministic Boolean          @default(true)
-  createdAt   DateTime             @default(now())
-  updatedAt   DateTime             @updatedAt
+  isDeterministic Boolean              @default(true)
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
 
   workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
 
