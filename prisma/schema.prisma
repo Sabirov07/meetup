@@ -635,6 +635,7 @@ model Task {
   /// Tasks that are waiting on this one.
   dependents   TaskDependency[] @relation("BlockingTask")
 
+  subtasks    Subtask[]
   comments    TaskComment[]
   attachments Attachment[]
   activity    ActivityEvent[]
@@ -661,6 +662,37 @@ model TaskDependency {
   @@unique([taskId, dependsOnTaskId])
   @@index([dependsOnTaskId])
   @@map("task_dependencies")
+}
+
+/// One step inside a task: the checklist a person works down while doing it.
+///
+/// Deliberately not a `Task` with a parent. A task in this product is an
+/// accountable commitment — it has an owner, a deadline, a priority, a
+/// document, a discussion and a place on somebody's board — and most of the
+/// steps inside one are none of those things. Modelling them as tasks would
+/// put "open the dashboard" on a board next to "ship the billing migration",
+/// and every count, filter and statistic in the app would then have to learn
+/// which tasks are not really tasks. A step is a line with a checkbox, so this
+/// is a line with a checkbox.
+///
+/// `position` is sparse and hand-assignable, so a step can be dropped between
+/// two others without renumbering the rest.
+model Subtask {
+  id          String    @id @default(cuid())
+  taskId      String
+  title       String
+  done        Boolean   @default(false)
+  position    Float     @default(0)
+  /// When it was ticked. Kept so "finished this morning" stays true after a
+  /// later edit to the title.
+  completedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@index([taskId, position])
+  @@map("subtasks")
 }
 
 /// An image embedded in a document body — a task's, or a knowledge page's.

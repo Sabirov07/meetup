@@ -52,6 +52,12 @@ const taskSelect = {
   dependents: {
     select: { task: { select: { id: true, title: true, status: true } } },
   },
+  subtasks: {
+    select: { id: true, title: true, done: true, position: true },
+    // Positions are assigned strictly increasing, within a batch and across
+    // batches, so this one key is the order the list was written in.
+    orderBy: { position: "asc" },
+  },
   _count: { select: { comments: true } },
 } as const;
 
@@ -81,6 +87,7 @@ type TaskRow = {
   sourceMeeting: { id: string; title: string } | null;
   dependencies: { dependsOnTask: { id: string; title: string; status: TaskView["status"] } }[];
   dependents: { task: { id: string; title: string; status: TaskView["status"] } }[];
+  subtasks: { id: string; title: string; done: boolean; position: number }[];
   _count: { comments: number };
 };
 
@@ -109,6 +116,7 @@ export function toTaskView(row: TaskRow): TaskView {
     manualOrder: row.manualOrder,
     dependencies: row.dependencies.map((d) => d.dependsOnTask),
     dependents: row.dependents.map((d) => d.task),
+    subtasks: row.subtasks,
     commentCount: row._count.comments,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),

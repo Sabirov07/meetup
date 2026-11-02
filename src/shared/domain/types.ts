@@ -170,6 +170,19 @@ export type TaskDependencyRef = {
   status: TaskStatus;
 };
 
+/**
+ * One step on a task's checklist.
+ *
+ * A step is not a task — see the note on `Subtask` in schema.prisma — so this
+ * carries a title and whether it is ticked, and nothing else.
+ */
+export type SubtaskRef = {
+  id: string;
+  title: string;
+  done: boolean;
+  position: number;
+};
+
 export type TaskView = {
   id: string;
   title: string;
@@ -197,6 +210,8 @@ export type TaskView = {
   dependencies: TaskDependencyRef[];
   /** Tasks waiting on this one. */
   dependents: TaskDependencyRef[];
+  /** The task's checklist, in the order it is worked down. */
+  subtasks: SubtaskRef[];
   commentCount: number;
   createdAt: string;
   updatedAt: string;

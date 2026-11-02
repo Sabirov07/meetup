@@ -8,6 +8,7 @@ import {
   Clock,
   FileText,
   GitBranch,
+  ListChecks,
   MessageSquare,
   MoreHorizontal,
   Sparkles,
@@ -19,6 +20,7 @@ import { docStats, plainText } from "@/shared/doc/markdown";
 import type { TaskView } from "@/shared/domain/types";
 import { priorityMeta, statusMeta } from "@/shared/domain/labels";
 import { blockingImpact, smartExplanation, unmetDependencies } from "@/shared/domain/priority";
+import { subtaskProgress } from "@/shared/domain/subtasks";
 import { useI18n, useT } from "@/frontend/i18n";
 import { cn } from "@/frontend/lib/utils";
 import { Avatar } from "@/frontend/components/ui/avatar";
@@ -80,6 +82,7 @@ export function TaskRow({
       excerpt,
     };
   }, [task.description]);
+  const steps = subtaskProgress(task.subtasks);
   const blocks = blockingImpact(task);
   const unmet = unmetDependencies(task);
   const effort = f.effort(task.estimateMinutes);
@@ -256,6 +259,28 @@ export function TaskRow({
                 <span className="flex items-center gap-1">
                   <FileText className="h-2.5 w-2.5" />
                   {doc.label}
+                </span>
+              </Tooltip>
+            </span>
+          )}
+
+          {steps && (
+            <span className="hidden shrink-0 items-center gap-2 @[26rem]/row:flex">
+              <span aria-hidden>·</span>
+              <Tooltip
+                content={t("tasks.row.subtasksTip", {
+                  done: steps.done,
+                  total: steps.total,
+                })}
+              >
+                <span
+                  className={cn(
+                    "flex items-center gap-1 tabular-nums",
+                    steps.done === steps.total && "text-success",
+                  )}
+                >
+                  <ListChecks className="h-2.5 w-2.5" />
+                  {steps.done}/{steps.total}
                 </span>
               </Tooltip>
             </span>

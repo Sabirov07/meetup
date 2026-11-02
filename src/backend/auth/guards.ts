@@ -153,6 +153,28 @@ export async function assertTaskInWorkspace(taskId: string, workspaceId: string)
   return task;
 }
 
+/**
+ * Confirms a step belongs to a task in the caller's workspace.
+ *
+ * The workspace filter goes through the task, because `subtasks` carries no
+ * workspace of its own — the task is what it belongs to, and that is the only
+ * tenancy there is to check.
+ */
+export async function assertSubtaskInWorkspace(subtaskId: string, workspaceId: string) {
+  const subtask = await db.subtask.findFirst({
+    where: { id: subtaskId, task: { workspaceId } },
+    select: {
+      id: true,
+      title: true,
+      done: true,
+      taskId: true,
+      task: { select: { title: true } },
+    },
+  });
+  if (!subtask) throw new Error(await message("errors.subtask.gone"));
+  return subtask;
+}
+
 export async function assertMeetingInWorkspace(meetingId: string, workspaceId: string) {
   const meeting = await db.meeting.findFirst({
     where: { id: meetingId, workspaceId },

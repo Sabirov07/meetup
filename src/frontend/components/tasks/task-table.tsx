@@ -13,6 +13,7 @@ import {
   GitBranch,
   Inbox,
   Layers,
+  ListChecks,
   MessageSquare,
   MoreHorizontal,
   Plus,
@@ -27,6 +28,7 @@ import { createTask } from "@/backend/actions/tasks";
 import { applyFilters } from "@/shared/domain/filters";
 import { priorityMeta, statusMeta } from "@/shared/domain/labels";
 import { blockingImpact, sortTasks, unmetDependencies } from "@/shared/domain/priority";
+import { subtaskProgress } from "@/shared/domain/subtasks";
 import {
   NO_SPACE,
   TASK_PRIORITIES,
@@ -508,6 +510,7 @@ function TaskTableRow({
   const effort = f.effort(task.estimateMinutes);
   const blocks = blockingImpact(task);
   const unmet = unmetDependencies(task);
+  const steps = subtaskProgress(task.subtasks);
 
   return (
     <div
@@ -619,6 +622,22 @@ function TaskTableRow({
 
         {task.description?.trim() && (
           <FileText className="h-2.5 w-2.5 shrink-0 text-text-faint" aria-hidden />
+        )}
+
+        {steps && (
+          <Tooltip
+            content={t("tasks.row.subtasksTip", { done: steps.done, total: steps.total })}
+          >
+            <span
+              className={cn(
+                "flex shrink-0 items-center gap-1 text-2xs tabular-nums",
+                steps.done === steps.total ? "text-success" : "text-text-faint",
+              )}
+            >
+              <ListChecks className="h-2.5 w-2.5" />
+              {steps.done}/{steps.total}
+            </span>
+          </Tooltip>
         )}
 
         {task.commentCount > 0 && (

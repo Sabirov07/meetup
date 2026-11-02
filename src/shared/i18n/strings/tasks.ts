@@ -163,6 +163,10 @@ export const tasks = {
     "Mark {title} complete",
     "Отметить «{title}» выполненной",
   ],
+  "tasks.row.subtasksTip": [
+    "{done} of {total} subtasks done",
+    "Подзадачи: {done} из {total} готово",
+  ],
   "tasks.row.reviewTip": [
     "The assignee or deadline was unclear. Worth a look.",
     "Исполнитель или срок остались неясными. Стоит взглянуть.",
@@ -260,6 +264,49 @@ export const tasks = {
     "Smart priority weighs these against the task’s priority level. Switch to another ordering from the toolbar to ignore them.",
     "Умный приоритет взвешивает это вместе с уровнем приоритета задачи. Выберите другую сортировку на панели, чтобы это не учитывалось.",
   ],
+  "detail.subtasks": ["Subtasks", "Подзадачи"],
+  "detail.subtasks.progress": ["{done} of {total} done", "{done} из {total} готово"],
+  "detail.subtasks.empty": [
+    "No steps yet. Break the task into the steps you will actually work down.",
+    "Шагов пока нет. Разбейте задачу на шаги, которые будете выполнять.",
+  ],
+  "detail.subtasks.add": ["Add subtask", "Добавить подзадачу"],
+  "detail.subtasks.addFirst": ["Add the first step", "Добавить первый шаг"],
+  "detail.subtasks.placeholder": ["New subtask, then Enter…", "Новая подзадача, затем Enter…"],
+  "detail.subtasks.rawPlaceholder": [
+    "One subtask per line.\nPaste a list and every line becomes one.",
+    "По одной подзадаче в строке.\nВставьте список — каждая строка станет подзадачей.",
+  ],
+  "detail.subtasks.mode.label": ["How to add subtasks", "Как добавлять подзадачи"],
+  "detail.subtasks.mode.one": ["One by one", "По одной"],
+  "detail.subtasks.mode.oneHint": [
+    "Type one, press Enter, type the next",
+    "Введите одну, нажмите Enter, вводите следующую",
+  ],
+  "detail.subtasks.mode.raw": ["Paste a list", "Списком"],
+  "detail.subtasks.mode.rawHint": [
+    "Write or paste every subtask on its own line",
+    "Напишите или вставьте каждую подзадачу на отдельной строке",
+  ],
+  "detail.subtasks.hintOne": [
+    "{enter} adds it and keeps the field open · {esc} when you are done",
+    "{enter} добавит и оставит поле открытым · {esc} — закончить",
+  ],
+  "detail.subtasks.hintRaw": [
+    "{save} adds them all · {esc} to cancel",
+    "{save} добавит все · {esc} — отмена",
+  ],
+  // The button always says how many steps it is about to create, so a paste
+  // can be checked before it is written.
+  "detail.subtasks.addCount.one": ["Add {count} subtask", "Добавить {count} подзадачу"],
+  "detail.subtasks.addCount.few": ["Add {count} subtasks", "Добавить {count} подзадачи"],
+  "detail.subtasks.addCount.many": ["Add {count} subtasks", "Добавить {count} подзадач"],
+  "detail.subtasks.addCount.other": ["Add {count} subtasks", "Добавить {count} подзадачи"],
+  "detail.subtasks.markDone": ["Mark “{title}” done", "Отметить готово: «{title}»"],
+  "detail.subtasks.markTodo": ["Mark “{title}” not done", "Снять отметку: «{title}»"],
+  "detail.subtasks.rename": ["Rename “{title}”", "Переименовать: «{title}»"],
+  "detail.subtasks.remove": ["Remove “{title}”", "Удалить: «{title}»"],
+  "detail.subtasks.addFailed": ["Could not add that", "Не удалось добавить"],
   "detail.dependencies": ["Dependencies", "Зависимости"],
   "detail.dependencies.empty": [
     "Nothing linked. Add a dependency when this task cannot start until another finishes.",

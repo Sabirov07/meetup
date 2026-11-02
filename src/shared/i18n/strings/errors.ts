@@ -109,6 +109,23 @@ export const errors = {
   "errors.task.emptyNote": ["Write something first.", "Сначала что-нибудь напишите."],
   "errors.task.noteTooLong": ["That note is too long.", "Заметка слишком длинная."],
 
+  "errors.subtask.gone": [
+    "That step no longer exists.",
+    "Этого шага больше нет.",
+  ],
+  "errors.subtask.invalid": [
+    "That step is not valid.",
+    "Шаг заполнен неверно.",
+  ],
+  "errors.subtask.empty": [
+    "Write the step first.",
+    "Сначала напишите шаг.",
+  ],
+  "errors.subtask.tooMany": [
+    "This task already has the maximum number of steps.",
+    "У задачи уже максимальное число шагов.",
+  ],
+
   "errors.discussion.needsKey": [
     "Set ANTHROPIC_API_KEY on the server to bring the assistant into a discussion.",
     "Чтобы звать ассистента в обсуждение, задайте ANTHROPIC_API_KEY на сервере.",

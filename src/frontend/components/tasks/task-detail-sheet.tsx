@@ -13,7 +13,7 @@ import {
   X,
 } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { addDependency, removeDependency, updateTask } from "@/backend/actions/tasks";
 import {
@@ -50,6 +50,7 @@ import { spaceDot } from "@/frontend/components/spaces/space-color";
 import { Discussion } from "./discussion";
 import { TaskDoc } from "./task-doc";
 import { TaskFormDialog } from "./task-form-dialog";
+import { TaskSubtasks } from "./task-subtasks";
 import { taskLink, useTasks } from "./task-store";
 
 export function TaskDetailSheet() {
@@ -57,10 +58,19 @@ export function TaskDetailSheet() {
   const t = useT();
   const task = openTaskId ? (tasks.find((t) => t.id === openTaskId) ?? null) : null;
 
-  // While the document editor is open it owns Escape; the drawer gets the
-  // next one. Radix dismisses from a capture-phase listener, so this has to
-  // be decided here rather than by stopping the event further down.
-  const docCapturesEscape = useRef(false);
+  /**
+   * Who owns Escape right now.
+   *
+   * While the document editor or the subtask composer is open, Escape belongs
+   * to it — closing the editor, finishing the run of steps — and the drawer
+   * gets the next one. Radix dismisses from a capture-phase listener, so this
+   * has to be decided here rather than by stopping the event further down.
+   */
+  const escapeOwners = useRef(new Set<string>());
+  const claimEscape = useCallback((owner: string, claimed: boolean) => {
+    if (claimed) escapeOwners.current.add(owner);
+    else escapeOwners.current.delete(owner);
+  }, []);
 
   /**
    * A link naming a task this workspace does not have.
@@ -88,19 +98,13 @@ export function TaskDetailSheet() {
         <SheetContent
           aria-describedby={undefined}
           onEscapeKeyDown={(event) => {
-            if (docCapturesEscape.current) event.preventDefault();
+            if (escapeOwners.current.size > 0) event.preventDefault();
           }}
         >
           <DialogTitle className="sr-only">{task.title}</DialogTitle>
           {/* Keyed by task id so opening a different task remounts with
               fresh drafts, instead of resetting them from an effect. */}
-          <TaskDetail
-            key={task.id}
-            task={task}
-            onDocCapturesEscapeChange={(captures) => {
-              docCapturesEscape.current = captures;
-            }}
-          />
+          <TaskDetail key={task.id} task={task} claimEscape={claimEscape} />
         </SheetContent>
       )}
     </Dialog>
@@ -109,10 +113,11 @@ export function TaskDetailSheet() {
 
 function TaskDetail({
   task,
-  onDocCapturesEscapeChange,
+  claimEscape,
 }: {
   task: TaskView;
-  onDocCapturesEscapeChange: (captures: boolean) => void;
+  /** Tells the drawer that a control inside it has a claim on Escape. */
+  claimEscape: (owner: string, claimed: boolean) => void;
 }) {
   const { members, spaces, now, move, remove, upsertTask, setOpenTaskId, tasks } = useTasks();
   const { t, f } = useI18n();
@@ -123,6 +128,17 @@ function TaskDetail({
   const [editOpen, setEditOpen] = useState(false);
 
   const [addingDependency, setAddingDependency] = useState(false);
+
+  // Stable per owner, so the effects downstream that watch these do not
+  // re-run on every render of the drawer.
+  const docClaimsEscape = useCallback(
+    (claims: boolean) => claimEscape("doc", claims),
+    [claimEscape],
+  );
+  const subtasksClaimEscape = useCallback(
+    (claims: boolean) => claimEscape("subtasks", claims),
+    [claimEscape],
+  );
 
   async function save(change: Parameters<typeof updateTask>[0]) {
     const result = await updateTask(change);
@@ -436,7 +452,12 @@ function TaskDetail({
         <Separator />
 
         {/* The task's document: rich text, checklists and screenshots. */}
-        <TaskDoc task={task} onCapturesEscapeChange={onDocCapturesEscapeChange} />
+        <TaskDoc task={task} onCapturesEscapeChange={docClaimsEscape} />
+
+        {/* The steps inside it. Under the brief, because that is the order the
+            work is read in: what this is, then what it breaks down into. */}
+        <Separator />
+        <TaskSubtasks task={task} onCapturesEscapeChange={subtasksClaimEscape} />
 
         {/* Why it ranks where it does */}
         {task.status !== "COMPLETED" && factors.length > 0 && (
