@@ -1,8 +1,8 @@
 import { cookies } from "next/headers";
 import { NextResponse, type NextRequest } from "next/server";
-import { getSessionContext } from "@/lib/auth/guards";
-import { appUrl } from "@/lib/app-url";
-import { exchangeCodeForTokens } from "@/lib/google/oauth";
+import { getSessionContext } from "@/backend/auth/guards";
+import { appUrl } from "@/backend/app-url";
+import { exchangeCodeForTokens } from "@/backend/google/oauth";
 
 const STATE_COOKIE = "google_oauth_state";
 

@@ -1,14 +1,14 @@
 import { NextResponse } from "next/server";
-import { getSessionContext } from "@/lib/auth/guards";
-import { db } from "@/lib/db";
+import { getSessionContext } from "@/backend/auth/guards";
+import { db } from "@/backend/db";
 import {
   attachmentUrl,
   formatBytes,
   isAcceptedImage,
   MAX_IMAGE_BYTES,
   type UploadedAttachment,
-} from "@/lib/doc/attachments";
-import { readImageSize } from "@/lib/images/dimensions";
+} from "@/shared/doc/attachments";
+import { readImageSize } from "@/backend/images/dimensions";
 
 /**
  * Receives an image pasted, dropped or picked inside a task's document.

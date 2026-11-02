@@ -1,9 +1,9 @@
 import { cookies, headers } from "next/headers";
 import { NextResponse, type NextRequest } from "next/server";
-import { resolveGoogleSignIn } from "@/lib/auth/provision";
-import { createSession } from "@/lib/auth/session";
-import { appUrl } from "@/lib/app-url";
-import { GOOGLE_AUTH_STATE_COOKIE, exchangeCodeForIdentity } from "@/lib/google/identity";
+import { resolveGoogleSignIn } from "@/backend/auth/provision";
+import { createSession } from "@/backend/auth/session";
+import { appUrl } from "@/backend/app-url";
+import { GOOGLE_AUTH_STATE_COOKIE, exchangeCodeForIdentity } from "@/backend/google/identity";
 
 /** Prefers the configured public URL, falling back to the request's origin. */
 function base(request: NextRequest): string {

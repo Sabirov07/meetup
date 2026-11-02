@@ -3,9 +3,9 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { AlertCircle, ArrowRight } from "lucide-react";
-import { signUp } from "@/lib/actions/auth";
-import { Button } from "@/components/ui/button";
-import { Field, Input } from "@/components/ui/field";
+import { signUp } from "@/backend/actions/auth";
+import { Button } from "@/frontend/components/ui/button";
+import { Field, Input } from "@/frontend/components/ui/field";
 
 const MIN_PASSWORD = 8;
 

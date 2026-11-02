@@ -1,13 +1,13 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { connection } from "next/server";
-import { requireSession } from "@/lib/auth/guards";
-import { listMeetings } from "@/lib/data/meetings";
-import { isAiConfigured } from "@/lib/ai/extract";
-import { googleIntegrationStatus } from "@/lib/google/config";
-import { getConnectedAccount } from "@/lib/google/oauth";
-import { MeetingsList } from "@/components/meetings/meetings-list";
-import { Skeleton } from "@/components/ui/feedback";
+import { requireSession } from "@/backend/auth/guards";
+import { listMeetings } from "@/backend/data/meetings";
+import { isAiConfigured } from "@/backend/ai/extract";
+import { googleIntegrationStatus } from "@/backend/google/config";
+import { getConnectedAccount } from "@/backend/google/oauth";
+import { MeetingsList } from "@/frontend/components/meetings/meetings-list";
+import { Skeleton } from "@/frontend/components/ui/feedback";
 
 // Session-gated: this segment reads the auth cookie, so it cannot be
 // prerendered ahead of knowing who is signed in.

@@ -16,7 +16,7 @@
 import { config as loadEnv } from "dotenv";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "../src/generated/prisma/client";
-import { hashPassword } from "../src/lib/auth/password";
+import { hashPassword } from "../src/backend/auth/password";
 
 loadEnv({ path: ".env.local", quiet: true });
 

@@ -1,10 +1,10 @@
 import { connection } from "next/server";
-import { db } from "@/lib/db";
-import { requireSession } from "@/lib/auth/guards";
-import { getShellData } from "@/lib/data/overview";
-import { googleIntegrationStatus } from "@/lib/google/config";
-import { getConnectedAccount } from "@/lib/google/oauth";
-import { AppShell } from "@/components/shell/app-shell";
+import { db } from "@/backend/db";
+import { requireSession } from "@/backend/auth/guards";
+import { getShellData } from "@/backend/data/overview";
+import { googleIntegrationStatus } from "@/backend/google/config";
+import { getConnectedAccount } from "@/backend/google/oauth";
+import { AppShell } from "@/frontend/components/shell/app-shell";
 
 /**
  * `cacheComponents` is enabled, and every route in this group is gated on the

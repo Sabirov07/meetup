@@ -1,13 +1,13 @@
 import { Suspense } from "react";
 import { connection } from "next/server";
-import { requireSession } from "@/lib/auth/guards";
-import { listActivity, countPendingProposals, listMeetings } from "@/lib/data/meetings";
-import { listDismissedRecommendationIds, listTasks } from "@/lib/data/tasks";
-import { googleIntegrationStatus } from "@/lib/google/config";
-import { getConnectedAccount } from "@/lib/google/oauth";
-import { Overview } from "@/components/dashboard/overview";
-import { TaskStoreProvider } from "@/components/tasks/task-store";
-import { PanelSkeleton, Skeleton } from "@/components/ui/feedback";
+import { requireSession } from "@/backend/auth/guards";
+import { listActivity, countPendingProposals, listMeetings } from "@/backend/data/meetings";
+import { listDismissedRecommendationIds, listTasks } from "@/backend/data/tasks";
+import { googleIntegrationStatus } from "@/backend/google/config";
+import { getConnectedAccount } from "@/backend/google/oauth";
+import { Overview } from "@/frontend/components/dashboard/overview";
+import { TaskStoreProvider } from "@/frontend/components/tasks/task-store";
+import { PanelSkeleton, Skeleton } from "@/frontend/components/ui/feedback";
 
 // Session-gated: this segment reads the auth cookie, so it cannot be
 // prerendered ahead of knowing who is signed in.

@@ -1,10 +1,10 @@
 import { notFound } from "next/navigation";
 import { connection } from "next/server";
-import { requireSession } from "@/lib/auth/guards";
-import { getMeeting, listAnalyses } from "@/lib/data/meetings";
-import { listTasks } from "@/lib/data/tasks";
-import { isAiConfigured } from "@/lib/ai/extract";
-import { MeetingDetail } from "@/components/meetings/meeting-detail";
+import { requireSession } from "@/backend/auth/guards";
+import { getMeeting, listAnalyses } from "@/backend/data/meetings";
+import { listTasks } from "@/backend/data/tasks";
+import { isAiConfigured } from "@/backend/ai/extract";
+import { MeetingDetail } from "@/frontend/components/meetings/meeting-detail";
 
 export const instant = false;
 

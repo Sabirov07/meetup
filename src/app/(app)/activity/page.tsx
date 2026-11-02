@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { connection } from "next/server";
-import { requireSession } from "@/lib/auth/guards";
-import { listActivity } from "@/lib/data/meetings";
-import { listTasks } from "@/lib/data/tasks";
-import { ActivityView } from "@/components/activity/activity-view";
-import { Skeleton } from "@/components/ui/feedback";
+import { requireSession } from "@/backend/auth/guards";
+import { listActivity } from "@/backend/data/meetings";
+import { listTasks } from "@/backend/data/tasks";
+import { ActivityView } from "@/frontend/components/activity/activity-view";
+import { Skeleton } from "@/frontend/components/ui/feedback";
 
 // Session-gated: this segment reads the auth cookie, so it cannot be
 // prerendered ahead of knowing who is signed in.

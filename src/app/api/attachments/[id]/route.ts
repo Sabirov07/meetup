@@ -1,5 +1,5 @@
-import { getSessionContext } from "@/lib/auth/guards";
-import { db } from "@/lib/db";
+import { getSessionContext } from "@/backend/auth/guards";
+import { db } from "@/backend/db";
 
 /**
  * Serves an embedded image.

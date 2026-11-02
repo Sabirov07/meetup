@@ -1,12 +1,12 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { getSessionContext } from "@/lib/auth/guards";
-import { isGoogleAuthConfigured } from "@/lib/google/identity";
-import { AuthNotice } from "@/components/auth/auth-notice";
-import { GoogleButton, OrDivider } from "@/components/auth/google-button";
+import { getSessionContext } from "@/backend/auth/guards";
+import { isGoogleAuthConfigured } from "@/backend/google/identity";
+import { AuthNotice } from "@/frontend/components/auth/auth-notice";
+import { GoogleButton, OrDivider } from "@/frontend/components/auth/google-button";
 import { SignUpForm } from "./signup-form";
-import { Logo } from "@/components/brand";
+import { Logo } from "@/frontend/components/brand";
 
 // Session-gated, same as /login: there is no useful static shell to prerender
 // before knowing whether someone is already signed in.

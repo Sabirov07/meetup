@@ -1,13 +1,13 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
-import { getSessionContext } from "@/lib/auth/guards";
-import { appUrlFor } from "@/lib/app-url";
+import { getSessionContext } from "@/backend/auth/guards";
+import { appUrlFor } from "@/backend/app-url";
 import {
   GOOGLE_AUTH_STATE_COOKIE,
   GoogleAuthNotConfiguredError,
   buildGoogleAuthUrl,
   createOAuthState,
-} from "@/lib/google/identity";
+} from "@/backend/google/identity";
 
 /**
  * Starts "Continue with Google".

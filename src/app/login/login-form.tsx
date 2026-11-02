@@ -3,9 +3,9 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { AlertCircle, ArrowRight } from "lucide-react";
-import { signIn } from "@/lib/actions/auth";
-import { Button } from "@/components/ui/button";
-import { Field, Input } from "@/components/ui/field";
+import { signIn } from "@/backend/actions/auth";
+import { Button } from "@/frontend/components/ui/button";
+import { Field, Input } from "@/frontend/components/ui/field";
 
 export function LoginForm() {
   const router = useRouter();

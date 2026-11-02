@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
-import { db } from "@/lib/db";
-import { requireSession } from "@/lib/auth/guards";
-import { anthropicIntegrationStatus, googleIntegrationStatus } from "@/lib/google/config";
-import { getConnectedAccount } from "@/lib/google/oauth";
-import { SettingsView } from "@/components/settings/settings-view";
+import { db } from "@/backend/db";
+import { requireSession } from "@/backend/auth/guards";
+import { anthropicIntegrationStatus, googleIntegrationStatus } from "@/backend/google/config";
+import { getConnectedAccount } from "@/backend/google/oauth";
+import { SettingsView } from "@/frontend/components/settings/settings-view";
 
 export const metadata: Metadata = { title: "Settings" };
 export const instant = false;

@@ -153,24 +153,48 @@ seeded with a labelled sample analysis.
 
 ## Architecture
 
+The source tree is split by where the code runs. Each folder has its own
+README with the detail.
+
 ```
-prisma/schema.prisma      16 tables. Ownership is always a member reference,
+prisma/schema.prisma      17 tables. Ownership is always a member reference,
                           never a "me"/"employer" enum.
-src/lib/domain/           Pure logic: priority scoring, filters, stats,
-                          recommendations. No database imports, so the UI can
-                          use it directly.
-src/lib/doc/              The document format: a Markdown subset parsed to a
-                          typed block tree, plus the pure text transforms the
-                          editor's toolbar and shortcuts apply.
-src/lib/data/             Reads → view models (dates serialised for the client).
-src/lib/actions/          Server actions. Validation, authorisation, activity.
-src/lib/ai/               Claude extraction behind a strict schema.
-src/lib/auth/             Sessions, scrypt hashing, account provisioning,
+
+src/backend/              Server only — never reaches the browser.
+  actions/                Server Functions. Validation, authorisation, activity.
+  data/                   Reads → view models (dates serialised for the client).
+  auth/                   Sessions, scrypt hashing, account provisioning,
                           the authorisation chokepoint.
-src/lib/google/           Sign-in (identity.ts) + Meet REST v2 (oauth.ts,
-                          meet.ts), server-only.
-src/components/           UI. Design tokens only — no raw colours.
+  ai/                     Claude extraction behind a strict schema.
+  google/                 Sign-in (identity.ts) + Meet REST v2 (oauth.ts, meet.ts).
+  images/                 Pixel size read out of an image header.
+  db.ts, app-url.ts       Prisma client; the app's public origin.
+
+src/frontend/             Everything the browser gets.
+  components/             ui/ primitives, then one folder per surface.
+  lib/                    Formatting and class-name helpers.
+  styles/globals.css      Design tokens. No component writes a raw colour.
+
+src/shared/               Pure logic both sides run. No database, no DOM.
+  domain/                 Priority scoring, filters, stats, labels, types.
+  doc/                    The document format: a Markdown subset parsed to a
+                          typed block tree, plus the editor's text transforms.
+
+src/app/                  Routes, and nothing else. Next.js requires this
+                          folder; pages and route handlers stay thin and call
+                          into backend/ and frontend/.
 ```
+
+**Why `shared/` rather than two folders flat.** Filing the domain logic under
+either side would misstate who depends on it — the task list scores priorities
+in the browser with the same function the server uses, and the document parser
+runs in both. Keeping it apart is what lets `backend/` mean *server only* and
+`frontend/` mean *shipped to the browser*, with no exceptions to remember.
+
+**Components importing `backend/actions/` is the network boundary.** A Server
+Function's body never ships to the browser; the import is a reference the
+bundler turns into an RPC call. It is the one import that crosses layers, and
+it crosses in the direction a client-server app expects.
 
 A few decisions worth knowing:
 
