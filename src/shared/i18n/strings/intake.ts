@@ -107,4 +107,9 @@ export const intake = {
   "intake.createFailed": ["Could not create those tasks", "Не удалось создать задачи"],
 
   "sidebar.addTask": ["Add task", "Добавить задачу"],
+  "sidebar.create.title": ["Add a task", "Добавить задачу"],
+  "sidebar.create.body": [
+    "Write down what needs doing and who owns it.",
+    "Запишите, что нужно сделать и кто за это отвечает.",
+  ],
 } satisfies Entries;

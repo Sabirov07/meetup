@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ChevronsLeft, LogOut, PanelLeft, Plus, Users } from "lucide-react";
+import { ChevronRight, ChevronsLeft, LogOut, PanelLeft, Plus, Users } from "lucide-react";
 import { signOut } from "@/backend/actions/auth";
 import type {
   MemberSummary,
@@ -201,16 +201,54 @@ export function Sidebar({
         ))}
       </nav>
 
-      {/* Person, and the one button that makes something */}
+      {/*
+        Make something, then who you are.
+        The card is a step forward from the sidebar rather than a colour of
+        its own — `surface` on `sidebar` is the same move a panel makes
+        anywhere else in the product — so the only saturated thing in the
+        whole rail is the button, which is the point of it.
+      */}
       <div className={cn("shrink-0 border-t border-line p-2")}>
-        <div className={cn("flex gap-1", collapsed ? "flex-col items-center" : "items-center")}>
-          <Menu>
+        {collapsed ? (
+          <Tooltip content={t("sidebar.addTask")} side="right">
+            <Button
+              variant="primary"
+              size="icon"
+              onClick={onNewTask}
+              aria-label={t("sidebar.addTask")}
+              // Block-level, so the auto margins actually centre it in the rail.
+              className="mx-auto flex"
+            >
+              <Plus className="h-4 w-4" />
+            </Button>
+          </Tooltip>
+        ) : (
+          <div className="rounded-xl border border-line bg-surface p-3">
+            <p className="text-[13px] font-semibold leading-5 tracking-[-0.01em] text-text">
+              {t("sidebar.create.title")}
+            </p>
+            <p className="mt-0.5 text-2xs leading-4 text-text-muted">
+              {t("sidebar.create.body")}
+            </p>
+            <Button
+              variant="primary"
+              size="md"
+              onClick={onNewTask}
+              className="mt-2.5 w-full"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              {t("header.newTask")}
+            </Button>
+          </div>
+        )}
+
+        <Menu>
           <MenuTrigger asChild>
             <button
               aria-label={t("sidebar.accountMenu")}
               className={cn(
-                "flex min-w-0 flex-1 items-center rounded-md transition-colors hover:bg-hover",
-                collapsed ? "w-full justify-center p-1.5" : "gap-2 px-1.5 py-1.5",
+                "mt-2 flex w-full items-center rounded-md transition-colors hover:bg-hover",
+                collapsed ? "justify-center p-1.5" : "gap-2 px-1.5 py-1.5",
               )}
             >
               <Avatar member={member} size="lg" />
@@ -226,6 +264,9 @@ export function Sidebar({
                         : t("sidebar.role.member"))}
                   </span>
                 </span>
+              )}
+              {!collapsed && (
+                <ChevronRight className="h-3.5 w-3.5 shrink-0 text-text-faint" aria-hidden />
               )}
             </button>
           </MenuTrigger>
@@ -259,28 +300,7 @@ export function Sidebar({
               </button>
             </form>
           </MenuContent>
-          </Menu>
-
-          {/*
-            A square, not a labelled bar at the top. Creating a task is the
-            thing people do most, so it wants to be in the corner the cursor
-            already rests in rather than to lead the navigation — and it opens
-            the form directly, because a menu in front of the most common
-            action is a toll. The other ways of creating are still one step
-            away: the form's own tabs reach them.
-          */}
-          <Tooltip content={t("sidebar.addTask")} side="right">
-            <Button
-              variant="primary"
-              size="icon"
-              onClick={onNewTask}
-              aria-label={t("sidebar.addTask")}
-              className="shrink-0"
-            >
-              <Plus className="h-4 w-4" />
-            </Button>
-          </Tooltip>
-        </div>
+        </Menu>
       </div>
     </div>
   );
