@@ -6,6 +6,8 @@ import { db } from "@/backend/db";
 import { requireSessionForAction } from "@/backend/auth/guards";
 import { getKnowledgeDoc, listKnowledgeDocs } from "@/backend/data/knowledge";
 import type { KnowledgeDocSummary, KnowledgeDocView } from "@/shared/domain/types";
+import { message } from "@/backend/i18n/message";
+import type { TranslationKey } from "@/shared/i18n";
 import { fail, guarded, logActivity, ok, type ActionResult } from "./shared";
 
 /**
@@ -25,7 +27,7 @@ async function assertDocInWorkspace(id: string, workspaceId: string) {
     where: { id, workspaceId },
     select: { id: true, title: true, isPinned: true },
   });
-  if (!doc) throw new Error("That page no longer exists in this workspace.");
+  if (!doc) throw new Error(await message("errors.page.gone"));
   return doc;
 }
 
@@ -49,10 +51,10 @@ export async function createKnowledgeDoc(
     const session = await requireSessionForAction();
     const parsed = createInput.safeParse(raw);
     if (!parsed.success) {
-      return fail(parsed.error.issues[0]?.message ?? "That page is not valid.");
+      return fail(await issue(parsed.error.issues[0]?.message, "errors.page.invalid"));
     }
 
-    const title = parsed.data.title?.trim() || "Untitled page";
+    const title = parsed.data.title?.trim() || (await message("errors.page.untitled"));
 
     const created = await db.knowledgeDoc.create({
       data: {
@@ -75,7 +77,7 @@ export async function createKnowledgeDoc(
     });
 
     const doc = await getKnowledgeDoc(created.id, session.workspace.id);
-    if (!doc) return fail("The page was created but could not be read back.");
+    if (!doc) return fail(await message("errors.page.createdNotReadable"));
     refresh();
     return ok(doc);
   });
@@ -89,7 +91,7 @@ export async function createKnowledgeDoc(
  */
 const updateInput = z.object({
   id: z.string().min(1),
-  title: z.string().trim().min(1, "A page needs a title.").max(TITLE_MAX).optional(),
+  title: z.string().trim().min(1, "errors.page.needsTitle").max(TITLE_MAX).optional(),
   body: z.string().max(BODY_MAX).nullable().optional(),
   labels: z.array(z.string().trim().min(1).max(40)).max(10).optional(),
   isPinned: z.boolean().optional(),
@@ -102,7 +104,7 @@ export async function updateKnowledgeDoc(
     const session = await requireSessionForAction();
     const parsed = updateInput.safeParse(raw);
     if (!parsed.success) {
-      return fail(parsed.error.issues[0]?.message ?? "That change is not valid.");
+      return fail(await issue(parsed.error.issues[0]?.message, "errors.page.changeInvalid"));
     }
 
     const { id, ...changes } = parsed.data;
@@ -116,7 +118,7 @@ export async function updateKnowledgeDoc(
 
     if (Object.keys(data).length === 0) {
       const unchanged = await getKnowledgeDoc(id, session.workspace.id);
-      return unchanged ? ok(unchanged) : fail("That page no longer exists.");
+      return unchanged ? ok(unchanged) : fail(await message("errors.page.goneShort"));
     }
 
     data.updatedByMemberId = session.member.id;
@@ -146,7 +148,7 @@ export async function updateKnowledgeDoc(
     }
 
     const doc = await getKnowledgeDoc(id, session.workspace.id);
-    if (!doc) return fail("That page no longer exists.");
+    if (!doc) return fail(await message("errors.page.goneShort"));
     refresh();
     return ok(doc);
   });
@@ -200,4 +202,9 @@ export async function fetchKnowledgeDocs(): Promise<ActionResult<KnowledgeDocSum
     const session = await requireSessionForAction();
     return ok(await listKnowledgeDocs(session.workspace.id));
   });
+}
+
+/** Resolves a Zod issue's key, falling back to a generic message. */
+async function issue(key: string | undefined, fallback: TranslationKey): Promise<string> {
+  return message((key ?? fallback) as TranslationKey);
 }

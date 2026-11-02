@@ -5,6 +5,7 @@ import { useMemo, useState } from "react";
 import { dismissRecommendation } from "@/backend/actions/recommendations";
 import { buildRecommendations } from "@/shared/domain/recommendations";
 import { recommendationMeta } from "@/shared/domain/labels";
+import { useT } from "@/frontend/i18n";
 import { cn } from "@/frontend/lib/utils";
 import { Badge } from "@/frontend/components/ui/badge";
 import { Button } from "@/frontend/components/ui/button";
@@ -29,12 +30,14 @@ export function Recommendations({
   className?: string;
 }) {
   const { tasks, currentMemberId, now, setOpenTaskId } = useTasks();
+  const t = useT();
   const [dismissed, setDismissed] = useState<Set<string>>(new Set(dismissedIds));
   const [expanded, setExpanded] = useState(false);
 
+  // `t` is part of the input: switching language re-derives the sentences.
   const all = useMemo(
-    () => buildRecommendations(tasks, now, { currentMemberId, dismissedIds: dismissed }),
-    [tasks, now, currentMemberId, dismissed],
+    () => buildRecommendations(tasks, now, { currentMemberId, dismissedIds: dismissed, t }),
+    [tasks, now, currentMemberId, dismissed, t],
   );
 
   const shown = expanded ? all : all.slice(0, limit);
@@ -46,7 +49,7 @@ export function Recommendations({
       <header className="flex shrink-0 items-center gap-2 border-b border-line px-3 py-2.5">
         <Lightbulb className="h-3.5 w-3.5 text-accent-bright" />
         <h2 className="text-[13px] font-semibold tracking-[-0.01em] text-text">
-          What to do next
+          {t("recs.heading")}
         </h2>
         {all.length > 0 && (
           <span className="ml-auto text-2xs text-text-faint">{all.length}</span>
@@ -58,8 +61,8 @@ export function Recommendations({
           <EmptyState
             compact
             icon={Lightbulb}
-            title="Nothing to flag"
-            description="No blocked work, no stale tasks, no overdue pile-ups. Recommendations appear here when the board needs attention."
+            title={t("recs.empty.title")}
+            description={t("recs.empty.description")}
           />
         ) : (
           shown.map((recommendation) => {
@@ -77,7 +80,9 @@ export function Recommendations({
                     className="min-w-0 flex-1 text-left"
                   >
                     <div className="flex flex-wrap items-center gap-1.5">
-                      <Badge tone={meta.tone}>{meta.label}</Badge>
+                      <Badge tone={meta.tone}>
+                        {t(`recommendation.${recommendation.kind}.label`)}
+                      </Badge>
                       <EvidenceBadge level={recommendation.evidence} />
                     </div>
                     <p className="mt-1 text-[13px] font-medium leading-5 text-text">
@@ -87,14 +92,13 @@ export function Recommendations({
                       {recommendation.body}
                     </p>
                     <p className="mt-1 text-2xs text-text-faint">
-                      Based on {recommendation.relatedTaskIds.length}{" "}
-                      {recommendation.relatedTaskIds.length === 1 ? "task" : "tasks"}
+                      {t("recs.basedOn", { count: recommendation.relatedTaskIds.length })}
                     </p>
                   </button>
 
-                  <Tooltip content="Dismiss">
+                  <Tooltip content={t("recs.dismiss")}>
                     <button
-                      aria-label={`Dismiss: ${recommendation.title}`}
+                      aria-label={t("recs.dismissNamed", { title: recommendation.title })}
                       onClick={() => {
                         setDismissed((prev) => new Set(prev).add(recommendation.id));
                         void dismissRecommendation({
@@ -120,7 +124,9 @@ export function Recommendations({
       {all.length > limit && (
         <div className="shrink-0 border-t border-line px-3 py-1.5">
           <Button variant="ghost" size="sm" onClick={() => setExpanded((value) => !value)}>
-            {expanded ? "Show fewer" : `Show ${all.length - limit} more`}
+            {expanded
+              ? t("recs.showFewer")
+              : t("recs.showMore", { count: all.length - limit })}
           </Button>
         </div>
       )}

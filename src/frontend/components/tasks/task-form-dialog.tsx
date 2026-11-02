@@ -14,8 +14,9 @@ import {
   type MemberSummary,
   type TaskView,
 } from "@/shared/domain/types";
-import { categoryMeta, priorityMeta, statusMeta } from "@/shared/domain/labels";
-import { toDateInputValue } from "@/frontend/lib/format";
+import type { TranslationKey } from "@/shared/i18n";
+import { useT } from "@/frontend/i18n";
+import { toDateInputValue } from "@/frontend/i18n/format";
 import { Button } from "@/frontend/components/ui/button";
 import {
   Dialog,
@@ -37,11 +38,13 @@ import {
   Textarea,
 } from "@/frontend/components/ui/field";
 
+/**
+ * Validation messages are translation keys, resolved where they are rendered.
+ * The schema is built once at module scope, long before anyone has picked a
+ * language, so it cannot hold finished sentences.
+ */
 const schema = z.object({
-  title: z
-    .string()
-    .trim()
-    .min(3, "Give the task a title of at least 3 characters."),
+  title: z.string().trim().min(3, "form.field.titleTooShort"),
   description: z.string().trim().optional(),
   ownerMemberId: z.string(),
   status: z.enum(TASK_STATUSES),
@@ -63,6 +66,7 @@ export function TaskFormDialog({
   task,
   defaultOwnerId,
   defaultStatus,
+  defaultPriority,
   onSaved,
 }: {
   open: boolean;
@@ -72,10 +76,12 @@ export function TaskFormDialog({
   task?: TaskView | null;
   defaultOwnerId?: string | null;
   defaultStatus?: TaskView["status"];
+  defaultPriority?: TaskView["priority"];
   onSaved?: (task: TaskView) => void;
 }) {
   const editing = Boolean(task);
   const router = useRouter();
+  const t = useT();
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -101,7 +107,7 @@ export function TaskFormDialog({
       description: task?.description ?? "",
       ownerMemberId: task?.owner?.id ?? defaultOwnerId ?? UNASSIGNED,
       status: task?.status ?? defaultStatus ?? "TODO",
-      priority: task?.priority ?? "MEDIUM",
+      priority: task?.priority ?? defaultPriority ?? "MEDIUM",
       category: task?.category ?? "GENERAL",
       dueDate: toDateInputValue(task?.dueDate),
       labels: task?.labels.join(", ") ?? "",
@@ -144,16 +150,13 @@ export function TaskFormDialog({
       : await createTask(payload);
 
     if (!result.ok) {
-      toast.error(
-        editing ? "Could not save the task" : "Could not create the task",
-        {
-          description: result.error,
-        },
-      );
+      toast.error(t(editing ? "form.saveFailed" : "form.createFailed"), {
+        description: result.error,
+      });
       return;
     }
 
-    toast.success(editing ? "Task saved" : "Task created", {
+    toast.success(t(editing ? "form.saved" : "form.created"), {
       description: result.data.title,
     });
 
@@ -175,42 +178,44 @@ export function TaskFormDialog({
           className="flex min-h-0 flex-col"
         >
           <DialogHeader>
-            <DialogTitle>{editing ? "Edit task" : "New task"}</DialogTitle>
+            <DialogTitle>{t(editing ? "form.title.edit" : "form.title.create")}</DialogTitle>
             <DialogDescription>
-              {editing
-                ? "Changes are recorded in the activity feed."
-                : "Tasks you create here are confirmed commitments, not suggestions."}
+              {t(editing ? "form.description.edit" : "form.description.create")}
             </DialogDescription>
           </DialogHeader>
 
           <DialogBody className="space-y-4">
             <Field
-              label="Title"
+              label={t("form.field.title")}
               htmlFor="task-title"
-              error={form.formState.errors.title?.message}
+              error={
+                form.formState.errors.title?.message
+                  ? t(form.formState.errors.title.message as TranslationKey)
+                  : undefined
+              }
             >
               <Input
                 id="task-title"
                 autoFocus
-                placeholder="What needs to happen?"
+                placeholder={t("form.field.titlePlaceholder")}
                 {...form.register("title")}
               />
             </Field>
 
             <Field
-              label="Description"
+              label={t("form.field.description")}
               htmlFor="task-description"
-              hint="Markdown · images once it exists"
+              hint={t("form.field.descriptionHint")}
             >
               <Textarea
                 id="task-description"
-                placeholder="Context, acceptance criteria, links…"
+                placeholder={t("form.field.descriptionPlaceholder")}
                 {...form.register("description")}
               />
             </Field>
 
             <div className="grid gap-4 sm:grid-cols-2">
-              <Field label="Owner">
+              <Field label={t("tasks.facet.owner")}>
                 <Controller
                   control={form.control}
                   name="ownerMemberId"
@@ -220,7 +225,7 @@ export function TaskFormDialog({
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value={UNASSIGNED}>Unassigned</SelectItem>
+                        <SelectItem value={UNASSIGNED}>{t("common.unassigned")}</SelectItem>
                         {members.map((m) => (
                           <SelectItem key={m.id} value={m.id}>
                             {m.name}
@@ -232,7 +237,7 @@ export function TaskFormDialog({
                 />
               </Field>
 
-              <Field label="Status">
+              <Field label={t("tasks.facet.status")}>
                 <Controller
                   control={form.control}
                   name="status"
@@ -244,7 +249,7 @@ export function TaskFormDialog({
                       <SelectContent>
                         {TASK_STATUSES.map((s) => (
                           <SelectItem key={s} value={s}>
-                            {statusMeta[s].label}
+                            {t(`status.${s}.label`)}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -253,7 +258,7 @@ export function TaskFormDialog({
                 />
               </Field>
 
-              <Field label="Priority">
+              <Field label={t("tasks.facet.priority")}>
                 <Controller
                   control={form.control}
                   name="priority"
@@ -265,7 +270,7 @@ export function TaskFormDialog({
                       <SelectContent>
                         {TASK_PRIORITIES.map((p) => (
                           <SelectItem key={p} value={p}>
-                            {priorityMeta[p].label}
+                            {t(`priority.${p}.label`)}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -274,7 +279,7 @@ export function TaskFormDialog({
                 />
               </Field>
 
-              <Field label="Category">
+              <Field label={t("tasks.facet.category")}>
                 <Controller
                   control={form.control}
                   name="category"
@@ -286,7 +291,7 @@ export function TaskFormDialog({
                       <SelectContent>
                         {TASK_CATEGORIES.map((c) => (
                           <SelectItem key={c} value={c}>
-                            {categoryMeta[c].label}
+                            {t(`category.${c}.label`)}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -295,7 +300,11 @@ export function TaskFormDialog({
                 />
               </Field>
 
-              <Field label="Due date" htmlFor="task-due" hint="Optional">
+              <Field
+                label={t("form.field.dueDate")}
+                htmlFor="task-due"
+                hint={t("common.optional")}
+              >
                 <Input
                   id="task-due"
                   type="date"
@@ -304,25 +313,29 @@ export function TaskFormDialog({
               </Field>
 
               <Field
-                label="Estimate"
+                label={t("form.field.estimate")}
                 htmlFor="task-estimate"
-                hint="Hours, optional"
+                hint={t("form.field.estimateHint")}
               >
                 <Input
                   id="task-estimate"
                   type="number"
                   min="0"
                   step="0.5"
-                  placeholder="e.g. 4"
+                  placeholder={t("form.field.estimatePlaceholder")}
                   {...form.register("estimateHours")}
                 />
               </Field>
             </div>
 
-            <Field label="Labels" htmlFor="task-labels" hint="Comma separated">
+            <Field
+              label={t("form.field.labels")}
+              htmlFor="task-labels"
+              hint={t("form.field.labelsHint")}
+            >
               <Input
                 id="task-labels"
-                placeholder="auth, pre-demo"
+                placeholder={t("form.field.labelsPlaceholder")}
                 {...form.register("labels")}
               />
             </Field>
@@ -334,15 +347,15 @@ export function TaskFormDialog({
               variant="ghost"
               onClick={() => onOpenChange(false)}
             >
-              Cancel
+              {t("common.cancel")}
             </Button>
             <Button
               type="submit"
               variant="primary"
               loading={form.formState.isSubmitting}
-              loadingLabel="Saving…"
+              loadingLabel={t("common.saving")}
             >
-              {editing ? "Save changes" : "Create task"}
+              {t(editing ? "form.submit.edit" : "form.submit.create")}
             </Button>
           </DialogFooter>
         </form>

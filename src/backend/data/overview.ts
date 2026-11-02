@@ -10,15 +10,21 @@ import type { MemberSummary, SessionContext } from "@/shared/domain/types";
  * it must not pull the whole task list just to draw a badge.
  */
 
+/**
+ * Which attention-worthy condition fired, and how many rows it covers.
+ *
+ * Deliberately not a sentence: the wording and the link live in the header,
+ * which can re-render in a different language without asking the server for
+ * anything. A `title` string built here would be stuck in whatever language
+ * this request happened to use.
+ */
+export type ShellAlert = { id: ShellAlertId; count: number };
+
+export type ShellAlertId = "overdue" | "today" | "review" | "unclear" | "transcripts";
+
 export type ShellData = {
   counts: { pendingReview: number; myOpen: number; theirOpen: number };
-  alerts: {
-    id: string;
-    href: string;
-    title: string;
-    detail: string;
-    tone: string;
-  }[];
+  alerts: ShellAlert[];
   counterpart: MemberSummary | null;
 };
 
@@ -64,53 +70,13 @@ export async function getShellData(
       }),
     ]);
 
-  const alerts: ShellData["alerts"] = [];
+  const alerts: ShellAlert[] = [];
 
-  if (overdue > 0) {
-    alerts.push({
-      id: "overdue",
-      href: "/my-tasks",
-      title: `${overdue} of your tasks ${overdue === 1 ? "is" : "are"} overdue`,
-      detail: "Re-date what still matters and drop what does not.",
-      tone: "tone-danger",
-    });
-  }
-  if (dueToday > 0) {
-    alerts.push({
-      id: "today",
-      href: "/my-tasks",
-      title: `${dueToday} ${dueToday === 1 ? "task is" : "tasks are"} due today`,
-      detail: "Assigned to you.",
-      tone: "tone-warning",
-    });
-  }
-  if (pendingReview > 0) {
-    alerts.push({
-      id: "review",
-      href: "/review",
-      title: `${pendingReview} proposed ${pendingReview === 1 ? "task" : "tasks"} awaiting review`,
-      detail: "Approve, edit or reject them before they become commitments.",
-      tone: "tone-accent",
-    });
-  }
-  if (needsReview > 0) {
-    alerts.push({
-      id: "unclear",
-      href: "/all-tasks",
-      title: `${needsReview} ${needsReview === 1 ? "task needs" : "tasks need"} a decision`,
-      detail: "The owner or deadline was left unclear.",
-      tone: "tone-warning",
-    });
-  }
-  if (awaiting > 0) {
-    alerts.push({
-      id: "transcripts",
-      href: "/meetings",
-      title: `${awaiting} ${awaiting === 1 ? "meeting is" : "meetings are"} waiting on a transcript`,
-      detail: "Add one manually, or check the Google connection.",
-      tone: "tone-info",
-    });
-  }
+  if (overdue > 0) alerts.push({ id: "overdue", count: overdue });
+  if (dueToday > 0) alerts.push({ id: "today", count: dueToday });
+  if (pendingReview > 0) alerts.push({ id: "review", count: pendingReview });
+  if (needsReview > 0) alerts.push({ id: "unclear", count: needsReview });
+  if (awaiting > 0) alerts.push({ id: "transcripts", count: awaiting });
 
   return {
     counts: { pendingReview, myOpen, theirOpen },

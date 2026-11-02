@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { formatRelative } from "@/frontend/lib/format";
+import { useI18n } from "@/frontend/i18n";
 
 /**
  * "2 minutes ago", without the hydration mismatch.
@@ -19,6 +19,7 @@ export function RelativeTime({
   value: string | Date | null | undefined;
   className?: string;
 }) {
+  const { f } = useI18n();
   const [, setTick] = useState(0);
 
   useEffect(() => {
@@ -28,7 +29,7 @@ export function RelativeTime({
 
   return (
     <span className={className} suppressHydrationWarning>
-      {formatRelative(value)}
+      {f.relative(value)}
     </span>
   );
 }

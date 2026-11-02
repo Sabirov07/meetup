@@ -1,3 +1,4 @@
+import type { Translate } from "../i18n";
 import type { RecommendationKind, RecommendationView, TaskView } from "./types";
 import { blockingImpact, daysUntil, isOverdue, unmetDependencies } from "./priority";
 
@@ -11,6 +12,11 @@ import { blockingImpact, daysUntil, isOverdue, unmetDependencies } from "./prior
  *
  * Model-written recommendations are a separate, clearly-labelled source — see
  * `lib/ai`. Deterministic ones carry `isDeterministic: true`.
+ *
+ * The wording is handed in as `t` rather than written here, because these
+ * sentences are read on screen: a recommendation computed in one language and
+ * shown in another would be the one piece of the dashboard that ignores the
+ * language switch.
  */
 
 /** djb2 — stable across processes, so ids survive a restart. */
@@ -52,8 +58,9 @@ const ACCESS_CATEGORIES = new Set(["FINANCE", "ADMINISTRATION", "BUSINESS_OPS"])
 export function buildRecommendations(
   tasks: TaskView[],
   now: Date,
-  options: { currentMemberId: string; dismissedIds?: Set<string> } ,
+  options: { currentMemberId: string; dismissedIds?: Set<string>; t: Translate },
 ): RecommendationView[] {
+  const { t } = options;
   const dismissed = options.dismissedIds ?? new Set<string>();
   const open = tasks.filter((t) => t.status !== "COMPLETED");
   const out: RecommendationView[] = [];
@@ -86,10 +93,20 @@ export function buildRecommendations(
     const first = unmet[0]!;
     push(
       "UNBLOCK_DEPENDENCY",
-      `Finish “${first.title}” before “${task.title}”`,
+      t("rec.dependency.title", { blocker: first.title, task: task.title }),
       unmet.length === 1
-        ? `“${task.title}” is waiting on “${first.title}”, which is still ${first.status === "IN_PROGRESS" ? "in progress" : "open"}.`
-        : `“${task.title}” is waiting on ${unmet.length} unfinished tasks, starting with “${first.title}”.`,
+        ? t("rec.dependency.body.single", {
+            task: task.title,
+            blocker: first.title,
+            state: t(
+              first.status === "IN_PROGRESS" ? "rec.state.inProgress" : "rec.state.open",
+            ),
+          })
+        : t("rec.dependency.body.many", {
+            task: task.title,
+            blocker: first.title,
+            count: unmet.length,
+          }),
       [task.id, ...unmet.map((d) => d.id)],
     );
   }
@@ -100,10 +117,10 @@ export function buildRecommendations(
     if (blocks < 2) continue;
     push(
       "HIGH_IMPACT_BLOCKER",
-      `“${task.title}” is blocking ${blocks} tasks`,
-      `Clearing this one unblocks ${blocks} other pieces of work${
-        task.status === "TODO" ? ", and it has not been started yet" : ""
-      }. It is the highest-leverage thing on the board.`,
+      t("rec.blocker.title", { task: task.title, count: blocks }),
+      t("rec.blocker.body", {
+        notStarted: task.status === "TODO" ? t("rec.blocker.notStarted") : "",
+      }),
       [task.id, ...task.dependents.filter((d) => d.status !== "COMPLETED").map((d) => d.id)],
     );
   }
@@ -118,10 +135,10 @@ export function buildRecommendations(
     if (task.status !== "TODO" && task.status !== "BLOCKED") continue;
     push(
       "REQUEST_ACCESS",
-      `Follow up with ${task.owner.name} on “${task.title}”`,
-      blocksMine
-        ? `This sits with ${task.owner.name} and other work is waiting behind it.`
-        : `This sits with ${task.owner.name} and has not moved. A nudge may be all it needs.`,
+      t("rec.followUp.title", { name: task.owner.name, task: task.title }),
+      t(blocksMine ? "rec.followUp.body.blocking" : "rec.followUp.body.nudge", {
+        name: task.owner.name,
+      }),
       [task.id],
       blocksMine ? "CONFIRMED" : "RECOMMENDED",
     );
@@ -133,8 +150,8 @@ export function buildRecommendations(
     if (task.priority !== "URGENT" && task.priority !== "HIGH") continue;
     push(
       "CLARIFY_DEADLINE",
-      `Agree a date for “${task.title}”`,
-      `This is marked ${task.priority.toLowerCase()} but has no deadline, so it cannot be scheduled or tracked against anything.`,
+      t("rec.deadline.title", { task: task.title }),
+      t("rec.deadline.body", { priority: t(`priority.${task.priority}.label`) }),
       [task.id],
       "RECOMMENDED",
     );
@@ -148,12 +165,12 @@ export function buildRecommendations(
       if (similarity(a.title, b.title) < 0.6) continue;
       push(
         "POSSIBLE_DUPLICATE",
-        `“${a.title}” and “${b.title}” look like the same work`,
-        `Both are open and their titles overlap heavily. Worth merging one into the other${
+        t("rec.duplicate.title", { a: a.title, b: b.title }),
+        t(
           a.owner && b.owner && a.owner.id !== b.owner.id
-            ? ` — they are currently owned by different people.`
-            : "."
-        }`,
+            ? "rec.duplicate.body.differentOwners"
+            : "rec.duplicate.body.same",
+        ),
         [a.id, b.id],
         "RECOMMENDED",
       );
@@ -167,8 +184,8 @@ export function buildRecommendations(
     if (idleDays < 7) continue;
     push(
       "STALE_TASK",
-      `“${task.title}” has not moved in ${idleDays} days`,
-      `It is still marked in progress. Either it is actually blocked, or it is done and needs closing.`,
+      t("rec.stale.title", { task: task.title, count: idleDays }),
+      t("rec.stale.body"),
       [task.id],
       "CONFIRMED",
     );
@@ -183,12 +200,12 @@ export function buildRecommendations(
   }
   for (const [, group] of overdueByOwner) {
     if (group.length < 3) continue;
-    const ownerName = group[0]!.owner?.name ?? "Unassigned";
+    const ownerName = group[0]!.owner?.name ?? t("common.unassigned");
     push(
       "OVERDUE_CLUSTER",
-      `${group.length} overdue tasks for ${ownerName}`,
-      `Dates have slipped on ${group.length} tasks. Rather than working through them, it is usually faster to re-date them honestly and drop what no longer matters.`,
-      group.map((t) => t.id),
+      t("rec.overdueCluster.title", { count: group.length, name: ownerName }),
+      t("rec.overdueCluster.body"),
+      group.map((task) => task.id),
       "CONFIRMED",
     );
   }
@@ -220,21 +237,21 @@ export function buildRecommendations(
 export { stableId as recommendationId };
 
 /** Used by the dashboard's "what needs attention" line. */
-export function attentionSummary(tasks: TaskView[], now: Date): string {
-  const open = tasks.filter((t) => t.status !== "COMPLETED");
-  const overdue = open.filter((t) => isOverdue(t, now)).length;
-  const today = open.filter((t) => daysUntil(t.dueDate, now) === 0).length;
-  const blocked = open.filter((t) => t.status === "BLOCKED").length;
+export function attentionSummary(tasks: TaskView[], now: Date, t: Translate): string {
+  const open = tasks.filter((task) => task.status !== "COMPLETED");
+  const overdue = open.filter((task) => isOverdue(task, now)).length;
+  const today = open.filter((task) => daysUntil(task.dueDate, now) === 0).length;
+  const blocked = open.filter((task) => task.status === "BLOCKED").length;
 
   const parts: string[] = [];
-  if (overdue) parts.push(`${overdue} overdue`);
-  if (today) parts.push(`${today} due today`);
-  if (blocked) parts.push(`${blocked} waiting`);
+  if (overdue) parts.push(t("attention.overdue", { count: overdue }));
+  if (today) parts.push(t("attention.dueToday", { count: today }));
+  if (blocked) parts.push(t("attention.waiting", { count: blocked }));
 
   if (parts.length === 0) {
     return open.length === 0
-      ? "Nothing open. A good moment to plan the next block of work."
-      : `${open.length} open ${open.length === 1 ? "task" : "tasks"}, none overdue. The board is in good shape.`;
+      ? t("attention.allClear")
+      : t("attention.noneOverdue", { count: open.length });
   }
-  return `${parts.join(" · ")}.`;
+  return t("attention.summary", { parts: parts.join(" · ") });
 }

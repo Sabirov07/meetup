@@ -3,6 +3,7 @@
 import {
   CalendarClock,
   CornerDownLeft,
+  Library,
   Loader2,
   Search,
   SquareCheckBig,
@@ -11,6 +12,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { searchWorkspace, type SearchHit } from "@/backend/actions/search";
 import { priorityMeta, statusMeta } from "@/shared/domain/labels";
+import { useI18n, useT } from "@/frontend/i18n";
 import { cn } from "@/frontend/lib/utils";
 import { Badge, Dot, Kbd } from "@/frontend/components/ui/badge";
 import { Dialog, DialogContent, DialogTitle } from "@/frontend/components/ui/dialog";
@@ -35,6 +37,8 @@ export function CommandPalette({
   onOpenChange: (open: boolean) => void;
   onOpenTask?: (taskId: string) => void;
 }) {
+  const t = useT();
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
@@ -42,7 +46,7 @@ export function CommandPalette({
         className="top-[18%] max-w-xl translate-y-0 p-0"
         aria-describedby={undefined}
       >
-        <DialogTitle className="sr-only">Search the workspace</DialogTitle>
+        <DialogTitle className="sr-only">{t("palette.title")}</DialogTitle>
         {/* Inside the portal: closing unmounts this and clears the query. */}
         <PaletteBody onOpenChange={onOpenChange} onOpenTask={onOpenTask} />
       </DialogContent>
@@ -58,6 +62,7 @@ function PaletteBody({
   onOpenTask?: (taskId: string) => void;
 }) {
   const router = useRouter();
+  const { t } = useI18n();
   const [query, setQuery] = useState("");
   const [hits, setHits] = useState<SearchHit[]>([]);
   const [loading, setLoading] = useState(false);
@@ -94,13 +99,16 @@ function PaletteBody({
   // Derived, not stored: below the minimum length there are simply no hits.
   const visibleHits = searching ? hits : [];
 
-  const navMatches = allNavItems.filter((item) =>
-    item.label.toLowerCase().includes(query.trim().toLowerCase()),
-  );
+  // Matched against the *translated* label, so searching in the language on
+  // screen finds the page the person can see.
+  const needle = query.trim().toLowerCase();
+  const navMatches = allNavItems
+    .map((item) => ({ ...item, label: t(item.labelKey) }))
+    .filter((item) => item.label.toLowerCase().includes(needle));
 
   const commands: Command[] = [
     ...visibleHits.map((hit): Command => ({ kind: "hit", hit })),
-    ...(query.trim().length === 0 || navMatches.length > 0
+    ...(needle.length === 0 || navMatches.length > 0
       ? navMatches.map((item): Command => ({
           kind: "nav",
           href: item.href,
@@ -120,6 +128,10 @@ function PaletteBody({
       router.push(`/meetings/${command.hit.id}`);
       return;
     }
+    if (command.hit.kind === "doc") {
+      router.push(`/knowledge/${command.hit.id}`);
+      return;
+    }
     if (onOpenTask) onOpenTask(command.hit.id);
     else router.push(`/all-tasks?task=${command.hit.id}`);
   }
@@ -136,8 +148,8 @@ function PaletteBody({
           ref={inputRef}
           value={query}
           onChange={(event) => setQuery(event.target.value)}
-          placeholder="Search tasks, meetings, or jump to a page…"
-          aria-label="Search"
+          placeholder={t("palette.placeholder")}
+          aria-label={t("common.search")}
           className="min-w-0 flex-1 bg-transparent text-[13px] text-text outline-none placeholder:text-text-faint"
           onKeyDown={(event) => {
             if (event.key === "ArrowDown") {
@@ -159,8 +171,8 @@ function PaletteBody({
         {commands.length === 0 ? (
           <p className="px-2 py-6 text-center text-xs text-text-faint">
             {query.trim().length < 2
-              ? "Type at least two characters to search."
-              : `Nothing matches “${query.trim()}”.`}
+              ? t("palette.minChars")
+              : t("palette.noResults", { query: query.trim() })}
           </p>
         ) : (
           commands.map((command, index) => {
@@ -179,7 +191,7 @@ function PaletteBody({
                   <>
                     <command.icon className="h-3.5 w-3.5 shrink-0 text-text-faint" />
                     <span className="min-w-0 flex-1 truncate text-[13px] text-text-secondary">
-                      Go to {command.label}
+                      {t("palette.goTo", { label: command.label })}
                     </span>
                   </>
                 ) : command.hit.kind === "task" ? (
@@ -191,7 +203,7 @@ function PaletteBody({
                       </span>
                       <span className="flex items-center gap-1.5 text-2xs text-text-faint">
                         <Dot tone={statusMeta[command.hit.status].tone} />
-                        {statusMeta[command.hit.status].label}
+                        {t(`status.${command.hit.status}.label`)}
                         {command.hit.ownerName && (
                           <>
                             <span aria-hidden>·</span>
@@ -201,8 +213,25 @@ function PaletteBody({
                       </span>
                     </span>
                     <Badge tone={priorityMeta[command.hit.priority].tone}>
-                      {priorityMeta[command.hit.priority].label}
+                      {t(`priority.${command.hit.priority}.label`)}
                     </Badge>
+                  </>
+                ) : command.hit.kind === "doc" ? (
+                  <>
+                    <Library className="h-3.5 w-3.5 shrink-0 text-text-faint" />
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-[13px] text-text">
+                        {command.hit.title}
+                      </span>
+                      {command.hit.excerpt && (
+                        <span className="block truncate text-2xs text-text-faint">
+                          {command.hit.excerpt}
+                        </span>
+                      )}
+                    </span>
+                    <span className="shrink-0 text-2xs text-text-faint">
+                      {t("palette.kind.page")}
+                    </span>
                   </>
                 ) : (
                   <>
@@ -210,7 +239,7 @@ function PaletteBody({
                     <span className="min-w-0 flex-1 truncate text-[13px] text-text">
                       {command.hit.title}
                     </span>
-                    <span className="text-2xs text-text-faint">Meeting</span>
+                    <span className="text-2xs text-text-faint">{t("palette.kind.meeting")}</span>
                   </>
                 )}
                 {selected && (

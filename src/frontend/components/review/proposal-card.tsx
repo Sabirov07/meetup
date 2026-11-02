@@ -10,7 +10,8 @@ import {
   type ProposalView,
   type TaskPriority,
 } from "@/shared/domain/types";
-import { categoryMeta, evidenceMeta, priorityMeta } from "@/shared/domain/labels";
+import { evidenceMeta } from "@/shared/domain/labels";
+import { useT } from "@/frontend/i18n";
 import { cn } from "@/frontend/lib/utils";
 import { Avatar } from "@/frontend/components/ui/avatar";
 import { Badge } from "@/frontend/components/ui/badge";
@@ -48,6 +49,7 @@ export function ProposalCard({
   onSelectedChange?: (selected: boolean) => void;
   onResolved: (id: string) => void;
 }) {
+  const t = useT();
   const [title, setTitle] = useState(proposal.title);
   const [description, setDescription] = useState(proposal.description ?? "");
   const [ownerId, setOwnerId] = useState(proposal.suggestedOwner?.id ?? UNASSIGNED);
@@ -76,10 +78,10 @@ export function ProposalCard({
     });
     setBusy(null);
     if (!result.ok) {
-      toast.error("Could not approve that task", { description: result.error });
+      toast.error(t("proposal.approveFailed"), { description: result.error });
       return;
     }
-    toast.success("Task created", { description: result.data.title });
+    toast.success(t("form.created"), { description: result.data.title });
     onResolved(proposal.id);
   }
 
@@ -88,10 +90,10 @@ export function ProposalCard({
     const result = await rejectProposal(proposal.id);
     setBusy(null);
     if (!result.ok) {
-      toast.error("Could not reject that proposal", { description: result.error });
+      toast.error(t("proposal.rejectFailed"), { description: result.error });
       return;
     }
-    toast.success("Proposal rejected");
+    toast.success(t("proposal.rejected"));
     onResolved(proposal.id);
   }
 
@@ -109,7 +111,7 @@ export function ProposalCard({
             <Checkbox
               checked={selected}
               onCheckedChange={(value) => onSelectedChange(Boolean(value))}
-              aria-label={`Select ${proposal.title}`}
+              aria-label={t("proposal.select", { title: proposal.title })}
             />
           </span>
         )}
@@ -117,15 +119,15 @@ export function ProposalCard({
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-1.5">
             {proposal.isExplicitCommitment ? (
-              <Tooltip content="Someone said in the conversation that they would do this.">
+              <Tooltip content={t("proposal.committedTip")}>
                 <span>
-                  <Badge tone="tone-success">Committed to</Badge>
+                  <Badge tone="tone-success">{t("proposal.committed")}</Badge>
                 </span>
               </Tooltip>
             ) : (
-              <Tooltip content="Nobody explicitly accepted this. It was read from context.">
+              <Tooltip content={t("proposal.inferredTip")}>
                 <span>
-                  <Badge tone="tone-info">Inferred task</Badge>
+                  <Badge tone="tone-info">{t("proposal.inferred")}</Badge>
                 </span>
               </Tooltip>
             )}
@@ -133,21 +135,21 @@ export function ProposalCard({
             {proposal.needsReview && (
               <Badge tone="tone-warning">
                 <AlertTriangle className="h-2.5 w-2.5" />
-                Needs a decision
+                {t("proposal.needsDecision")}
               </Badge>
             )}
 
             {proposal.isSample && (
-              <Tooltip content="Seeded example content, not a real transcript analysis.">
+              <Tooltip content={t("proposal.sampleTip")}>
                 <span>
                   <Badge tone="tone-neutral" variant="outline">
-                    Sample data
+                    {t("meetings.sampleData")}
                   </Badge>
                 </span>
               </Tooltip>
             )}
 
-            <Badge tone="tone-neutral">{categoryMeta[proposal.category].label}</Badge>
+            <Badge tone="tone-neutral">{t(`category.${proposal.category}.label`)}</Badge>
           </div>
 
           {editing ? (
@@ -166,7 +168,7 @@ export function ProposalCard({
             <Textarea
               value={description}
               onChange={(event) => setDescription(event.target.value)}
-              placeholder="Description"
+              placeholder={t("proposal.descriptionPlaceholder")}
               className="mt-2 min-h-[56px] text-xs"
             />
           ) : (
@@ -190,7 +192,7 @@ export function ProposalCard({
       {/* Suggested values, each with how sure the model is */}
       <div className="mt-3 grid gap-2.5 border-t border-line px-3 py-3 sm:grid-cols-3">
         <SuggestedField
-          label="Owner"
+          label={t("tasks.facet.owner")}
           evidence={proposal.ownerEvidence}
           rationale={proposal.ownerRationale}
           highlight={ownerUncertain}
@@ -202,7 +204,7 @@ export function ProposalCard({
                   member={members.find((m) => m.id === ownerId) ?? null}
                   size="xs"
                 />
-                {members.find((m) => m.id === ownerId)?.name ?? "Unassigned"}
+                {members.find((m) => m.id === ownerId)?.name ?? t("common.unassigned")}
               </span>
             </SelectTrigger>
             <SelectContent>
@@ -211,13 +213,13 @@ export function ProposalCard({
                   {member.name}
                 </SelectItem>
               ))}
-              <SelectItem value={UNASSIGNED}>Unassigned</SelectItem>
+              <SelectItem value={UNASSIGNED}>{t("common.unassigned")}</SelectItem>
             </SelectContent>
           </Select>
         </SuggestedField>
 
         <SuggestedField
-          label="Priority"
+          label={t("tasks.facet.priority")}
           evidence={proposal.priorityEvidence}
           rationale={proposal.priorityRationale}
         >
@@ -226,12 +228,12 @@ export function ProposalCard({
             onValueChange={(value) => setPriority(value as TaskPriority)}
           >
             <SelectTrigger size="sm" className="w-full">
-              {priorityMeta[priority].label}
+              {t(`priority.${priority}.label`)}
             </SelectTrigger>
             <SelectContent>
               {TASK_PRIORITIES.map((value) => (
                 <SelectItem key={value} value={value}>
-                  {priorityMeta[value].label}
+                  {t(`priority.${value}.label`)}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -239,12 +241,10 @@ export function ProposalCard({
         </SuggestedField>
 
         <SuggestedField
-          label="Deadline"
+          label={t("tasks.facet.deadline")}
           evidence={proposal.dueDateEvidence}
           rationale={
-            proposal.suggestedDueDate
-              ? undefined
-              : "No date was mentioned in the conversation."
+            proposal.suggestedDueDate ? undefined : t("proposal.noDateMentioned")
           }
         >
           <Input
@@ -266,11 +266,8 @@ export function ProposalCard({
           ))}
           {proposal.dependsOnTitles.length > 0 && (
             <p className="text-2xs leading-4 text-text-muted">
-              Waiting on: {proposal.dependsOnTitles.join(", ")}
-              <span className="text-text-faint">
-                {" "}
-                — linked automatically if a matching task exists.
-              </span>
+              {t("proposal.waitingOn", { titles: proposal.dependsOnTitles.join(", ") })}
+              <span className="text-text-faint">{t("proposal.waitingOnNote")}</span>
             </p>
           )}
         </div>
@@ -283,14 +280,14 @@ export function ProposalCard({
           size="sm"
           onClick={() => void approve()}
           loading={busy === "approve"}
-          loadingLabel="Creating…"
+          loadingLabel={t("common.creating")}
         >
           <Check className="h-3 w-3" />
-          {edited ? "Approve with my edits" : "Approve"}
+          {t(edited ? "proposal.approveEdited" : "proposal.approve")}
         </Button>
 
         <Button variant="ghost" size="sm" onClick={() => setEditing((value) => !value)}>
-          {editing ? "Done editing" : "Edit text"}
+          {t(editing ? "proposal.doneEditing" : "proposal.editText")}
         </Button>
 
         <Button
@@ -301,7 +298,7 @@ export function ProposalCard({
           loading={busy === "reject"}
         >
           <X className="h-3 w-3" />
-          Reject
+          {t("proposal.reject")}
         </Button>
       </div>
     </article>
@@ -321,15 +318,17 @@ function SuggestedField({
   highlight?: boolean;
   children: React.ReactNode;
 }) {
+  const t = useT();
   const meta = evidenceMeta[evidence];
+
   return (
     <div className={cn("min-w-0 space-y-1", highlight && "rounded-md")}>
       <div className="flex items-center justify-between gap-1.5">
         <span className="text-2xs text-text-muted">{label}</span>
-        <Tooltip content={meta.description}>
+        <Tooltip content={t(`evidence.${evidence}.description`)}>
           <span>
             <Badge tone={meta.tone} variant="outline">
-              {meta.label}
+              {t(`evidence.${evidence}.label`)}
             </Badge>
           </span>
         </Tooltip>

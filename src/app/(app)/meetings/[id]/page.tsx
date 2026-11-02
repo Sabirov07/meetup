@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { connection } from "next/server";
 import { requireSession } from "@/backend/auth/guards";
+import { getTranslator } from "@/backend/i18n/locale";
 import { getMeeting, listAnalyses } from "@/backend/data/meetings";
 import { listTasks } from "@/backend/data/tasks";
 import { isAiConfigured } from "@/backend/ai/extract";
@@ -11,8 +12,11 @@ export const instant = false;
 export async function generateMetadata(props: PageProps<"/meetings/[id]">) {
   const { id } = await props.params;
   const session = await requireSession();
-  const meeting = await getMeeting(id, session.workspace.id);
-  return { title: meeting?.title ?? "Meeting" };
+  const [meeting, { t }] = await Promise.all([
+    getMeeting(id, session.workspace.id),
+    getTranslator(),
+  ]);
+  return { title: meeting?.title ?? t("palette.kind.meeting") };
 }
 
 export default async function MeetingPage(props: PageProps<"/meetings/[id]">) {

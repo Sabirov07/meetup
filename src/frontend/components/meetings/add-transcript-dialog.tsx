@@ -5,6 +5,7 @@ import { useState, useTransition } from "react";
 import { toast } from "sonner";
 import { saveManualTranscript } from "@/backend/actions/meetings";
 import type { MeetingView } from "@/shared/domain/types";
+import { useT, useTx } from "@/frontend/i18n";
 import { Button } from "@/frontend/components/ui/button";
 import {
   Dialog,
@@ -55,6 +56,8 @@ function TranscriptForm({
   onOpenChange: (open: boolean) => void;
   onSaved?: (meeting: MeetingView) => void;
 }) {
+  const t = useT();
+  const tx = useTx();
   const [content, setContent] = useState("");
   const [pending, startTransition] = useTransition();
 
@@ -64,10 +67,10 @@ function TranscriptForm({
     startTransition(async () => {
       const result = await saveManualTranscript({ meetingId: meeting.id, content });
       if (!result.ok) {
-        toast.error("Could not save the transcript", { description: result.error });
+        toast.error(t("transcript.saveFailed"), { description: result.error });
         return;
       }
-      toast.success("Transcript saved", { description: "You can run the analysis now." });
+      toast.success(t("transcript.saved"), { description: t("transcript.savedDetail") });
       onSaved?.(result.data);
       onOpenChange(false);
     });
@@ -76,10 +79,9 @@ function TranscriptForm({
   return (
     <>
       <DialogHeader>
-        <DialogTitle>Add a transcript</DialogTitle>
+        <DialogTitle>{t("transcript.title")}</DialogTitle>
         <DialogDescription>
-          Paste the conversation for “{meeting.title}”. It is stored as a manual transcript,
-          separate from anything retrieved from Google.
+          {t("transcript.description", { title: meeting.title })}
         </DialogDescription>
       </DialogHeader>
 
@@ -87,9 +89,13 @@ function TranscriptForm({
         <div className="tone-info flex items-start gap-2 rounded-md bg-[var(--tone-bg)] px-2.5 py-2">
           <Info className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[var(--tone-fg)]" />
           <p className="text-2xs leading-4 text-text-secondary">
-            Ownership detection works from speaker labels, so keep the{" "}
-            <code className="rounded-[3px] bg-canvas px-1 font-mono">Name: what they said</code>{" "}
-            format if you can. One turn per line.
+            {tx("transcript.formatHint", {
+              format: (
+                <code className="rounded-[3px] bg-canvas px-1 font-mono">
+                  {t("transcript.formatExample")}
+                </code>
+              ),
+            })}
           </p>
         </div>
 
@@ -97,31 +103,32 @@ function TranscriptForm({
           value={content}
           onChange={(event) => setContent(event.target.value)}
           autoFocus
-          placeholder={
-            "Maya Chen: Where did the auth work land?\nAlex Morgan: Sessions are done, reset is blocked on the email account."
-          }
+          placeholder={t("transcript.placeholder")}
           className="min-h-[18rem] font-mono text-xs leading-5"
         />
 
         <p className="text-2xs text-text-faint">
           {lines > 0
-            ? `${lines} ${lines === 1 ? "line" : "lines"} · ${content.trim().length} characters`
-            : "Nothing pasted yet"}
+            ? t("transcript.stats", {
+                lines: t("transcript.lines", { count: lines }),
+                characters: content.trim().length,
+              })
+            : t("transcript.nothingPasted")}
         </p>
       </DialogBody>
 
       <DialogFooter>
         <Button variant="ghost" onClick={() => onOpenChange(false)}>
-          Cancel
+          {t("common.cancel")}
         </Button>
         <Button
           variant="primary"
           onClick={submit}
           loading={pending}
-          loadingLabel="Saving…"
+          loadingLabel={t("common.saving")}
           disabled={content.trim().length < 40}
         >
-          Save transcript
+          {t("transcript.submit")}
         </Button>
       </DialogFooter>
     </>

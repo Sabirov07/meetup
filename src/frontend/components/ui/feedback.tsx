@@ -7,6 +7,7 @@ import * as CheckboxPrimitive from "@radix-ui/react-checkbox";
 import * as SeparatorPrimitive from "@radix-ui/react-separator";
 import { AlertTriangle, Check, RotateCcw } from "lucide-react";
 import type { ComponentProps, ReactNode } from "react";
+import { useT } from "@/frontend/i18n";
 import { cn } from "@/frontend/lib/utils";
 import { Button } from "./button";
 
@@ -250,6 +251,8 @@ export function ErrorState({
   onRetry?: () => void;
   className?: string;
 }) {
+  const t = useT();
+
   return (
     <div
       className={cn(
@@ -267,7 +270,7 @@ export function ErrorState({
       {onRetry && (
         <Button size="sm" variant="secondary" className="mt-4" onClick={onRetry}>
           <RotateCcw className="h-3 w-3" />
-          Try again
+          {t("common.retry")}
         </Button>
       )}
     </div>

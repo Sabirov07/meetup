@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useMemo } from "react";
 import { computeStats } from "@/shared/domain/stats";
+import { useT } from "@/frontend/i18n";
 import { cn } from "@/frontend/lib/utils";
 import { SegmentBar } from "@/frontend/components/ui/feedback";
 import { useTasks } from "@/frontend/components/tasks/task-store";
@@ -18,6 +19,7 @@ import { useTasks } from "@/frontend/components/tasks/task-store";
  */
 export function KpiRow() {
   const { tasks, members, currentMemberId, now, setFilters } = useTasks();
+  const t = useT();
 
   const stats = useMemo(() => computeStats(tasks, members, now), [tasks, members, now]);
 
@@ -26,6 +28,7 @@ export function KpiRow() {
   const theirs = others.length === 1 ? others[0] : null;
 
   const cells: {
+    /** Already translated: several are a person's name rather than a key. */
     label: string;
     value: number;
     hint?: string;
@@ -35,31 +38,33 @@ export function KpiRow() {
     secondary?: boolean;
   }[] = [
     {
-      label: "Open",
+      label: t("kpi.open"),
       value: stats.totalOpen,
-      hint: `${stats.completionRate}% complete`,
+      hint: t("kpi.completeHint", { percent: stats.completionRate }),
       onClick: () => setFilters((prev) => ({ ...prev, statuses: [], includeCompleted: false })),
     },
     {
-      label: "Mine",
+      label: t("kpi.mine"),
       value: mine?.open ?? 0,
-      hint: mine && mine.overdue > 0 ? `${mine.overdue} overdue` : undefined,
+      hint:
+        mine && mine.overdue > 0 ? t("kpi.overdueHint", { count: mine.overdue }) : undefined,
       tone: mine && mine.overdue > 0 ? "text-danger" : undefined,
       onClick: () => setFilters((prev) => ({ ...prev, owners: [currentMemberId] })),
     },
     ...(theirs
       ? [
           {
-            label: theirs.member.name.split(" ")[0] ?? "Theirs",
+            label: theirs.member.name.split(" ")[0] ?? t("kpi.theirs"),
             value: theirs.open,
-            hint: theirs.overdue > 0 ? `${theirs.overdue} overdue` : undefined,
+            hint:
+              theirs.overdue > 0 ? t("kpi.overdueHint", { count: theirs.overdue }) : undefined,
             tone: theirs.overdue > 0 ? "text-danger" : undefined,
             onClick: () => setFilters((prev) => ({ ...prev, owners: [theirs.member.id] })),
           },
         ]
       : [
           {
-            label: "Others",
+            label: t("kpi.others"),
             value: others.reduce((sum, o) => sum + o.open, 0),
             onClick: () =>
               setFilters((prev) => ({ ...prev, owners: others.map((o) => o.member.id) })),
@@ -69,34 +74,37 @@ export function KpiRow() {
     // Keeping both counts a multiple of the column count is what stops the
     // grid ending in a half-empty row.
     {
-      label: "Overdue",
+      label: t("kpi.overdue"),
       value: stats.overdue,
       tone: stats.overdue > 0 ? "text-danger" : undefined,
       onClick: () => setFilters((prev) => ({ ...prev, dueWindow: "OVERDUE" })),
     },
     {
-      label: "In progress",
+      label: t("kpi.inProgress"),
       value: stats.inProgress,
       onClick: () => setFilters((prev) => ({ ...prev, statuses: ["IN_PROGRESS"] })),
       secondary: true,
     },
     {
-      label: "Waiting",
+      label: t("kpi.waiting"),
       value: stats.waiting,
       tone: stats.waiting > 0 ? "text-warning" : undefined,
       onClick: () => setFilters((prev) => ({ ...prev, waitingOnSomeoneOnly: true })),
       secondary: true,
     },
     {
-      label: "Due today",
+      label: t("kpi.dueToday"),
       value: stats.dueToday,
       onClick: () => setFilters((prev) => ({ ...prev, dueWindow: "TODAY" })),
       secondary: true,
     },
     {
-      label: "Completed",
+      label: t("kpi.completed"),
       value: stats.completed,
-      hint: stats.completedThisWeek > 0 ? `${stats.completedThisWeek} this week` : undefined,
+      hint:
+        stats.completedThisWeek > 0
+          ? t("kpi.thisWeek", { count: stats.completedThisWeek })
+          : undefined,
       onClick: () =>
         setFilters((prev) => ({ ...prev, statuses: ["COMPLETED"], includeCompleted: true })),
       secondary: true,
@@ -141,19 +149,19 @@ export function KpiRow() {
       {/* Status mix across the whole workspace. */}
       <div className="border-t border-line px-3 py-2">
         <div className="mb-1.5 flex items-center justify-between text-2xs">
-          <span className="text-text-muted">Workspace progress</span>
+          <span className="text-text-muted">{t("kpi.workspaceProgress")}</span>
           <Link href="/activity" className="text-accent-bright hover:underline">
-            {stats.completionRate}% complete
+            {t("kpi.completeHint", { percent: stats.completionRate })}
           </Link>
         </div>
         <SegmentBar
-          aria-label="Task status distribution"
+          aria-label={t("kpi.statusDistribution")}
           segments={[
-            { label: "Completed", value: stats.completed, tone: "bg-success" },
-            { label: "In progress", value: stats.inProgress, tone: "bg-accent" },
-            { label: "Waiting", value: stats.waiting, tone: "bg-warning" },
+            { label: t("status.COMPLETED.label"), value: stats.completed, tone: "bg-success" },
+            { label: t("status.IN_PROGRESS.label"), value: stats.inProgress, tone: "bg-accent" },
+            { label: t("status.BLOCKED.short"), value: stats.waiting, tone: "bg-warning" },
             {
-              label: "To do",
+              label: t("status.TODO.label"),
               value: Math.max(0, stats.totalOpen - stats.inProgress - stats.waiting),
               tone: "bg-line-strong",
             },

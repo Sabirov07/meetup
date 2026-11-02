@@ -30,7 +30,7 @@ import {
   statusMeta,
   transcriptStatusMeta,
 } from "@/shared/domain/labels";
-import { formatDateTime, formatWhen } from "@/frontend/lib/format";
+import { useI18n } from "@/frontend/i18n";
 import { cn } from "@/frontend/lib/utils";
 import { Avatar, AvatarStack } from "@/frontend/components/ui/avatar";
 import { Badge, Count, Dot } from "@/frontend/components/ui/badge";
@@ -70,6 +70,7 @@ export function MeetingDetail({
   aiConfigured: boolean;
   serverNow: string;
 }) {
+  const { t, f } = useI18n();
   const [meeting, setMeeting] = useState(initial);
   const [analysis] = useState(initialAnalysis);
   const [resolved, setResolved] = useState<Set<string>>(new Set());
@@ -92,7 +93,7 @@ export function MeetingDetail({
     const result = await getTranscriptText(meeting.id);
     setLoadingTranscript(false);
     if (result.ok) setTranscriptText(result.data.content);
-    else toast.error("Could not load the transcript", { description: result.error });
+    else toast.error(t("detail.loadTranscriptFailed"), { description: result.error });
   }
 
   async function runAnalysis() {
@@ -100,20 +101,20 @@ export function MeetingDetail({
     const result = await analyseMeeting(meeting.id);
     setAnalysing(false);
     if (!result.ok) {
-      toast.error("Analysis failed", { description: result.error });
+      toast.error(t("meetings.analysisFailed"), { description: result.error });
       return;
     }
     setMeeting(result.data);
-    toast.success("Analysis complete", {
-      description: "Reload to see the proposed tasks, or open AI review.",
-      action: { label: "Review", onClick: () => router.push("/review") },
+    toast.success(t("meetings.analysisComplete"), {
+      description: t("detail.analysisCompleteDetail"),
+      action: { label: t("detail.reviewAction"), onClick: () => router.push("/review") },
     });
   }
 
   async function changeStatus(status: MeetingStatus) {
     const result = await setMeetingStatus({ id: meeting.id, status });
     if (result.ok) setMeeting(result.data);
-    else toast.error("Could not update the meeting", { description: result.error });
+    else toast.error(t("meetings.updateFailed"), { description: result.error });
   }
 
   return (
@@ -123,7 +124,7 @@ export function MeetingDetail({
         className="inline-flex items-center gap-1.5 text-2xs text-text-muted transition-colors hover:text-text"
       >
         <ArrowLeft className="h-3 w-3" />
-        All meetings
+        {t("detail.allMeetings")}
       </Link>
 
       {/* Header */}
@@ -135,18 +136,21 @@ export function MeetingDetail({
                 {meeting.title}
               </h1>
               <Badge tone={meetingStatusMeta[meeting.status].tone}>
-                {meetingStatusMeta[meeting.status].label}
+                {t(`meetingStatus.${meeting.status}.label`)}
               </Badge>
               {meeting.source === "GOOGLE_MEET" && (
                 <Badge tone="tone-info" variant="outline">
-                  Google Meet
+                  {t("meetings.googleMeet")}
                 </Badge>
               )}
-              {analysis?.isSample && <Badge tone="tone-neutral">Sample data</Badge>}
+              {analysis?.isSample && (
+                <Badge tone="tone-neutral">{t("meetings.sampleData")}</Badge>
+              )}
             </div>
             <p className="mt-1 text-2xs text-text-muted">
-              {formatWhen(meeting.scheduledAt, now)}
-              {meeting.createdBy && ` · created by ${meeting.createdBy.name}`}
+              {f.when(meeting.scheduledAt, now)}
+              {meeting.createdBy &&
+                ` · ${t("detail.createdBy", { name: meeting.createdBy.name })}`}
             </p>
             {meeting.participants.length > 0 && (
               <div className="mt-2 flex items-center gap-2">
@@ -170,21 +174,21 @@ export function MeetingDetail({
               <Button variant="secondary" size="md" asChild>
                 <a href={meeting.meetUrl} target="_blank" rel="noopener noreferrer">
                   <ExternalLink className="h-3.5 w-3.5" />
-                  Join call
+                  {t("detail.joinCall")}
                 </a>
               </Button>
             )}
             {meeting.status === "IN_PROGRESS" ? (
               <Button variant="outline" size="md" onClick={() => void changeStatus("AWAITING_TRANSCRIPT")}>
                 <Square className="h-3.5 w-3.5" />
-                End meeting
+                {t("detail.endMeeting")}
               </Button>
             ) : (
               meeting.status === "SCHEDULED" ||
               (meeting.status === "READY_TO_JOIN" && (
                 <Button variant="outline" size="md" onClick={() => void changeStatus("IN_PROGRESS")}>
                   <Play className="h-3.5 w-3.5" />
-                  Start
+                  {t("detail.startMeeting")}
                 </Button>
               ))
             )}
@@ -199,7 +203,7 @@ export function MeetingDetail({
             const active = meeting.status === step;
             return (
               <div key={step} className="flex shrink-0 items-center gap-1">
-                <Tooltip content={meta.description}>
+                <Tooltip content={t(`meetingStatus.${step}.description`)}>
                   <span
                     className={cn(
                       "flex items-center gap-1.5 rounded-md px-1.5 py-1 text-2xs transition-colors",
@@ -220,7 +224,7 @@ export function MeetingDetail({
                             : "bg-line-strong",
                       )}
                     />
-                    {meta.label}
+                    {t(`meetingStatus.${step}.label`)}
                   </span>
                 </Tooltip>
                 {index < LIFECYCLE.length - 1 && (
@@ -234,7 +238,7 @@ export function MeetingDetail({
           })}
           {meeting.status === "FAILED" && (
             <Badge tone="tone-danger" className="ml-2">
-              Failed
+              {t("detail.failed")}
             </Badge>
           )}
         </div>
@@ -245,10 +249,12 @@ export function MeetingDetail({
         <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line px-4 py-2.5">
           <div className="flex items-center gap-2">
             <FileText className="h-3.5 w-3.5 text-text-faint" />
-            <h2 className="text-[13px] font-semibold tracking-[-0.01em] text-text">Transcript</h2>
+            <h2 className="text-[13px] font-semibold tracking-[-0.01em] text-text">
+              {t("detail.transcript")}
+            </h2>
             {transcript && (
               <Badge tone={transcriptStatusMeta[transcript.status].tone}>
-                {transcriptStatusMeta[transcript.status].label}
+                {t(`transcriptStatus.${transcript.status}.label`)}
               </Badge>
             )}
           </div>
@@ -261,26 +267,30 @@ export function MeetingDetail({
                 onClick={() => void loadTranscript()}
                 loading={loadingTranscript}
               >
-                View transcript
+                {t("detail.viewTranscript")}
               </Button>
             )}
             <Button variant="outline" size="sm" onClick={() => setTranscriptOpen(true)}>
-              {transcript?.hasContent ? "Replace" : "Add transcript"}
+              {t(transcript?.hasContent ? "detail.replace" : "meetings.addTranscript")}
             </Button>
             {canAnalyse && (
               <Tooltip
-                content={aiConfigured ? undefined : "Needs ANTHROPIC_API_KEY in .env.local"}
+                content={aiConfigured ? undefined : t("meetings.analyseNeedsKey")}
               >
                 <Button
                   variant="primary"
                   size="sm"
                   onClick={() => void runAnalysis()}
                   loading={analysing}
-                  loadingLabel="Analysing…"
+                  loadingLabel={t("meetings.analysing")}
                   disabled={!aiConfigured}
                 >
                   <Sparkles className="h-3 w-3" />
-                  {analysis?.status === "COMPLETED" ? "Re-analyse" : "Analyse"}
+                  {t(
+                    analysis?.status === "COMPLETED"
+                      ? "meetings.reanalyse"
+                      : "meetings.analyse",
+                  )}
                 </Button>
               </Tooltip>
             )}
@@ -292,14 +302,10 @@ export function MeetingDetail({
             <div className="space-y-2">
               <p className="text-2xs leading-5 text-text-muted">
                 {transcript
-                  ? transcriptStatusMeta[transcript.status].detail
-                  : "No transcript has been stored for this meeting."}
+                  ? t(`transcriptStatus.${transcript.status}.detail`)
+                  : t("detail.noTranscriptStored")}
               </p>
-              <p className="text-2xs leading-5 text-text-faint">
-                Google Meet only produces a transcript when transcription was switched on during
-                the call and the organiser is on a Google Workspace plan that includes it. You can
-                always paste one in manually instead.
-              </p>
+              <p className="text-2xs leading-5 text-text-faint">{t("detail.transcriptHelp")}</p>
             </div>
           ) : transcriptText ? (
             <pre className="max-h-[22rem] overflow-auto whitespace-pre-wrap rounded-md bg-canvas p-3 font-mono text-2xs leading-5 text-text-secondary">
@@ -307,8 +313,9 @@ export function MeetingDetail({
             </pre>
           ) : (
             <p className="text-2xs text-text-muted">
-              Stored{transcript.fetchedAt ? ` ${formatDateTime(transcript.fetchedAt, now)}` : ""}.
-              It is only sent to your browser when you open it.
+              {transcript.fetchedAt
+                ? t("detail.storedAt", { when: f.dateTime(transcript.fetchedAt, now) })
+                : t("detail.stored")}
             </p>
           )}
 
@@ -324,7 +331,7 @@ export function MeetingDetail({
           <div className="flex items-center gap-2 border-b border-line px-4 py-2.5">
             <Sparkles className="h-3.5 w-3.5 text-accent-bright" />
             <h2 className="text-[13px] font-semibold tracking-[-0.01em] text-text">
-              What the conversation produced
+              {t("detail.analysisHeading")}
             </h2>
             {analysis.model && (
               <span className="ml-auto text-2xs text-text-faint">{analysis.model}</span>
@@ -333,7 +340,7 @@ export function MeetingDetail({
 
           {analysis.summary && (
             <div className="px-4 py-3">
-              <p className="eyebrow mb-1">Summary</p>
+              <p className="eyebrow mb-1">{t("detail.summary")}</p>
               <p className="text-[13px] leading-6 text-text-secondary">{analysis.summary}</p>
             </div>
           )}
@@ -344,7 +351,7 @@ export function MeetingDetail({
               <div className="px-4 py-3">
                 <p className="eyebrow mb-1.5 flex items-center gap-1.5">
                   <Gavel className="h-3 w-3" />
-                  Decisions
+                  {t("detail.decisions")}
                   <Count>{analysis.decisions.length}</Count>
                 </p>
                 <ul className="space-y-2">
@@ -352,7 +359,7 @@ export function MeetingDetail({
                     <li key={index}>
                       <div className="flex items-start gap-1.5">
                         <Badge tone={evidenceMeta[decision.evidence].tone} variant="outline">
-                          {evidenceMeta[decision.evidence].label}
+                          {t(`evidence.${decision.evidence}.label`)}
                         </Badge>
                         <p className="min-w-0 flex-1 text-2xs leading-5 text-text-secondary">
                           {decision.text}
@@ -376,7 +383,7 @@ export function MeetingDetail({
               <div className="px-4 py-3">
                 <p className="eyebrow mb-1.5 flex items-center gap-1.5">
                   <CircleHelp className="h-3 w-3" />
-                  Still unresolved
+                  {t("detail.openQuestions")}
                   <Count>{analysis.openQuestions.length}</Count>
                 </p>
                 <ul className="space-y-1.5">
@@ -399,9 +406,11 @@ export function MeetingDetail({
 
       {analysis?.status === "FAILED" && (
         <section className="tone-danger rounded-xl border border-danger/35 bg-[var(--tone-bg)] px-4 py-3">
-          <p className="text-xs font-medium text-[var(--tone-fg)]">Analysis failed</p>
+          <p className="text-xs font-medium text-[var(--tone-fg)]">
+            {t("meetings.analysisFailed")}
+          </p>
           <p className="mt-0.5 text-2xs leading-4 text-text-secondary">
-            {analysis.failureReason ?? "No reason was recorded."}
+            {analysis.failureReason ?? t("detail.analysisFailedReason")}
           </p>
           {canAnalyse && aiConfigured && (
             <Button
@@ -411,7 +420,7 @@ export function MeetingDetail({
               onClick={() => void runAnalysis()}
               loading={analysing}
             >
-              Try again
+              {t("common.retry")}
             </Button>
           )}
         </section>
@@ -421,11 +430,9 @@ export function MeetingDetail({
       {pendingProposals.length > 0 && (
         <section className="space-y-2">
           <div className="flex items-center gap-2">
-            <h2 className="eyebrow">Proposed tasks</h2>
+            <h2 className="eyebrow">{t("detail.proposedTasks")}</h2>
             <Count>{pendingProposals.length}</Count>
-            <span className="text-2xs text-text-faint">
-              Not commitments until you approve them
-            </span>
+            <span className="text-2xs text-text-faint">{t("detail.notCommitments")}</span>
           </div>
           {pendingProposals.map((proposal) => (
             <ProposalCard
@@ -442,7 +449,7 @@ export function MeetingDetail({
       <section className="rounded-xl border border-line bg-surface">
         <div className="flex items-center gap-2 border-b border-line px-4 py-2.5">
           <h2 className="text-[13px] font-semibold tracking-[-0.01em] text-text">
-            Tasks from this meeting
+            {t("detail.tasksFromMeeting")}
           </h2>
           <Count>{tasks.length}</Count>
         </div>
@@ -451,12 +458,10 @@ export function MeetingDetail({
           <EmptyState
             compact
             icon={FileText}
-            title="No tasks yet"
-            description={
-              canAnalyse
-                ? "Run the analysis to extract tasks from the transcript."
-                : "Add a transcript, then run the analysis."
-            }
+            title={t("detail.noTasks")}
+            description={t(
+              canAnalyse ? "detail.noTasksCanAnalyse" : "detail.noTasksNeedTranscript",
+            )}
           />
         ) : (
           tasks.map((task) => (
@@ -476,7 +481,7 @@ export function MeetingDetail({
                 {task.title}
               </span>
               <Badge tone={priorityMeta[task.priority].tone}>
-                {priorityMeta[task.priority].label}
+                {t(`priority.${task.priority}.label`)}
               </Badge>
               <Avatar member={task.owner} size="md" />
             </div>

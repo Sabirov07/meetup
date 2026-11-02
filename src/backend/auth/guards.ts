@@ -2,6 +2,7 @@ import "server-only";
 
 import { redirect } from "next/navigation";
 import { db } from "@/backend/db";
+import { message } from "@/backend/i18n/message";
 import { initialsFor } from "@/shared/domain/labels";
 import type { MemberSummary, SessionContext, WorkspaceRole } from "@/shared/domain/types";
 import { resolveUserFromCookie } from "./session";
@@ -103,14 +104,14 @@ export async function requireSession(): Promise<SessionContext> {
 /** For server actions: throws rather than redirecting, so the client sees an error. */
 export async function requireSessionForAction(): Promise<SessionContext> {
   const context = await getSessionContext();
-  if (!context) throw new Error("Your session has expired. Please sign in again.");
+  if (!context) throw new Error(await message("errors.sessionExpired"));
   return context;
 }
 
 export async function requireAdministrator(): Promise<SessionContext> {
   const context = await requireSessionForAction();
   if (context.member.role !== "ADMINISTRATOR") {
-    throw new Error("Only a workspace administrator can do that.");
+    throw new Error(await message("errors.adminOnly"));
   }
   return context;
 }
@@ -133,7 +134,7 @@ export async function assertTaskInWorkspace(taskId: string, workspaceId: string)
       confirmedByHuman: true,
     },
   });
-  if (!task) throw new Error("That task no longer exists in this workspace.");
+  if (!task) throw new Error(await message("errors.task.gone"));
   return task;
 }
 
@@ -142,7 +143,7 @@ export async function assertMeetingInWorkspace(meetingId: string, workspaceId: s
     where: { id: meetingId, workspaceId },
     select: { id: true, title: true, status: true },
   });
-  if (!meeting) throw new Error("That meeting no longer exists in this workspace.");
+  if (!meeting) throw new Error(await message("errors.meeting.gone"));
   return meeting;
 }
 
@@ -152,6 +153,6 @@ export async function assertMemberInWorkspace(memberId: string, workspaceId: str
     where: { id: memberId, workspaceId },
     select: { id: true, user: { select: { name: true } } },
   });
-  if (!member) throw new Error("That person is not a member of this workspace.");
+  if (!member) throw new Error(await message("errors.member.notInWorkspace"));
   return member;
 }

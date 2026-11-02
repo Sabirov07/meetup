@@ -1,3 +1,6 @@
+"use client";
+
+import { useT, useTx } from "@/frontend/i18n";
 import { Button } from "@/frontend/components/ui/button";
 
 /** Google's four-colour mark, drawn at the size the button uses. */
@@ -34,18 +37,26 @@ function GoogleMark() {
  */
 export function GoogleButton({
   configured,
-  label = "Continue with Google",
+  label = "auth.google.continue",
 }: {
   configured: boolean;
-  label?: string;
+  /** Which of the two wordings to use; the sign-up page overrides it. */
+  label?: "auth.google.continue" | "auth.google.signUp";
 }) {
+  const t = useT();
+  const tx = useTx();
+
   if (!configured) {
+    const code = (name: string) => (
+      <code className="font-mono text-text-muted">{name}</code>
+    );
     return (
       <p className="rounded-md border border-dashed border-line-strong px-2.5 py-2 text-2xs leading-5 text-text-faint">
-        Google sign-in is off. Add{" "}
-        <code className="font-mono text-text-muted">GOOGLE_CLIENT_ID</code> and{" "}
-        <code className="font-mono text-text-muted">GOOGLE_CLIENT_SECRET</code> to{" "}
-        <code className="font-mono text-text-muted">.env.local</code> to switch it on.
+        {tx("auth.google.off", {
+          clientId: code("GOOGLE_CLIENT_ID"),
+          clientSecret: code("GOOGLE_CLIENT_SECRET"),
+          envFile: code(".env.local"),
+        })}
       </p>
     );
   }
@@ -54,7 +65,7 @@ export function GoogleButton({
     <Button asChild variant="secondary" size="lg" className="w-full">
       <a href="/api/auth/google/start">
         <GoogleMark />
-        {label}
+        {t(label)}
       </a>
     </Button>
   );
@@ -62,10 +73,14 @@ export function GoogleButton({
 
 /** "or" rule between the Google button and the email form. */
 export function OrDivider() {
+  const t = useT();
+
   return (
     <div className="flex items-center gap-2.5" aria-hidden>
       <span className="h-px flex-1 bg-line" />
-      <span className="text-2xs uppercase tracking-[0.08em] text-text-faint">or</span>
+      <span className="text-2xs uppercase tracking-[0.08em] text-text-faint">
+        {t("common.or")}
+      </span>
       <span className="h-px flex-1 bg-line" />
     </div>
   );

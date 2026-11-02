@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import { connection } from "next/server";
 import { requireSession } from "@/backend/auth/guards";
+import { getTranslator } from "@/backend/i18n/locale";
 import { listActivity } from "@/backend/data/meetings";
 import { listTasks } from "@/backend/data/tasks";
 import { ActivityView } from "@/frontend/components/activity/activity-view";
@@ -11,7 +12,10 @@ import { Skeleton } from "@/frontend/components/ui/feedback";
 // prerendered ahead of knowing who is signed in.
 export const instant = false;
 
-export const metadata: Metadata = { title: "Activity" };
+export async function generateMetadata(): Promise<Metadata> {
+  const { t } = await getTranslator();
+  return { title: t("nav.activity") };
+}
 
 export default function ActivityPage() {
   return (

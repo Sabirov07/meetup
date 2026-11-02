@@ -2,6 +2,7 @@ import {
   Activity,
   CalendarClock,
   LayoutDashboard,
+  Library,
   ListTodo,
   Settings,
   Sparkles,
@@ -9,42 +10,49 @@ import {
   Users,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+import type { TranslationKey } from "@/shared/i18n";
 
 export type NavItem = {
   href: string;
   /** Fallback label. The sidebar may substitute a person's name. */
-  label: string;
+  labelKey: TranslationKey;
   icon: LucideIcon;
   /** Which live count to show as a badge, if any. */
   badge?: "pendingReview" | "myOpen" | "theirOpen";
 };
 
-export type NavSection = { heading?: string; items: NavItem[] };
+export type NavSection = { headingKey?: TranslationKey; items: NavItem[] };
 
 export const navSections: NavSection[] = [
   {
-    items: [{ href: "/", label: "Overview", icon: LayoutDashboard }],
+    items: [{ href: "/", labelKey: "nav.overview", icon: LayoutDashboard }],
   },
   {
-    heading: "Tasks",
+    headingKey: "nav.section.tasks",
     items: [
-      { href: "/my-tasks", label: "My tasks", icon: SquareCheckBig, badge: "myOpen" },
-      { href: "/employer-tasks", label: "Employer’s tasks", icon: Users, badge: "theirOpen" },
-      { href: "/all-tasks", label: "All tasks", icon: ListTodo },
+      { href: "/my-tasks", labelKey: "nav.myTasks", icon: SquareCheckBig, badge: "myOpen" },
+      {
+        href: "/employer-tasks",
+        labelKey: "nav.employerTasks",
+        icon: Users,
+        badge: "theirOpen",
+      },
+      { href: "/all-tasks", labelKey: "nav.allTasks", icon: ListTodo },
     ],
   },
   {
-    heading: "Conversations",
+    headingKey: "nav.section.conversations",
     items: [
-      { href: "/meetings", label: "Meetings", icon: CalendarClock },
-      { href: "/review", label: "AI review", icon: Sparkles, badge: "pendingReview" },
+      { href: "/meetings", labelKey: "nav.meetings", icon: CalendarClock },
+      { href: "/review", labelKey: "nav.review", icon: Sparkles, badge: "pendingReview" },
     ],
   },
   {
-    heading: "Workspace",
+    headingKey: "nav.section.workspace",
     items: [
-      { href: "/activity", label: "Activity", icon: Activity },
-      { href: "/settings", label: "Settings", icon: Settings },
+      { href: "/knowledge", labelKey: "nav.knowledge", icon: Library },
+      { href: "/activity", labelKey: "nav.activity", icon: Activity },
+      { href: "/settings", labelKey: "nav.settings", icon: Settings },
     ],
   },
 ];

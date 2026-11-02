@@ -3,6 +3,7 @@
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { X } from "lucide-react";
 import type { ComponentProps, ReactNode } from "react";
+import { useT } from "@/frontend/i18n";
 import { cn } from "@/frontend/lib/utils";
 
 export const Dialog = DialogPrimitive.Root;
@@ -27,6 +28,8 @@ export function DialogContent({
   showClose = true,
   ...props
 }: ComponentProps<typeof DialogPrimitive.Content> & { showClose?: boolean }) {
+  const t = useT();
+
   return (
     <DialogPrimitive.Portal>
       <Overlay />
@@ -40,7 +43,7 @@ export function DialogContent({
         {children}
         {showClose && (
           <DialogPrimitive.Close
-            aria-label="Close"
+            aria-label={t("common.close")}
             className="absolute right-3 top-3 rounded-md p-1 text-text-faint transition-colors hover:bg-hover hover:text-text"
           >
             <X className="h-3.5 w-3.5" />

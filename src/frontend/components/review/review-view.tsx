@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import { approveProposals } from "@/backend/actions/analysis";
 import type { AnalysisView, MemberSummary } from "@/shared/domain/types";
 import { evidenceMeta, transcriptStatusMeta } from "@/shared/domain/labels";
-import { formatDate } from "@/frontend/lib/format";
+import { useI18n, useTx } from "@/frontend/i18n";
 import { Badge, Count } from "@/frontend/components/ui/badge";
 import { Button } from "@/frontend/components/ui/button";
 import { Checkbox, EmptyState, Tooltip } from "@/frontend/components/ui/feedback";
@@ -32,6 +32,8 @@ export function ReviewView({
   serverNow: string;
 }) {
   const [resolved, setResolved] = useState<Set<string>>(new Set());
+  const { t, f } = useI18n();
+  const tx = useTx();
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [bulkBusy, setBulkBusy] = useState(false);
   const now = useMemo(() => new Date(serverNow), [serverNow]);
@@ -70,14 +72,14 @@ export function ReviewView({
     setBulkBusy(false);
 
     if (!result.ok) {
-      toast.error("Bulk approval failed", { description: result.error });
+      toast.error(t("review.bulkFailed"), { description: result.error });
       return;
     }
     ids.forEach(resolve);
     toast.success(
-      `${result.data.approved} ${result.data.approved === 1 ? "task" : "tasks"} created`,
+      t("review.created", { count: result.data.approved }),
       result.data.failed > 0
-        ? { description: `${result.data.failed} could not be approved.` }
+        ? { description: t("review.someFailed", { count: result.data.failed }) }
         : undefined,
     );
   }
@@ -86,10 +88,11 @@ export function ReviewView({
     <div className="mx-auto w-full max-w-[64rem] space-y-5 px-3 py-4 sm:px-4 lg:px-6">
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div className="min-w-0">
-          <h1 className="text-lg font-semibold tracking-[-0.02em] text-text">AI review</h1>
+          <h1 className="text-lg font-semibold tracking-[-0.02em] text-text">
+            {t("review.heading")}
+          </h1>
           <p className="mt-1 max-w-[46rem] text-[13px] leading-5 text-text-muted">
-            Nothing here is a commitment yet. Approve a proposal and it becomes a real task;
-            your edits are kept, and a later re-analysis will not overwrite them.
+            {t("review.description")}
           </p>
         </div>
 
@@ -101,10 +104,10 @@ export function ReviewView({
                 size="lg"
                 onClick={() => void approveSelected()}
                 loading={bulkBusy}
-                loadingLabel="Approving…"
+                loadingLabel={t("review.approving")}
               >
                 <CheckCheck className="h-3.5 w-3.5" />
-                Approve {selected.size} selected
+                {t("review.approveSelected", { count: selected.size })}
               </Button>
             )}
           </div>
@@ -116,22 +119,25 @@ export function ReviewView({
         {(["CONFIRMED", "INFERRED", "RECOMMENDED"] as const).map((level) => (
           <span key={level} className="flex items-center gap-1.5">
             <Badge tone={evidenceMeta[level].tone} variant="outline">
-              {evidenceMeta[level].label}
+              {t(`evidence.${level}.label`)}
             </Badge>
-            <span className="text-2xs text-text-muted">{evidenceMeta[level].description}</span>
+            <span className="text-2xs text-text-muted">
+              {t(`evidence.${level}.description`)}
+            </span>
           </span>
         ))}
       </div>
 
       {!aiConfigured && (
         <div className="tone-warning rounded-lg bg-[var(--tone-bg)] px-3 py-2.5">
-          <p className="text-xs font-medium text-[var(--tone-fg)]">
-            Transcript analysis is switched off
-          </p>
+          <p className="text-xs font-medium text-[var(--tone-fg)]">{t("review.aiOff.title")}</p>
           <p className="mt-0.5 text-2xs leading-4 text-text-secondary">
-            Add <code className="rounded-[3px] bg-canvas px-1 font-mono">ANTHROPIC_API_KEY</code>{" "}
-            to <code className="rounded-[3px] bg-canvas px-1 font-mono">.env.local</code> and
-            restart the dev server. Existing proposals below can still be reviewed.
+            {tx("review.aiOff.body", {
+              key: (
+                <code className="rounded-[3px] bg-canvas px-1 font-mono">ANTHROPIC_API_KEY</code>
+              ),
+              file: <code className="rounded-[3px] bg-canvas px-1 font-mono">.env.local</code>,
+            })}
           </p>
         </div>
       )}
@@ -140,11 +146,11 @@ export function ReviewView({
         <div className="rounded-xl border border-line bg-surface">
           <EmptyState
             icon={Sparkles}
-            title="Nothing waiting for review"
-            description="Add a transcript to a meeting and run the analysis. Proposed tasks, decisions and open questions will appear here for you to approve."
+            title={t("review.empty.title")}
+            description={t("review.empty.description")}
             action={
               <Button variant="secondary" size="sm" asChild>
-                <Link href="/meetings">Go to meetings</Link>
+                <Link href="/meetings">{t("review.empty.action")}</Link>
               </Button>
             }
           />
@@ -164,21 +170,24 @@ export function ReviewView({
                       {analysis.meetingTitle}
                     </Link>
                     {analysis.isSample && (
-                      <Tooltip content="Seeded example content. Not a real transcript analysis.">
+                      <Tooltip content={t("review.sampleTip")}>
                         <span>
                           <Badge tone="tone-neutral" variant="outline">
-                            Sample data
+                            {t("meetings.sampleData")}
                           </Badge>
                         </span>
                       </Tooltip>
                     )}
                     <Badge tone={transcriptStatusMeta[analysis.transcriptStatus].tone}>
-                      {transcriptStatusMeta[analysis.transcriptStatus].label}
+                      {t(`transcriptStatus.${analysis.transcriptStatus}.label`)}
                     </Badge>
                   </div>
                   <p className="mt-0.5 text-2xs text-text-faint">
-                    {analysis.meetingDate ? formatDate(analysis.meetingDate, now) : "No date"}
-                    {analysis.model && ` · analysed with ${analysis.model}`}
+                    {analysis.meetingDate
+                      ? f.date(analysis.meetingDate, now)
+                      : t("review.noDate")}
+                    {analysis.model &&
+                      ` · ${t("review.analysedWith", { model: analysis.model })}`}
                   </p>
                 </div>
 
@@ -197,27 +206,29 @@ export function ReviewView({
                         })
                       }
                     />
-                    Select all
+                    {t("review.selectAll")}
                   </label>
                 )}
               </div>
 
               {analysis.status === "FAILED" ? (
                 <div className="tone-danger px-3 py-2.5">
-                  <p className="text-xs font-medium text-[var(--tone-fg)]">Analysis failed</p>
+                  <p className="text-xs font-medium text-[var(--tone-fg)]">
+                    {t("meetings.analysisFailed")}
+                  </p>
                   <p className="mt-0.5 text-2xs leading-4 text-text-secondary">
-                    {analysis.failureReason ?? "No reason was recorded."}
+                    {analysis.failureReason ?? t("detail.analysisFailedReason")}
                   </p>
                 </div>
               ) : analysis.status === "RUNNING" ? (
-                <p className="px-3 py-2.5 text-2xs text-text-muted">Analysis in progress…</p>
+                <p className="px-3 py-2.5 text-2xs text-text-muted">{t("review.inProgress")}</p>
               ) : (
                 <>
                   {analysis.summary && (
                     <div className="px-3 py-2.5">
                       <p className="eyebrow mb-1 flex items-center gap-1.5">
                         <FileText className="h-3 w-3" />
-                        Summary
+                        {t("detail.summary")}
                       </p>
                       <p className="text-[13px] leading-6 text-text-secondary">
                         {analysis.summary}
@@ -229,7 +240,7 @@ export function ReviewView({
                     <div className="border-t border-line px-3 py-2.5">
                       <p className="eyebrow mb-1.5 flex items-center gap-1.5">
                         <Gavel className="h-3 w-3" />
-                        Decisions
+                        {t("detail.decisions")}
                         <Count>{analysis.decisions.length}</Count>
                       </p>
                       <ul className="space-y-2">
@@ -237,7 +248,7 @@ export function ReviewView({
                           <li key={index} className="space-y-0.5">
                             <div className="flex items-start gap-1.5">
                               <Badge tone={evidenceMeta[decision.evidence].tone} variant="outline">
-                                {evidenceMeta[decision.evidence].label}
+                                {t(`evidence.${decision.evidence}.label`)}
                               </Badge>
                               <p className="min-w-0 flex-1 text-2xs leading-5 text-text-secondary">
                                 {decision.text}
@@ -258,7 +269,7 @@ export function ReviewView({
                     <div className="border-t border-line px-3 py-2.5">
                       <p className="eyebrow mb-1.5 flex items-center gap-1.5">
                         <CircleHelp className="h-3 w-3" />
-                        Still unresolved
+                        {t("detail.openQuestions")}
                         <Count>{analysis.openQuestions.length}</Count>
                       </p>
                       <ul className="space-y-1.5">
@@ -285,7 +296,7 @@ export function ReviewView({
             {analysis.proposals.length > 0 && (
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
-                  <h3 className="eyebrow">Proposed tasks</h3>
+                  <h3 className="eyebrow">{t("detail.proposedTasks")}</h3>
                   <Count>{analysis.proposals.length}</Count>
                 </div>
                 {analysis.proposals.map((proposal) => (

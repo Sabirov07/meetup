@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import { connection } from "next/server";
 import { requireSession } from "@/backend/auth/guards";
+import { getTranslator } from "@/backend/i18n/locale";
 import { listKnowledgeDocs } from "@/backend/data/knowledge";
 import { KnowledgeLibrary } from "@/frontend/components/knowledge/knowledge-library";
 import { Skeleton } from "@/frontend/components/ui/feedback";
@@ -10,7 +11,10 @@ import { Skeleton } from "@/frontend/components/ui/feedback";
 // prerendered ahead of knowing who is signed in.
 export const instant = false;
 
-export const metadata: Metadata = { title: "Knowledge" };
+export async function generateMetadata(): Promise<Metadata> {
+  const { t } = await getTranslator();
+  return { title: t("nav.knowledge") };
+}
 
 export default function KnowledgePage() {
   return (

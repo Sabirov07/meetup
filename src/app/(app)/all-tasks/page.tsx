@@ -4,6 +4,7 @@ import { connection } from "next/server";
 import { requireSession } from "@/backend/auth/guards";
 import { listMeetings } from "@/backend/data/meetings";
 import { listTasks } from "@/backend/data/tasks";
+import { getTranslator } from "@/backend/i18n/locale";
 import { TaskPage } from "@/frontend/components/tasks/task-page";
 import { TaskStoreProvider } from "@/frontend/components/tasks/task-store";
 import { BoardSkeleton } from "@/frontend/components/tasks/board-skeleton";
@@ -12,7 +13,10 @@ import { BoardSkeleton } from "@/frontend/components/tasks/board-skeleton";
 // prerendered ahead of knowing who is signed in.
 export const instant = false;
 
-export const metadata: Metadata = { title: "All tasks" };
+export async function generateMetadata(): Promise<Metadata> {
+  const { t } = await getTranslator();
+  return { title: t("nav.allTasks") };
+}
 
 export default function AllTasksPage() {
   return (
@@ -40,8 +44,8 @@ async function AllTasksData() {
       serverNow={now.toISOString()}
     >
       <TaskPage
-        heading="All tasks"
-        description="The whole workspace in one board, across every owner."
+        heading="nav.allTasks"
+        description="tasks.page.all.description"
         meetings={meetings.map((m) => ({ id: m.id, title: m.title }))}
       />
     </TaskStoreProvider>

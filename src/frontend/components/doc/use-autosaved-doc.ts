@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
+import type { TranslationKey } from "@/shared/i18n";
+import { useT } from "@/frontend/i18n";
 
 export type DocSaveState = "idle" | "dirty" | "saving" | "saved" | "error";
 
@@ -26,9 +28,11 @@ export function useAutosavedDoc({
 }: {
   initial: string;
   save: (value: string) => Promise<string | null>;
-  errorTitle: string;
+  /** Translation key, resolved here, so the toast speaks the reader's language. */
+  errorTitle: TranslationKey;
   delay?: number;
 }) {
+  const t = useT();
   const [draft, setDraft] = useState(initial);
   const [state, setState] = useState<DocSaveState>("idle");
 
@@ -60,10 +64,10 @@ export function useAutosavedDoc({
       } else {
         savedRef.current = `${next}\u0000unsaved`;
         setState("error");
-        toast.error(errorTitle, { description: error });
+        toast.error(t(errorTitle), { description: error });
       }
     },
-    [errorTitle],
+    [errorTitle, t],
   );
 
   useEffect(() => {

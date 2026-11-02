@@ -12,8 +12,10 @@ import {
   type TaskPriority,
   type TaskStatus,
 } from "@/shared/domain/types";
-import { categoryMeta, priorityMeta, sortModeMeta, statusMeta } from "@/shared/domain/labels";
+import { priorityMeta } from "@/shared/domain/labels";
 import { applyFilters, countActiveFilters, type DueWindow } from "@/shared/domain/filters";
+import type { TranslationKey } from "@/shared/i18n";
+import { useI18n, useTx } from "@/frontend/i18n";
 import { cn } from "@/frontend/lib/utils";
 import { Avatar } from "@/frontend/components/ui/avatar";
 import { Badge, Count } from "@/frontend/components/ui/badge";
@@ -34,12 +36,12 @@ import {
 } from "@/frontend/components/ui/menu";
 import { useTasks } from "./task-store";
 
-const dueWindows: { value: DueWindow; label: string }[] = [
-  { value: "ANY", label: "Any time" },
-  { value: "OVERDUE", label: "Overdue" },
-  { value: "TODAY", label: "Due today" },
-  { value: "THIS_WEEK", label: "Next 7 days" },
-  { value: "NO_DATE", label: "No deadline" },
+const dueWindows: { value: DueWindow; label: TranslationKey }[] = [
+  { value: "ANY", label: "tasks.due.ANY" },
+  { value: "OVERDUE", label: "tasks.due.OVERDUE" },
+  { value: "TODAY", label: "tasks.due.TODAY" },
+  { value: "THIS_WEEK", label: "tasks.due.THIS_WEEK" },
+  { value: "NO_DATE", label: "tasks.due.NO_DATE" },
 ];
 
 export function TaskToolbar({
@@ -53,6 +55,8 @@ export function TaskToolbar({
   className?: string;
 }) {
   const { tasks, members, filters, setFilters, resetFilters, sort, setSort, now } = useTasks();
+  const { t } = useI18n();
+  const tx = useTx();
 
   const activeCount = countActiveFilters(filters);
   const filtered = useMemo(() => applyFilters(tasks, filters, now), [tasks, filters, now]);
@@ -69,14 +73,14 @@ export function TaskToolbar({
         <Input
           value={filters.search}
           onChange={(event) => setFilters((prev) => ({ ...prev, search: event.target.value }))}
-          placeholder="Search tasks…"
-          aria-label="Search tasks"
+          placeholder={t("tasks.search.placeholder")}
+          aria-label={t("tasks.search.label")}
           className="pl-8 pr-7"
         />
         {filters.search && (
           <button
             onClick={() => setFilters((prev) => ({ ...prev, search: "" }))}
-            aria-label="Clear search"
+            aria-label={t("tasks.search.clear")}
             className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded p-0.5 text-text-faint hover:text-text"
           >
             <X className="h-3 w-3" />
@@ -89,26 +93,26 @@ export function TaskToolbar({
         <PopoverTrigger asChild>
           <Button variant={activeCount > 0 ? "secondary" : "outline"} size="md">
             <Filter className="h-3.5 w-3.5" />
-            Filter
+            {t("tasks.filter")}
             {activeCount > 0 && <Count className="tone-accent bg-[var(--tone-bg)] text-[var(--tone-fg)]">{activeCount}</Count>}
           </Button>
         </PopoverTrigger>
         <PopoverContent className="w-[18rem] p-0">
           <div className="flex items-center justify-between border-b border-line px-3 py-2">
-            <span className="text-[13px] font-medium text-text">Filters</span>
+            <span className="text-[13px] font-medium text-text">{t("common.filters")}</span>
             {activeCount > 0 && (
               <button
                 onClick={resetFilters}
                 className="text-2xs text-accent-bright hover:underline"
               >
-                Clear all
+                {t("common.clearAll")}
               </button>
             )}
           </div>
 
           <div className="max-h-[22rem] space-y-3 overflow-y-auto p-3">
             {showOwnerFilter && (
-              <FacetGroup label="Owner">
+              <FacetGroup label={t("tasks.facet.owner")}>
                 {members.map((member) => (
                   <FacetRow
                     key={member.id}
@@ -127,12 +131,12 @@ export function TaskToolbar({
                     setFilters((prev) => ({ ...prev, owners: toggle(prev.owners, "UNASSIGNED") }))
                   }
                 >
-                  Unassigned
+                  {t("common.unassigned")}
                 </FacetRow>
               </FacetGroup>
             )}
 
-            <FacetGroup label="Status">
+            <FacetGroup label={t("tasks.facet.status")}>
               {TASK_STATUSES.map((status) => (
                 <FacetRow
                   key={status}
@@ -144,12 +148,12 @@ export function TaskToolbar({
                     }))
                   }
                 >
-                  {statusMeta[status].label}
+                  {t(`status.${status}.label`)}
                 </FacetRow>
               ))}
             </FacetGroup>
 
-            <FacetGroup label="Priority">
+            <FacetGroup label={t("tasks.facet.priority")}>
               {TASK_PRIORITIES.map((priority) => (
                 <FacetRow
                   key={priority}
@@ -161,12 +165,14 @@ export function TaskToolbar({
                     }))
                   }
                 >
-                  <Badge tone={priorityMeta[priority].tone}>{priorityMeta[priority].label}</Badge>
+                  <Badge tone={priorityMeta[priority].tone}>
+                    {t(`priority.${priority}.label`)}
+                  </Badge>
                 </FacetRow>
               ))}
             </FacetGroup>
 
-            <FacetGroup label="Deadline">
+            <FacetGroup label={t("tasks.facet.deadline")}>
               <div className="flex flex-wrap gap-1">
                 {dueWindows.map((window) => (
                   <button
@@ -179,13 +185,13 @@ export function TaskToolbar({
                         : "bg-raised text-text-muted hover:text-text",
                     )}
                   >
-                    {window.label}
+                    {t(window.label)}
                   </button>
                 ))}
               </div>
             </FacetGroup>
 
-            <FacetGroup label="Category">
+            <FacetGroup label={t("tasks.facet.category")}>
               <div className="flex flex-wrap gap-1">
                 {TASK_CATEGORIES.map((category) => (
                   <button
@@ -203,14 +209,14 @@ export function TaskToolbar({
                         : "bg-raised text-text-muted hover:text-text",
                     )}
                   >
-                    {categoryMeta[category].label}
+                    {t(`category.${category}.label`)}
                   </button>
                 ))}
               </div>
             </FacetGroup>
 
             {meetings.length > 0 && (
-              <FacetGroup label="From meeting">
+              <FacetGroup label={t("tasks.facet.fromMeeting")}>
                 <select
                   value={filters.meetingId ?? ""}
                   onChange={(event) =>
@@ -218,7 +224,7 @@ export function TaskToolbar({
                   }
                   className="h-7 w-full rounded-md border border-line-strong bg-canvas px-1.5 text-xs text-text"
                 >
-                  <option value="">Any source</option>
+                  <option value="">{t("tasks.facet.anySource")}</option>
                   {meetings.map((meeting) => (
                     <option key={meeting.id} value={meeting.id}>
                       {meeting.title}
@@ -231,29 +237,31 @@ export function TaskToolbar({
             <Separator />
 
             <ToggleRow
-              label="Needs review only"
-              hint="Where the owner or deadline was unclear"
+              label={t("tasks.toggle.needsReview")}
+              hint={t("tasks.toggle.needsReviewHint")}
               checked={filters.needsReviewOnly}
               onChange={(value) => setFilters((prev) => ({ ...prev, needsReviewOnly: value }))}
             />
             <ToggleRow
-              label="Waiting on someone"
-              hint="Blocked, or waiting on an unfinished task"
+              label={t("tasks.toggle.waiting")}
+              hint={t("tasks.toggle.waitingHint")}
               checked={filters.waitingOnSomeoneOnly}
               onChange={(value) =>
                 setFilters((prev) => ({ ...prev, waitingOnSomeoneOnly: value }))
               }
             />
             <ToggleRow
-              label="Show completed"
+              label={t("tasks.toggle.showCompleted")}
               checked={filters.includeCompleted}
               onChange={(value) => setFilters((prev) => ({ ...prev, includeCompleted: value }))}
             />
           </div>
 
           <div className="border-t border-line px-3 py-2 text-2xs text-text-muted">
-            Showing <span className="font-medium text-text">{filtered.length}</span> of{" "}
-            {tasks.length} tasks
+            {tx("tasks.showingOf", {
+              shown: <span className="font-medium text-text">{filtered.length}</span>,
+              total: tasks.length,
+            })}
           </div>
         </PopoverContent>
       </Popover>
@@ -267,16 +275,18 @@ export function TaskToolbar({
             ) : (
               <ArrowDownUp className="h-3.5 w-3.5" />
             )}
-            <span className="hidden sm:inline">{sortModeMeta[sort].label}</span>
+            <span className="hidden sm:inline">{t(`sort.${sort}.label`)}</span>
           </Button>
         </MenuTrigger>
         <MenuContent className="w-[15rem]">
-          <MenuLabel>Order by</MenuLabel>
+          <MenuLabel>{t("tasks.orderBy")}</MenuLabel>
           <MenuRadioGroup value={sort} onValueChange={(value) => setSort(value as SortMode)}>
             {SORT_MODES.map((mode) => (
               <MenuRadioItem key={mode} value={mode} className="flex-col items-start gap-0 py-1.5">
-                <span>{sortModeMeta[mode].label}</span>
-                <span className="text-2xs text-text-faint">{sortModeMeta[mode].description}</span>
+                <span>{t(`sort.${mode}.label`)}</span>
+                <span className="text-2xs text-text-faint">
+                  {t(`sort.${mode}.description`)}
+                </span>
               </MenuRadioItem>
             ))}
           </MenuRadioGroup>
@@ -288,7 +298,7 @@ export function TaskToolbar({
                 className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[13px] text-accent-bright hover:bg-hover"
               >
                 <Sparkles className="h-3.5 w-3.5" />
-                Back to smart priority
+                {t("tasks.backToSmart")}
               </button>
             </>
           )}
@@ -296,9 +306,9 @@ export function TaskToolbar({
       </Menu>
 
       {sort === "MANUAL" && (
-        <Tooltip content="Drag tasks to reorder. Nothing will re-sort them.">
+        <Tooltip content={t("tasks.manualOrderTip")}>
           <span>
-            <Badge tone="tone-info">Manual order</Badge>
+            <Badge tone="tone-info">{t("sort.MANUAL.label")}</Badge>
           </span>
         </Tooltip>
       )}
@@ -306,7 +316,7 @@ export function TaskToolbar({
       {activeCount > 0 && (
         <Button variant="ghost" size="sm" onClick={resetFilters}>
           <X className="h-3 w-3" />
-          Clear
+          {t("common.clear")}
         </Button>
       )}
     </div>

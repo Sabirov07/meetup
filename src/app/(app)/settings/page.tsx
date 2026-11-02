@@ -1,11 +1,15 @@
 import type { Metadata } from "next";
 import { db } from "@/backend/db";
 import { requireSession } from "@/backend/auth/guards";
+import { getTranslator } from "@/backend/i18n/locale";
 import { anthropicIntegrationStatus, googleIntegrationStatus } from "@/backend/google/config";
 import { getConnectedAccount } from "@/backend/google/oauth";
 import { SettingsView } from "@/frontend/components/settings/settings-view";
 
-export const metadata: Metadata = { title: "Settings" };
+export async function generateMetadata(): Promise<Metadata> {
+  const { t } = await getTranslator();
+  return { title: t("nav.settings") };
+}
 export const instant = false;
 
 export default async function SettingsPage(props: PageProps<"/settings">) {

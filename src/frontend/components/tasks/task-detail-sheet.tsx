@@ -30,14 +30,15 @@ import {
   TASK_STATUSES,
   type TaskView,
 } from "@/shared/domain/types";
+import { evidenceMeta, priorityMeta, statusMeta } from "@/shared/domain/labels";
 import {
-  categoryMeta,
-  evidenceMeta,
-  priorityMeta,
-  statusMeta,
-} from "@/shared/domain/labels";
-import { smartScore, suggestedPriority, unmetDependencies } from "@/shared/domain/priority";
-import { formatDateTime, formatDueDate, toDateInputValue } from "@/frontend/lib/format";
+  factorLabel,
+  smartScore,
+  suggestedPriority,
+  unmetDependencies,
+} from "@/shared/domain/priority";
+import { useI18n, useT, useTx } from "@/frontend/i18n";
+import { toDateInputValue } from "@/frontend/i18n/format";
 import { cn } from "@/frontend/lib/utils";
 import { Avatar } from "@/frontend/components/ui/avatar";
 import { Badge, Dot } from "@/frontend/components/ui/badge";
@@ -99,6 +100,8 @@ function TaskDetail({
   onDocCapturesEscapeChange: (captures: boolean) => void;
 }) {
   const { members, now, move, remove, upsertTask, setOpenTaskId, tasks } = useTasks();
+  const { t, f } = useI18n();
+  const tx = useTx();
 
   const [editingTitle, setEditingTitle] = useState(false);
   const [titleDraft, setTitleDraft] = useState(task.title);
@@ -126,10 +129,10 @@ function TaskDetail({
   async function save(change: Parameters<typeof updateTask>[0]) {
     const result = await updateTask(change);
     if (result.ok) upsertTask(result.data);
-    else toast.error("Could not save that change", { description: result.error });
+    else toast.error(t("detail.saveFailed"), { description: result.error });
   }
 
-  const due = formatDueDate(task.dueDate, now);
+  const due = f.dueDate(task.dueDate, now);
   const unmet = unmetDependencies(task);
   const activeDependents = task.dependents.filter((d) => d.status !== "COMPLETED");
   const liveSuggestion = suggestedPriority(task, now);
@@ -143,7 +146,9 @@ function TaskDetail({
           onClick={() =>
             move(task.id, { status: task.status === "COMPLETED" ? "TODO" : "COMPLETED" })
           }
-          aria-label={task.status === "COMPLETED" ? "Mark as to do" : "Mark complete"}
+          aria-label={
+            task.status === "COMPLETED" ? t("tasks.row.markTodo") : t("tasks.row.markComplete")
+          }
           className={cn(
             "mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border transition-colors",
             task.status === "COMPLETED"
@@ -195,18 +200,22 @@ function TaskDetail({
           )}
 
           <div className="mt-1 flex flex-wrap items-center gap-1.5 text-2xs text-text-faint">
-            <span>Created <RelativeTime value={task.createdAt} /></span>
+            <span>
+              {tx("detail.createdAgo", { when: <RelativeTime value={task.createdAt} /> })}
+            </span>
             {task.creator && (
               <>
                 <span aria-hidden>·</span>
-                <span>by {task.creator.name}</span>
+                <span>{t("detail.byPerson", { name: task.creator.name })}</span>
               </>
             )}
             {task.completedAt && (
               <>
                 <span aria-hidden>·</span>
                 <span className="text-success">
-                  Completed <RelativeTime value={task.completedAt} />
+                  {tx("detail.completedAgo", {
+                    when: <RelativeTime value={task.completedAt} />,
+                  })}
                 </span>
               </>
             )}
@@ -214,16 +223,21 @@ function TaskDetail({
         </div>
 
         <div className="flex shrink-0 items-center gap-1">
-          <Tooltip content="Edit all fields">
-            <Button variant="ghost" size="icon-sm" onClick={() => setEditOpen(true)} aria-label="Edit task">
-              <Pencil className="h-3.5 w-3.5" />
-            </Button>
-          </Tooltip>
-          <Tooltip content="Delete task">
+          <Tooltip content={t("detail.editAllFields")}>
             <Button
               variant="ghost"
               size="icon-sm"
-              aria-label="Delete task"
+              onClick={() => setEditOpen(true)}
+              aria-label={t("detail.editTask")}
+            >
+              <Pencil className="h-3.5 w-3.5" />
+            </Button>
+          </Tooltip>
+          <Tooltip content={t("detail.deleteTask")}>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              aria-label={t("detail.deleteTask")}
               onClick={() => remove(task.id)}
             >
               <Trash2 className="h-3.5 w-3.5" />
@@ -233,7 +247,7 @@ function TaskDetail({
             variant="ghost"
             size="icon-sm"
             onClick={() => setOpenTaskId(null)}
-            aria-label="Close"
+            aria-label={t("common.close")}
           >
             <X className="h-3.5 w-3.5" />
           </Button>
@@ -244,7 +258,7 @@ function TaskDetail({
       <div className="min-h-0 flex-1 overflow-y-auto">
         {/* Properties */}
         <div className="space-y-2.5 px-4 py-3.5">
-          <Property label="Status">
+          <Property label={t("detail.property.status")}>
             <Select
               value={task.status}
               onValueChange={(value) => move(task.id, { status: value as TaskView["status"] })}
@@ -252,20 +266,20 @@ function TaskDetail({
               <SelectTrigger size="sm" className="w-full">
                 <span className="flex items-center gap-1.5">
                   <Dot tone={statusMeta[task.status].tone} />
-                  {statusMeta[task.status].label}
+                  {t(`status.${task.status}.label`)}
                 </span>
               </SelectTrigger>
               <SelectContent>
                 {TASK_STATUSES.map((status) => (
                   <SelectItem key={status} value={status}>
-                    {statusMeta[status].label}
+                    {t(`status.${status}.label`)}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </Property>
 
-          <Property label="Owner">
+          <Property label={t("detail.property.owner")}>
             <Select
               value={task.owner?.id ?? "UNASSIGNED"}
               onValueChange={(value) =>
@@ -275,7 +289,7 @@ function TaskDetail({
               <SelectTrigger size="sm" className="w-full">
                 <span className="flex items-center gap-1.5">
                   <Avatar member={task.owner} size="xs" />
-                  {task.owner?.name ?? "Unassigned"}
+                  {task.owner?.name ?? t("common.unassigned")}
                 </span>
               </SelectTrigger>
               <SelectContent>
@@ -284,12 +298,12 @@ function TaskDetail({
                     {member.name}
                   </SelectItem>
                 ))}
-                <SelectItem value="UNASSIGNED">Unassigned</SelectItem>
+                <SelectItem value="UNASSIGNED">{t("common.unassigned")}</SelectItem>
               </SelectContent>
             </Select>
           </Property>
 
-          <Property label="Priority">
+          <Property label={t("detail.property.priority")}>
             <div className="space-y-1.5">
               <Select
                 value={task.priority}
@@ -298,13 +312,13 @@ function TaskDetail({
                 <SelectTrigger size="sm" className="w-full">
                   <span className="flex items-center gap-1.5">
                     <Dot tone={priorityMeta[task.priority].tone} />
-                    {priorityMeta[task.priority].label}
+                    {t(`priority.${task.priority}.label`)}
                   </span>
                 </SelectTrigger>
                 <SelectContent>
                   {TASK_PRIORITIES.map((priority) => (
                     <SelectItem key={priority} value={priority}>
-                      {priorityMeta[priority].label}
+                      {t(`priority.${priority}.label`)}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -313,22 +327,26 @@ function TaskDetail({
               {/* An AI or engine suggestion is shown, never applied silently. */}
               {task.aiSuggestedPriority && task.aiSuggestedPriority !== task.priority && (
                 <Suggestion
-                  text={`Suggested ${priorityMeta[task.aiSuggestedPriority].label}`}
+                  text={t("detail.suggested", {
+                    value: t(`priority.${task.aiSuggestedPriority}.label`),
+                  })}
                   detail={task.aiPriorityRationale}
                   onApply={() => void save({ id: task.id, priority: task.aiSuggestedPriority! })}
                 />
               )}
               {!task.aiSuggestedPriority && liveSuggestion && liveSuggestion !== task.priority && (
                 <Suggestion
-                  text={`Consider ${priorityMeta[liveSuggestion].label}`}
-                  detail="Based on its deadline and what it is blocking."
+                  text={t("detail.consider", {
+                    value: t(`priority.${liveSuggestion}.label`),
+                  })}
+                  detail={t("detail.considerWhy")}
                   onApply={() => void save({ id: task.id, priority: liveSuggestion })}
                 />
               )}
             </div>
           </Property>
 
-          <Property label="Deadline">
+          <Property label={t("detail.property.deadline")}>
             <div className="flex items-center gap-2">
               <Input
                 type="date"
@@ -349,18 +367,18 @@ function TaskDetail({
             </div>
           </Property>
 
-          <Property label="Category">
+          <Property label={t("detail.property.category")}>
             <Select
               value={task.category}
               onValueChange={(value) => void save({ id: task.id, category: value as TaskView["category"] })}
             >
               <SelectTrigger size="sm" className="w-full">
-                {categoryMeta[task.category].label}
+                {t(`category.${task.category}.label`)}
               </SelectTrigger>
               <SelectContent>
                 {TASK_CATEGORIES.map((category) => (
                   <SelectItem key={category} value={category}>
-                    {categoryMeta[category].label}
+                    {t(`category.${category}.label`)}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -368,7 +386,7 @@ function TaskDetail({
           </Property>
 
           {task.labels.length > 0 && (
-            <Property label="Labels">
+            <Property label={t("detail.property.labels")}>
               <div className="flex flex-wrap gap-1 py-1">
                 {task.labels.map((label) => (
                   <span
@@ -393,10 +411,10 @@ function TaskDetail({
           <>
             <Separator />
             <section className="px-4 py-3.5">
-              <p className="eyebrow mb-2">Why it ranks here</p>
+              <p className="eyebrow mb-2">{t("detail.ranking.heading")}</p>
               <ul className="space-y-1">
                 {factors.map((factor) => (
-                  <li key={factor.label} className="flex items-center gap-2 text-2xs">
+                  <li key={factor.key} className="flex items-center gap-2 text-2xs">
                     <span
                       className={cn(
                         "w-9 shrink-0 text-right tabular-nums",
@@ -405,13 +423,12 @@ function TaskDetail({
                     >
                       {factor.weight < 0 ? "↑" : "↓"} {Math.abs(factor.weight)}
                     </span>
-                    <span className="text-text-secondary">{factor.label}</span>
+                    <span className="text-text-secondary">{factorLabel(factor, t)}</span>
                   </li>
                 ))}
               </ul>
               <p className="mt-2 text-2xs leading-4 text-text-faint">
-                Smart priority weighs these against the task&rsquo;s priority level. Switch to
-                another ordering from the toolbar to ignore them.
+                {t("detail.ranking.note")}
               </p>
             </section>
           </>
@@ -421,14 +438,14 @@ function TaskDetail({
         <Separator />
         <section className="px-4 py-3.5">
           <div className="mb-2 flex items-center justify-between">
-            <p className="eyebrow">Dependencies</p>
+            <p className="eyebrow">{t("detail.dependencies")}</p>
             <Button
               variant="ghost"
               size="xs"
               onClick={() => setAddingDependency((value) => !value)}
             >
               <Plus className="h-3 w-3" />
-              Add
+              {t("common.add")}
             </Button>
           </div>
 
@@ -441,14 +458,12 @@ function TaskDetail({
           )}
 
           {task.dependencies.length === 0 && activeDependents.length === 0 && !addingDependency && (
-            <p className="text-2xs text-text-faint">
-              Nothing linked. Add a dependency when this task cannot start until another finishes.
-            </p>
+            <p className="text-2xs text-text-faint">{t("detail.dependencies.empty")}</p>
           )}
 
           {task.dependencies.length > 0 && (
             <div className="space-y-1">
-              <p className="text-2xs text-text-muted">Waiting on</p>
+              <p className="text-2xs text-text-muted">{t("detail.dependencies.waitingOn")}</p>
               {task.dependencies.map((dependency) => (
                 <div
                   key={dependency.id}
@@ -474,7 +489,7 @@ function TaskDetail({
                         if (result.ok) upsertTask(result.data);
                       })
                     }
-                    aria-label={`Unlink ${dependency.title}`}
+                    aria-label={t("detail.dependencies.unlink", { title: dependency.title })}
                     className="shrink-0 rounded p-0.5 text-text-faint hover:text-danger"
                   >
                     <X className="h-3 w-3" />
@@ -483,7 +498,7 @@ function TaskDetail({
               ))}
               {unmet.length > 0 && (
                 <p className="pt-0.5 text-2xs text-warning">
-                  {unmet.length} unfinished, so this cannot start yet.
+                  {t("detail.dependencies.unfinished", { count: unmet.length })}
                 </p>
               )}
             </div>
@@ -493,7 +508,7 @@ function TaskDetail({
             <div className="mt-2.5 space-y-1">
               <p className="flex items-center gap-1 text-2xs text-text-muted">
                 <GitBranch className="h-3 w-3" />
-                Blocking
+                {t("detail.dependencies.blocking")}
               </p>
               {activeDependents.map((dependent) => (
                 <div
@@ -515,7 +530,7 @@ function TaskDetail({
           <>
             <Separator />
             <section className="px-4 py-3.5">
-              <p className="eyebrow mb-2">Where this came from</p>
+              <p className="eyebrow mb-2">{t("detail.source.heading")}</p>
               {task.sourceMeeting && (
                 <Link
                   href={`/meetings/${task.sourceMeeting.id}`}
@@ -536,8 +551,11 @@ function TaskDetail({
               {task.isAiGenerated && (
                 <p className="mt-2 flex items-center gap-1.5 text-2xs text-text-faint">
                   <Sparkles className="h-3 w-3" />
-                  Proposed from a conversation
-                  {task.confirmedByHuman ? " and confirmed by a person." : "."}
+                  {t(
+                    task.confirmedByHuman
+                      ? "detail.source.proposedConfirmed"
+                      : "detail.source.proposed",
+                  )}
                 </p>
               )}
             </section>
@@ -549,13 +567,13 @@ function TaskDetail({
         <section className="px-4 py-3.5">
           <p className="eyebrow mb-2 flex items-center gap-1.5">
             <MessageSquare className="h-3 w-3" />
-            Notes
+            {t("detail.notes")}
           </p>
 
           {comments === null ? (
             <div className="flex items-center gap-2 text-2xs text-text-faint">
               <Loader2 className="h-3 w-3 animate-spin" />
-              Loading notes…
+              {t("detail.notes.loading")}
             </div>
           ) : (
             <div className="space-y-2.5">
@@ -576,7 +594,7 @@ function TaskDetail({
                   <div className="min-w-0 flex-1">
                     <p className="flex items-baseline gap-1.5">
                       <span className="text-2xs font-medium text-text">
-                        {comment.author?.name ?? "Someone"}
+                        {comment.author?.name ?? t("activity.someone")}
                       </span>
                       <span className="text-2xs text-text-faint">
                         <RelativeTime value={comment.createdAt} />
@@ -590,14 +608,14 @@ function TaskDetail({
               ))}
 
               {comments.length === 0 && (
-                <p className="text-2xs text-text-faint">No notes yet.</p>
+                <p className="text-2xs text-text-faint">{t("detail.notes.empty")}</p>
               )}
 
               <div className="flex gap-2 pt-0.5">
                 <Textarea
                   value={commentDraft}
                   onChange={(event) => setCommentDraft(event.target.value)}
-                  placeholder="Add a note…"
+                  placeholder={t("detail.notes.placeholder")}
                   className="min-h-[52px] text-xs"
                   onKeyDown={(event) => {
                     if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
@@ -608,7 +626,7 @@ function TaskDetail({
                 />
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-2xs text-text-faint">⌘↵ to save</span>
+                <span className="text-2xs text-text-faint">{t("detail.notes.shortcut")}</span>
                 <Button
                   size="sm"
                   variant="secondary"
@@ -616,7 +634,7 @@ function TaskDetail({
                   loading={savingComment}
                   onClick={submitComment}
                 >
-                  Add note
+                  {t("detail.notes.add")}
                 </Button>
               </div>
             </div>
@@ -624,7 +642,7 @@ function TaskDetail({
         </section>
 
         <div className="px-4 pb-5 pt-1 text-2xs text-text-faint">
-          Last updated {formatDateTime(task.updatedAt, now)}
+          {t("detail.lastUpdated", { when: f.dateTime(task.updatedAt, now) })}
         </div>
       </div>
 
@@ -648,7 +666,7 @@ function TaskDetail({
         setCommentDraft("");
         upsertTask({ ...task, commentCount: result.data.length });
       } else {
-        toast.error("Could not save that note", { description: result.error });
+        toast.error(t("detail.notes.saveFailed"), { description: result.error });
       }
     });
   }
@@ -672,6 +690,8 @@ function Suggestion({
   detail?: string | null;
   onApply: () => void;
 }) {
+  const t = useT();
+
   return (
     <div className="tone-accent rounded-md bg-[var(--tone-bg)] px-2 py-1.5">
       <div className="flex items-start gap-1.5">
@@ -684,7 +704,7 @@ function Suggestion({
           onClick={onApply}
           className="shrink-0 rounded-[4px] bg-accent-solid px-1.5 py-0.5 text-2xs font-medium text-white hover:bg-accent-solid-hover"
         >
-          Apply
+          {t("detail.apply")}
         </button>
       </div>
     </div>
@@ -701,6 +721,7 @@ function DependencyPicker({
   onDone: () => void;
 }) {
   const { upsertTask } = useTasks();
+  const t = useT();
   const [query, setQuery] = useState("");
   const [pending, setPending] = useState(false);
 
@@ -720,11 +741,11 @@ function DependencyPicker({
         autoFocus
         value={query}
         onChange={(event) => setQuery(event.target.value)}
-        placeholder="Find the task this waits on…"
+        placeholder={t("detail.dependencies.find")}
         className="h-7 text-xs"
       />
       {matches.length === 0 ? (
-        <p className="px-1 py-1 text-2xs text-text-faint">No matching task.</p>
+        <p className="px-1 py-1 text-2xs text-text-faint">{t("detail.dependencies.noMatch")}</p>
       ) : (
         matches.map((candidate) => (
           <button
@@ -741,7 +762,7 @@ function DependencyPicker({
                 upsertTask(result.data);
                 onDone();
               } else {
-                toast.error("Could not link those tasks", { description: result.error });
+                toast.error(t("detail.dependencies.linkFailed"), { description: result.error });
               }
             }}
             className="flex w-full items-center gap-2 rounded-md px-1.5 py-1 text-left hover:bg-hover disabled:opacity-50"
@@ -754,7 +775,7 @@ function DependencyPicker({
         ))
       )}
       <button onClick={onDone} className="px-1 text-2xs text-text-faint hover:text-text">
-        Cancel
+        {t("common.cancel")}
       </button>
     </div>
   );
@@ -762,12 +783,14 @@ function DependencyPicker({
 
 /** Small helper used by the review page to show evidence level consistently. */
 export function EvidenceBadge({ level }: { level: keyof typeof evidenceMeta }) {
+  const t = useT();
   const meta = evidenceMeta[level];
+
   return (
-    <Tooltip content={meta.description}>
+    <Tooltip content={t(`evidence.${level}.description`)}>
       <span>
         <Badge tone={meta.tone} variant="outline">
-          {meta.label}
+          {t(`evidence.${level}.label`)}
         </Badge>
       </span>
     </Tooltip>

@@ -6,6 +6,8 @@
  * everything, because a client-side limit is a courtesy, not a control).
  */
 
+import type { Translate } from "../i18n";
+
 /** 5 MB. Big enough for a full-window screenshot, small enough for a row in Postgres. */
 export const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 
@@ -49,12 +51,21 @@ export function formatBytes(bytes: number): string {
 }
 
 /** Why a file was rejected, phrased for the person who dropped it. */
-export function rejectionReason(file: { type: string; size: number; name: string }): string | null {
+export function rejectionReason(
+  file: { type: string; size: number; name: string },
+  t: Translate,
+): string | null {
   if (!isAcceptedImage(file.type)) {
-    return `${file.name || "That file"} is not an image Meetup can embed. PNG, JPEG, GIF, WebP and AVIF work.`;
+    return t("errors.upload.notAnImage", {
+      name: file.name || t("errors.upload.thatFile"),
+    });
   }
   if (file.size > MAX_IMAGE_BYTES) {
-    return `${file.name || "That image"} is ${formatBytes(file.size)}. The limit is ${formatBytes(MAX_IMAGE_BYTES)}.`;
+    return t("errors.upload.tooLarge", {
+      name: file.name || t("errors.upload.thatImage"),
+      size: formatBytes(file.size),
+      limit: formatBytes(MAX_IMAGE_BYTES),
+    });
   }
   return null;
 }

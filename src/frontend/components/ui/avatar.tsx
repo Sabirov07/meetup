@@ -1,3 +1,6 @@
+"use client";
+
+import { useT } from "@/frontend/i18n";
 import { cn } from "@/frontend/lib/utils";
 import type { MemberSummary } from "@/shared/domain/types";
 
@@ -33,11 +36,13 @@ export function Avatar({
   className?: string;
   showRing?: boolean;
 }) {
+  const label = useT()("common.unassigned");
+
   if (!member) {
     return (
       <span
-        title="Unassigned"
-        aria-label="Unassigned"
+        title={label}
+        aria-label={label}
         className={cn(
           "inline-flex shrink-0 items-center justify-center rounded-full border border-dashed border-line-strong text-text-faint",
           sizes[size],

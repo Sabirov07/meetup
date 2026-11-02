@@ -21,6 +21,7 @@ import { TASK_STATUSES, type MemberSummary, type TaskStatus, type TaskView } fro
 import { statusMeta } from "@/shared/domain/labels";
 import { applyFilters } from "@/shared/domain/filters";
 import { sortTasks } from "@/shared/domain/priority";
+import { useT } from "@/frontend/i18n";
 import { cn } from "@/frontend/lib/utils";
 import { Avatar } from "@/frontend/components/ui/avatar";
 import { Button } from "@/frontend/components/ui/button";
@@ -28,31 +29,8 @@ import { Count, Dot } from "@/frontend/components/ui/badge";
 import { EmptyState } from "@/frontend/components/ui/feedback";
 import { useTasks } from "./task-store";
 import { TaskDragPreview, TaskRow } from "./task-row";
+import { ANY_OWNER, UNASSIGNED, parseZone, zoneId } from "./task-zones";
 
-/**
- * Drag-and-drop model.
- *
- * Every drop target is a zone identified by `zone:<owner>:<status>`, where
- * `owner` is a member id, `UNASSIGNED`, or `ANY` (meaning "do not touch the
- * owner"). Owner panels emit zones with a concrete owner; status columns emit
- * `ANY`. One drop handler therefore covers reassignment, status changes, and
- * manual reordering, and a move is always an update — never a copy.
- */
-
-const ANY_OWNER = "ANY";
-const UNASSIGNED = "UNASSIGNED";
-
-function zoneId(owner: string, status: TaskStatus): string {
-  return `zone:${owner}:${status}`;
-}
-
-function parseZone(id: string): { owner: string; status: TaskStatus } | null {
-  if (!id.startsWith("zone:")) return null;
-  const [, owner, status] = id.split(":");
-  if (!owner || !status) return null;
-  if (!TASK_STATUSES.includes(status as TaskStatus)) return null;
-  return { owner, status: status as TaskStatus };
-}
 
 // ---------------------------------------------------------------------------
 // Context provider
@@ -60,6 +38,7 @@ function parseZone(id: string): { owner: string; status: TaskStatus } | null {
 
 export function TaskDndProvider({ children }: { children: ReactNode }) {
   const { tasks, move, sort, upsertTask } = useTasks();
+  const t = useT();
   const [draggingId, setDraggingId] = useState<string | null>(null);
 
   const sensors = useSensors(
@@ -124,7 +103,9 @@ export function TaskDndProvider({ children }: { children: ReactNode }) {
       });
 
       void reorderTasks(ordered.map((t) => t.id)).then((result) => {
-        if (!result.ok) toast.error("Could not save that order", { description: result.error });
+        if (!result.ok) {
+          toast.error(t("tasks.order.saveFailed"), { description: result.error });
+        }
       });
       return;
     }
@@ -181,6 +162,7 @@ function Zone({
   children?: ReactNode;
 }) {
   const id = zoneId(owner, status);
+  const t = useT();
   const { setNodeRef, isOver } = useDroppable({ id, data: { ownerScope: owner, status } });
 
   return (
@@ -207,16 +189,16 @@ function Zone({
           )}
         >
           {isOver ? (
-            "Drop here"
+            t("tasks.zone.dropHere")
           ) : (
             <>
-              <span>{emptyHint ?? "Nothing here"}</span>
+              <span>{emptyHint ?? t("tasks.zone.nothingHere")}</span>
               {onAdd && (
                 <button
                   onClick={onAdd}
                   className="rounded-[4px] px-1 text-accent-bright hover:bg-hover"
                 >
-                  Add one
+                  {t("tasks.zone.addOne")}
                 </button>
               )}
             </>
@@ -228,10 +210,14 @@ function Zone({
 }
 
 function StatusHeading({ status, count }: { status: TaskStatus; count: number }) {
+  const t = useT();
+
   return (
     <div className="flex items-center gap-1.5 border-b border-line bg-canvas/40 px-2.5 py-1.5">
       <Dot tone={statusMeta[status].tone} />
-      <span className="text-2xs font-medium text-text-secondary">{statusMeta[status].label}</span>
+      <span className="text-2xs font-medium text-text-secondary">
+        {t(`status.${status}.label`)}
+      </span>
       <Count className="ml-auto">{count}</Count>
     </div>
   );
@@ -256,6 +242,7 @@ export function OwnerPanel({
   className?: string;
 }) {
   const { tasks, filters, sort, now } = useTasks();
+  const t = useT();
   const ownerKey = member?.id ?? UNASSIGNED;
 
   const visible = useMemo(() => {
@@ -282,12 +269,12 @@ export function OwnerPanel({
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1.5">
             <h2 className="truncate text-[13px] font-semibold tracking-[-0.01em] text-text">
-              {title ?? member?.name ?? "Unassigned"}
+              {title ?? member?.name ?? t("common.unassigned")}
             </h2>
             <Count>{openCount}</Count>
           </div>
           <p className="truncate text-2xs text-text-faint">
-            {subtitle ?? member?.jobTitle ?? "No owner yet"}
+            {subtitle ?? member?.jobTitle ?? t("tasks.panel.noOwnerYet")}
           </p>
         </div>
         {onAdd && (
@@ -295,7 +282,9 @@ export function OwnerPanel({
             variant="ghost"
             size="icon-sm"
             onClick={onAdd}
-            aria-label={`Add a task for ${title ?? member?.name ?? "nobody"}`}
+            aria-label={t("tasks.panel.addFor", {
+              name: title ?? member?.name ?? t("tasks.panel.nobody"),
+            })}
           >
             <Plus className="h-4 w-4" />
           </Button>
@@ -308,17 +297,17 @@ export function OwnerPanel({
             <EmptyState
               compact
               icon={Inbox}
-              title="Nothing to show"
+              title={t("tasks.panel.empty.title")}
               description={
-                tasks.some((t) => (t.owner?.id ?? UNASSIGNED) === ownerKey)
-                  ? "Every task here is filtered out. Clear the filters to see them."
-                  : "No tasks assigned yet. Drag one here, or add one."
+                tasks.some((task) => (task.owner?.id ?? UNASSIGNED) === ownerKey)
+                  ? t("tasks.panel.empty.filtered")
+                  : t("tasks.panel.empty.none")
               }
               action={
                 onAdd ? (
                   <Button size="sm" variant="secondary" onClick={onAdd}>
                     <Plus className="h-3 w-3" />
-                    New task
+                    {t("header.newTask")}
                   </Button>
                 ) : undefined
               }
@@ -335,7 +324,7 @@ export function OwnerPanel({
                 status={status}
                 tasks={items}
                 showOwner={false}
-                emptyHint={`No ${statusMeta[status].label.toLowerCase()} tasks`}
+                emptyHint={t("tasks.zone.nothingHere")}
                 onAdd={status === "TODO" ? onAdd : undefined}
               >
                 <StatusHeading status={status} count={items.length} />
@@ -363,6 +352,7 @@ export function StatusColumns({
   onAdd?: (status: TaskStatus) => void;
 }) {
   const { tasks, filters, sort, now } = useTasks();
+  const t = useT();
 
   const visible = useMemo(() => {
     const scoped =
@@ -388,14 +378,18 @@ export function StatusColumns({
           >
             <header className="flex shrink-0 items-center gap-1.5 border-b border-line px-2.5 py-2">
               <Dot tone={statusMeta[status].tone} />
-              <h2 className="text-[13px] font-medium text-text">{statusMeta[status].label}</h2>
+              <h2 className="text-[13px] font-medium text-text">
+                {t(`status.${status}.label`)}
+              </h2>
               <Count className="ml-auto">{items.length}</Count>
               {onAdd && status !== "COMPLETED" && (
                 <Button
                   variant="ghost"
                   size="icon-xs"
                   onClick={() => onAdd(status)}
-                  aria-label={`Add a ${statusMeta[status].label} task`}
+                  aria-label={t("tasks.column.addStatus", {
+                    status: t(`status.${status}.label`),
+                  })}
                 >
                   <Plus className="h-3.5 w-3.5" />
                 </Button>
@@ -406,7 +400,7 @@ export function StatusColumns({
               status={status}
               tasks={items}
               showOwner={showOwner}
-              emptyHint="Drop a task here"
+              emptyHint={t("tasks.zone.dropTaskHere")}
               className="min-h-[7rem] flex-1 overflow-y-auto"
             />
           </section>
@@ -427,6 +421,7 @@ export function TaskList({
   empty?: ReactNode;
 }) {
   const { tasks, filters, sort, now } = useTasks();
+  const t = useT();
 
   const visible = useMemo(
     () => sortTasks(applyFilters(scopedTasks ?? tasks, filters, now), sort, now),
@@ -439,8 +434,8 @@ export function TaskList({
         {empty ?? (
           <EmptyState
             icon={Inbox}
-            title="No tasks match these filters"
-            description="Try clearing a filter or widening the deadline window."
+            title={t("tasks.list.empty.title")}
+            description={t("tasks.list.empty.description")}
           />
         )}
       </div>

@@ -12,6 +12,8 @@ import { Button } from "@/frontend/components/ui/button";
 import { Count } from "@/frontend/components/ui/badge";
 import { Tooltip } from "@/frontend/components/ui/feedback";
 import { Menu, MenuContent, MenuItem, MenuLabel, MenuSeparator, MenuTrigger } from "@/frontend/components/ui/menu";
+import { useI18n } from "@/frontend/i18n";
+import { LanguageMenuSection } from "./language-switch";
 import { navSections, type NavItem } from "./nav";
 
 export type NavCounts = { pendingReview: number; myOpen: number; theirOpen: number };
@@ -34,12 +36,15 @@ export function Sidebar({
   onNavigate?: () => void;
 }) {
   const pathname = usePathname();
+  const { t } = useI18n();
 
   /** The counterpart's own name beats a generic label in a two-person workspace. */
   function labelFor(item: NavItem): string {
-    if (item.href !== "/employer-tasks") return item.label;
-    if (workspace.members.length > 2) return "Team tasks";
-    return counterpart ? `${counterpart.name.split(" ")[0]}’s tasks` : item.label;
+    if (item.href !== "/employer-tasks") return t(item.labelKey);
+    if (workspace.members.length > 2) return t("nav.teamTasks");
+    return counterpart
+      ? t("nav.personTasks", { name: counterpart.name.split(" ")[0]! })
+      : t(item.labelKey);
   }
 
   function isActive(href: string): boolean {
@@ -59,7 +64,7 @@ export function Sidebar({
           <Tooltip content={workspace.name} side="right">
             <button
               onClick={onToggle}
-              aria-label="Expand sidebar"
+              aria-label={t("sidebar.expand")}
               className="rounded-md p-0.5 transition-opacity hover:opacity-80"
             >
               <Logo />
@@ -79,7 +84,7 @@ export function Sidebar({
                 </button>
               </MenuTrigger>
               <MenuContent align="start" className="w-60">
-                <MenuLabel>Workspace</MenuLabel>
+                <MenuLabel>{t("sidebar.workspaceHeading")}</MenuLabel>
                 <MenuItem className="gap-2">
                   <Logo size={18} />
                   <span className="min-w-0 flex-1 truncate">{workspace.name}</span>
@@ -87,13 +92,17 @@ export function Sidebar({
                 </MenuItem>
                 <MenuSeparator />
                 <div className="px-2 py-1.5 text-2xs leading-4 text-text-faint">
-                  Additional workspaces are supported by the data model. Creating them from the
-                  UI is not part of this release.
+                  {t("sidebar.workspaceNote")}
                 </div>
               </MenuContent>
             </Menu>
-            <Tooltip content="Collapse sidebar" side="right">
-              <Button variant="ghost" size="icon-sm" onClick={onToggle} aria-label="Collapse sidebar">
+            <Tooltip content={t("sidebar.collapse")} side="right">
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                onClick={onToggle}
+                aria-label={t("sidebar.collapse")}
+              >
                 <ChevronsLeft className="h-4 w-4" />
               </Button>
             </Tooltip>
@@ -102,13 +111,13 @@ export function Sidebar({
       </div>
 
       {/* Navigation */}
-      <nav className="min-h-0 flex-1 overflow-y-auto px-2 py-3" aria-label="Main">
+      <nav className="min-h-0 flex-1 overflow-y-auto px-2 py-3" aria-label={t("nav.main")}>
         {navSections.map((section, index) => (
-          <div key={section.heading ?? index} className={index > 0 ? "mt-4" : undefined}>
-            {section.heading && !collapsed && (
-              <p className="eyebrow px-2 pb-1.5">{section.heading}</p>
+          <div key={section.headingKey ?? index} className={index > 0 ? "mt-4" : undefined}>
+            {section.headingKey && !collapsed && (
+              <p className="eyebrow px-2 pb-1.5">{t(section.headingKey)}</p>
             )}
-            {section.heading && collapsed && index > 0 && (
+            {section.headingKey && collapsed && index > 0 && (
               <div className="mx-2 mb-2 h-px bg-line" />
             )}
             <ul className="space-y-0.5">
@@ -189,7 +198,7 @@ export function Sidebar({
         <Menu>
           <MenuTrigger asChild>
             <button
-              aria-label="Account menu"
+              aria-label={t("sidebar.accountMenu")}
               className={cn(
                 "flex w-full items-center rounded-md transition-colors hover:bg-hover",
                 collapsed ? "justify-center p-1.5" : "gap-2 px-1.5 py-1.5",
@@ -202,7 +211,10 @@ export function Sidebar({
                     {member.name}
                   </span>
                   <span className="block truncate text-2xs leading-4 text-text-faint">
-                    {member.jobTitle ?? (member.role === "ADMINISTRATOR" ? "Administrator" : "Member")}
+                    {member.jobTitle ??
+                      (member.role === "ADMINISTRATOR"
+                        ? t("sidebar.role.administrator")
+                        : t("sidebar.role.member"))}
                   </span>
                 </span>
               )}
@@ -214,8 +226,10 @@ export function Sidebar({
               <p className="truncate text-2xs text-text-muted">{member.email}</p>
             </div>
             <MenuSeparator />
+            <LanguageMenuSection />
+            <MenuSeparator />
             <MenuItem asChild>
-              <Link href="/settings">Workspace settings</Link>
+              <Link href="/settings">{t("sidebar.workspaceSettings")}</Link>
             </MenuItem>
             <MenuSeparator />
             <form action={signOut}>
@@ -224,7 +238,7 @@ export function Sidebar({
                 className="flex w-full cursor-default items-center gap-2 rounded-md px-2 py-1.5 text-left text-[13px] text-text-secondary transition-colors hover:bg-hover hover:text-text"
               >
                 <LogOut className="h-3.5 w-3.5" />
-                Sign out
+                {t("sidebar.signOut")}
               </button>
             </form>
           </MenuContent>
@@ -236,12 +250,14 @@ export function Sidebar({
 
 /** Shown in the header on small screens, where the sidebar is a drawer. */
 export function SidebarTrigger({ onClick }: { onClick: () => void }) {
+  const { t } = useI18n();
+
   return (
     <Button
       variant="ghost"
       size="icon-sm"
       onClick={onClick}
-      aria-label="Open navigation"
+      aria-label={t("sidebar.openNavigation")}
       className="lg:hidden"
     >
       <PanelLeft className="h-4 w-4" />

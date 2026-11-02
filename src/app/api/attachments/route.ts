@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { message } from "@/backend/i18n/message";
 import { getSessionContext } from "@/backend/auth/guards";
 import { db } from "@/backend/db";
 import {
@@ -25,14 +26,14 @@ import { readImageSize } from "@/backend/images/dimensions";
 export async function POST(request: Request) {
   const session = await getSessionContext();
   if (!session) {
-    return NextResponse.json({ error: "Your session has expired. Please sign in again." }, { status: 401 });
+    return NextResponse.json({ error: await message("errors.sessionExpired") }, { status: 401 });
   }
 
   let form: FormData;
   try {
     form = await request.formData();
   } catch {
-    return NextResponse.json({ error: "That upload could not be read." }, { status: 400 });
+    return NextResponse.json({ error: await message("errors.upload.unreadable") }, { status: 400 });
   }
 
   const taskId = form.get("taskId");
@@ -49,12 +50,12 @@ export async function POST(request: Request) {
 
   if (!owner || (taskId && docId)) {
     return NextResponse.json(
-      { error: "An image has to belong to exactly one document." },
+      { error: await message("errors.upload.oneDocument") },
       { status: 400 },
     );
   }
   if (!(file instanceof File)) {
-    return NextResponse.json({ error: "No image was attached." }, { status: 400 });
+    return NextResponse.json({ error: await message("errors.upload.noImage") }, { status: 400 });
   }
 
   // Workspace isolation: the document has to be one this session can already
@@ -72,14 +73,14 @@ export async function POST(request: Request) {
 
   if (!exists) {
     return NextResponse.json(
-      { error: "That document no longer exists in this workspace." },
+      { error: await message("errors.upload.docGone") },
       { status: 404 },
     );
   }
 
   if (!isAcceptedImage(file.type)) {
     return NextResponse.json(
-      { error: "Only PNG, JPEG, GIF, WebP and AVIF images can be embedded." },
+      { error: await message("errors.upload.wrongType") },
       { status: 415 },
     );
   }
@@ -87,7 +88,7 @@ export async function POST(request: Request) {
   const bytes = new Uint8Array(await file.arrayBuffer());
   // `file.size` is claimed by the client, so the measured length is what counts.
   if (bytes.byteLength === 0) {
-    return NextResponse.json({ error: "That image is empty." }, { status: 400 });
+    return NextResponse.json({ error: await message("errors.upload.empty") }, { status: 400 });
   }
   if (bytes.byteLength > MAX_IMAGE_BYTES) {
     return NextResponse.json(

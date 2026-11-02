@@ -54,6 +54,8 @@ import {
   type TextEdit,
   type TextSelection,
 } from "@/shared/doc/transform";
+import type { Translate, TranslationKey } from "@/shared/i18n";
+import { useT } from "@/frontend/i18n";
 import { cn } from "@/frontend/lib/utils";
 import { Button } from "@/frontend/components/ui/button";
 import { Input } from "@/frontend/components/ui/field";
@@ -84,7 +86,7 @@ export function DocEditor({
   view = "write",
   autoFocus = false,
   grow = true,
-  placeholder = "Write the brief. Paste a screenshot, or type / for a block.",
+  placeholder,
   minHeight = "min-h-[9rem]",
   toolbarExtras,
   footer,
@@ -137,6 +139,7 @@ export function DocEditor({
 
   const [slash, setSlash] = useState<{ from: number; query: string } | null>(null);
   const [slashIndex, setSlashIndex] = useState(0);
+  const t = useT();
   const [linkDraft, setLinkDraft] = useState<string | null>(null);
   const [uploads, setUploads] = useState<{ key: string; name: string }[]>([]);
   const [dragging, setDragging] = useState(false);
@@ -200,8 +203,8 @@ export function DocEditor({
     async (files: File[]) => {
       const accepted: File[] = [];
       for (const file of files) {
-        const reason = rejectionReason(file);
-        if (reason) toast.error("That file was not added", { description: reason });
+        const reason = rejectionReason(file, t);
+        if (reason) toast.error(t("doc.upload.rejected"), { description: reason });
         else accepted.push(file);
       }
       if (accepted.length === 0) return;
@@ -224,7 +227,7 @@ export function DocEditor({
             | null;
 
           if (!response.ok || !payload?.url) {
-            throw new Error(payload?.error ?? "The upload did not complete.");
+            throw new Error(payload?.error ?? t("doc.upload.incomplete"));
           }
 
           // If the document moved on while this was in flight, append rather
@@ -241,7 +244,7 @@ export function DocEditor({
           expected = edit.value;
           anchor = edit.selection;
         } catch (error) {
-          toast.error("Could not add that image", {
+          toast.error(t("doc.upload.failed"), {
             description: error instanceof Error ? error.message : undefined,
           });
         } finally {
@@ -249,12 +252,12 @@ export function DocEditor({
         }
       }
     },
-    [apply, attachTo, readSelection],
+    [apply, attachTo, readSelection, t],
   );
 
   // ------------------------------------------------------------------ slash
 
-  const slashItems = slash ? filterSlashItems(slash.query) : [];
+  const slashItems = slash ? filterSlashItems(slash.query, t) : [];
   const activeSlashItem = slashItems[Math.min(slashIndex, slashItems.length - 1)];
 
   const closeSlash = useCallback(() => {
@@ -409,50 +412,50 @@ export function DocEditor({
       {/* Toolbar */}
       <div className="flex shrink-0 flex-wrap items-center gap-0.5 rounded-t-lg border border-line-strong bg-raised px-1.5 py-1">
         <ToolButton
-          label="Heading 1"
+          label="doc.toolbar.h1"
           icon={Heading1}
           active={block === "h1"}
           onClick={() => apply(setBlockKind(value, readSelection(), "h1"))}
         />
         <ToolButton
-          label="Heading 2"
+          label="doc.toolbar.h2"
           icon={Heading2}
           active={block === "h2"}
           onClick={() => apply(setBlockKind(value, readSelection(), "h2"))}
         />
         <ToolButton
-          label="Heading 3"
+          label="doc.toolbar.h3"
           icon={Heading3}
           active={block === "h3"}
           onClick={() => apply(setBlockKind(value, readSelection(), "h3"))}
         />
         <ToolDivider />
         <ToolButton
-          label="Bold  ⌘B"
+          label="doc.toolbar.bold"
           icon={Bold}
           active={marks.strong}
           onClick={() => apply(toggleMark(value, readSelection(), "strong"))}
         />
         <ToolButton
-          label="Italic  ⌘I"
+          label="doc.toolbar.italic"
           icon={Italic}
           active={marks.em}
           onClick={() => apply(toggleMark(value, readSelection(), "em"))}
         />
         <ToolButton
-          label="Strikethrough"
+          label="doc.toolbar.strikethrough"
           icon={Strikethrough}
           active={marks.strike}
           onClick={() => apply(toggleMark(value, readSelection(), "strike"))}
         />
         <ToolButton
-          label="Inline code  ⌘E"
+          label="doc.toolbar.code"
           icon={Code}
           active={marks.code}
           onClick={() => apply(toggleMark(value, readSelection(), "code"))}
         />
         <ToolButton
-          label="Link  ⌘K"
+          label="doc.toolbar.link"
           icon={Link2}
           onClick={() => {
             setSelection(readSelection());
@@ -461,41 +464,41 @@ export function DocEditor({
         />
         <ToolDivider />
         <ToolButton
-          label="Bulleted list"
+          label="doc.toolbar.bullet"
           icon={List}
           active={block === "bullet"}
           onClick={() => apply(setBlockKind(value, readSelection(), "bullet"))}
         />
         <ToolButton
-          label="Numbered list"
+          label="doc.toolbar.ordered"
           icon={ListOrdered}
           active={block === "ordered"}
           onClick={() => apply(setBlockKind(value, readSelection(), "ordered"))}
         />
         <ToolButton
-          label="Checklist"
+          label="doc.toolbar.check"
           icon={ListChecks}
           active={block === "check"}
           onClick={() => apply(setBlockKind(value, readSelection(), "check"))}
         />
         <ToolButton
-          label="Quote"
+          label="doc.toolbar.quote"
           icon={Quote}
           active={block === "quote"}
           onClick={() => apply(setBlockKind(value, readSelection(), "quote"))}
         />
         <ToolButton
-          label="Code block"
+          label="doc.toolbar.codeBlock"
           icon={Code2}
           onClick={() => apply(insertBlock(value, readSelection(), "```\n\n```", 4))}
         />
         <ToolButton
-          label="Divider"
+          label="doc.toolbar.divider"
           icon={Minus}
           onClick={() => apply(insertBlock(value, readSelection(), "---"))}
         />
         <ToolButton
-          label="Image — or paste and drop them"
+          label="doc.toolbar.imageDrop"
           icon={ImagePlus}
           onClick={() => fileInputRef.current?.click()}
         />
@@ -527,17 +530,17 @@ export function DocEditor({
                 textareaRef.current?.focus();
               }
             }}
-            placeholder="https://…"
+            placeholder={t("doc.linkPlaceholder")}
             className="h-7 text-xs"
           />
           <Button type="submit" size="sm" variant="secondary">
-            Link
+            {t("doc.toolbar.link").split("  ")[0]}
           </Button>
           <Button
             type="button"
             size="icon-sm"
             variant="ghost"
-            aria-label="Cancel"
+            aria-label={t("common.cancel")}
             onClick={() => setLinkDraft(null)}
           >
             <X className="h-3.5 w-3.5" />
@@ -584,7 +587,7 @@ export function DocEditor({
             onSelect={syncSelection}
             onPaste={handlePaste}
             onBlur={() => window.setTimeout(closeSlash, 120)}
-            placeholder={placeholder}
+            placeholder={placeholder ?? t("doc.placeholder")}
             spellCheck
             className={cn(
               "block w-full resize-none bg-transparent px-3 py-2.5 font-sans leading-6 text-text outline-none placeholder:text-text-faint",
@@ -607,14 +610,14 @@ export function DocEditor({
             {value.trim() ? (
               <DocContent markdown={value} density="relaxed" />
             ) : (
-              <p className="text-[13px] text-text-faint">Nothing to preview yet.</p>
+              <p className="text-[13px] text-text-faint">{t("doc.nothingToPreview")}</p>
             )}
           </div>
         )}
 
         {dragging && (
           <div className="pointer-events-none absolute inset-0 flex items-center justify-center rounded-b-lg bg-canvas/80">
-            <p className="text-xs font-medium text-accent-bright">Drop to embed</p>
+            <p className="text-xs font-medium text-accent-bright">{t("doc.dropToEmbed")}</p>
           </div>
         )}
       </div>
@@ -663,16 +666,19 @@ function ToolButton({
   active,
   onClick,
 }: {
-  label: string;
+  label: TranslationKey;
   icon: IconComponent;
   active?: boolean;
   onClick: () => void;
 }) {
+  const t = useT();
+  const text = t(label);
+
   return (
-    <Tooltip content={label}>
+    <Tooltip content={text}>
       <button
         type="button"
-        aria-label={label}
+        aria-label={text}
         aria-pressed={active}
         // The textarea must keep its selection, so the button never takes focus.
         onMouseDown={(event) => event.preventDefault()}
@@ -700,6 +706,7 @@ function ToolDivider() {
 
 type SlashItem = {
   id: string;
+  /** Resolved before the menu renders; the search runs against it. */
   label: string;
   hint: string;
   keywords: string;
@@ -708,14 +715,19 @@ type SlashItem = {
   run: (value: string, selection: TextSelection) => TextEdit;
 };
 
+type SlashDefinition = Omit<SlashItem, "label" | "keywords"> & {
+  label: TranslationKey;
+  keywords: TranslationKey;
+};
+
 const blockItem = (
   id: string,
-  label: string,
+  label: TranslationKey,
   hint: string,
-  keywords: string,
+  keywords: TranslationKey,
   icon: IconComponent,
   kind: BlockKind,
-): SlashItem => ({
+): SlashDefinition => ({
   id,
   label,
   hint,
@@ -724,48 +736,67 @@ const blockItem = (
   run: (value, selection) => setBlockKind(value, selection, kind),
 });
 
-const SLASH_ITEMS: SlashItem[] = [
-  blockItem("h1", "Heading 1", "#", "title header h1", Heading1, "h1"),
-  blockItem("h2", "Heading 2", "##", "subtitle header h2", Heading2, "h2"),
-  blockItem("h3", "Heading 3", "###", "header h3", Heading3, "h3"),
-  blockItem("text", "Plain text", "¶", "paragraph body normal", Type, "text"),
-  blockItem("bullet", "Bulleted list", "-", "list bullet unordered", List, "bullet"),
-  blockItem("ordered", "Numbered list", "1.", "list ordered numbers", ListOrdered, "ordered"),
-  blockItem("check", "Checklist", "[ ]", "todo task checkbox", ListChecks, "check"),
-  blockItem("quote", "Quote", ">", "blockquote citation", Quote, "quote"),
+const SLASH_ITEMS: SlashDefinition[] = [
+  blockItem("h1", "doc.block.h1", "#", "doc.block.h1.keywords", Heading1, "h1"),
+  blockItem("h2", "doc.block.h2", "##", "doc.block.h2.keywords", Heading2, "h2"),
+  blockItem("h3", "doc.block.h3", "###", "doc.block.h3.keywords", Heading3, "h3"),
+  blockItem("text", "doc.block.text", "¶", "doc.block.text.keywords", Type, "text"),
+  blockItem("bullet", "doc.block.bullet", "-", "doc.block.bullet.keywords", List, "bullet"),
+  blockItem(
+    "ordered",
+    "doc.block.ordered",
+    "1.",
+    "doc.block.ordered.keywords",
+    ListOrdered,
+    "ordered",
+  ),
+  blockItem("check", "doc.block.check", "[ ]", "doc.block.check.keywords", ListChecks, "check"),
+  blockItem("quote", "doc.block.quote", ">", "doc.block.quote.keywords", Quote, "quote"),
   {
     id: "code",
-    label: "Code block",
+    label: "doc.block.code",
     hint: "```",
-    keywords: "code snippet pre",
+    keywords: "doc.block.code.keywords",
     icon: Code2,
     run: (value, selection) => insertBlock(value, selection, "```\n\n```", 4),
   },
   {
     id: "divider",
-    label: "Divider",
+    label: "doc.block.divider",
     hint: "---",
-    keywords: "divider rule separator line",
+    keywords: "doc.block.divider.keywords",
     icon: Minus,
     run: (value, selection) => insertBlock(value, selection, "---"),
   },
   {
     id: "image",
-    label: "Image",
-    hint: "upload",
-    keywords: "image picture screenshot photo attach upload",
+    label: "doc.block.image",
+    hint: "doc.block.image.hint",
+    keywords: "doc.block.image.keywords",
     icon: ImagePlus,
     action: "image",
     run: (value, selection) => ({ value, selection }),
   },
 ];
 
-function filterSlashItems(query: string): SlashItem[] {
+/**
+ * Matched against the translated label and keywords, so "/заг" finds the
+ * heading block when the interface is in Russian.
+ */
+function filterSlashItems(query: string, t: Translate): SlashItem[] {
+  const items: SlashItem[] = SLASH_ITEMS.map((item) => ({
+    ...item,
+    label: t(item.label),
+    hint: item.id === "image" ? t("doc.block.image.hint") : item.hint,
+    keywords: t(item.keywords),
+  }));
+
   const needle = query.trim().toLowerCase();
-  if (!needle) return SLASH_ITEMS;
-  return SLASH_ITEMS.filter(
+  if (!needle) return items;
+  return items.filter(
     (item) =>
-      item.label.toLowerCase().includes(needle) || item.keywords.includes(needle),
+      item.label.toLowerCase().includes(needle) ||
+      item.keywords.toLowerCase().includes(needle),
   );
 }
 
@@ -780,13 +811,15 @@ function SlashMenu({
   onPick: (item: SlashItem) => void;
   onHover: (index: number) => void;
 }) {
+  const t = useT();
+
   return (
     <div
       role="listbox"
-      aria-label="Insert a block"
+      aria-label={t("doc.block.insert")}
       className="absolute bottom-2 left-2 z-20 w-56 overflow-hidden rounded-lg border border-line-strong bg-overlay p-1 shadow-popover"
     >
-      <p className="px-2 py-1 text-2xs text-text-faint">Insert a block</p>
+      <p className="px-2 py-1 text-2xs text-text-faint">{t("doc.block.insert")}</p>
       <div className="max-h-56 overflow-y-auto">
         {items.map((item, index) => (
           <button

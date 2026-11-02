@@ -1,3 +1,4 @@
+import type { Translate, TranslationKey, Vars } from "../i18n";
 import type { SortMode, TaskPriority, TaskView } from "./types";
 import { priorityMeta } from "./labels";
 
@@ -50,7 +51,13 @@ export function unmetDependencies(task: Pick<TaskView, "dependencies">) {
 }
 
 export type SmartFactor = {
-  label: string;
+  /**
+   * What the factor is, not what it says. Scoring runs wherever it is needed —
+   * including on the server — while the wording belongs to whatever language
+   * the reader has chosen, so the two are kept apart.
+   */
+  key: TranslationKey;
+  vars?: Vars;
   /** Negative weights raise a task; positive weights lower it. */
   weight: number;
 };
@@ -59,6 +66,11 @@ export type SmartScore = {
   score: number;
   factors: SmartFactor[];
 };
+
+/** Resolves a factor to the language on screen. */
+export function factorLabel(factor: SmartFactor, t: Translate): string {
+  return t(factor.key, factor.vars);
+}
 
 /**
  * Smart priority.
@@ -73,87 +85,98 @@ export function smartScore(task: TaskView, now: Date): SmartScore {
   let score = priorityMeta[task.priority].rank * 1000;
 
   if (task.status === "COMPLETED") {
-    return { score: score + 100_000, factors: [{ label: "Completed", weight: 100_000 }] };
+    return {
+      score: score + 100_000,
+      factors: [{ key: "priority.factor.completed", weight: 100_000 }],
+    };
   }
 
   const days = daysUntil(task.dueDate, now);
 
   if (days === null) {
     score += 40;
-    factors.push({ label: "No deadline set", weight: 40 });
+    factors.push({ key: "priority.factor.noDeadline", weight: 40 });
   } else if (days < 0) {
     const overdueBy = Math.abs(days);
     // Caps at -250 so a stale low-priority task can never outrank real work.
     const weight = -Math.min(250, 150 + overdueBy * 10);
     score += weight;
     factors.push({
-      label: overdueBy === 1 ? "Overdue by 1 day" : `Overdue by ${overdueBy} days`,
+      key: "priority.factor.overdueBy",
+      vars: { count: overdueBy },
       weight,
     });
   } else if (days === 0) {
     score -= 150;
-    factors.push({ label: "Due today", weight: -150 });
+    factors.push({ key: "priority.factor.dueToday", weight: -150 });
   } else if (days === 1) {
     score -= 120;
-    factors.push({ label: "Due tomorrow", weight: -120 });
+    factors.push({ key: "priority.factor.dueTomorrow", weight: -120 });
   } else if (days <= 3) {
     score -= 80;
-    factors.push({ label: `Due in ${days} days`, weight: -80 });
+    factors.push({ key: "priority.factor.dueInDays", vars: { count: days }, weight: -80 });
   } else if (days <= 7) {
     score -= 30;
-    factors.push({ label: "Due this week", weight: -30 });
+    factors.push({ key: "priority.factor.dueThisWeek", weight: -30 });
   }
 
   const blocks = blockingImpact(task);
   if (blocks > 0) {
     const weight = -Math.min(4, blocks) * 60;
     score += weight;
-    factors.push({
-      label: blocks === 1 ? "Blocks 1 other task" : `Blocks ${blocks} other tasks`,
-      weight,
-    });
+    factors.push({ key: "priority.factor.blocks", vars: { count: blocks }, weight });
   }
 
   if (task.status === "IN_PROGRESS") {
     score -= 40;
-    factors.push({ label: "Already in progress", weight: -40 });
+    factors.push({ key: "priority.factor.inProgress", weight: -40 });
   }
 
   if (task.status === "BLOCKED") {
     // Can't be acted on, so it drops — but a blocked urgent task still ranks
     // above an unblocked medium one, which is the point.
     score += 120;
-    factors.push({ label: "Waiting on something else", weight: 120 });
+    factors.push({ key: "priority.factor.waitingOnSomething", weight: 120 });
   }
 
   const unmet = unmetDependencies(task).length;
   if (unmet > 0 && task.status !== "BLOCKED") {
     score += 60;
     factors.push({
-      label: unmet === 1 ? "Waiting on 1 dependency" : `Waiting on ${unmet} dependencies`,
+      key: "priority.factor.waitingOnDeps",
+      vars: { count: unmet },
       weight: 60,
     });
   }
 
   if (task.needsReview) {
     score -= 30;
-    factors.push({ label: "Needs review", weight: -30 });
+    factors.push({ key: "priority.factor.needsReview", weight: -30 });
   }
 
   return { score, factors };
 }
 
-/** One-line plain-English reason a task sits where it does. */
-export function smartExplanation(task: TaskView, now: Date): string {
+/** One line on why a task sits where it does, in the language on screen. */
+export function smartExplanation(task: TaskView, now: Date, t: Translate): string {
   const { factors } = smartScore(task, now);
   const ranked = [...factors].sort((a, b) => a.weight - b.weight);
   const raising = ranked.filter((f) => f.weight < 0).slice(0, 2);
-  const base = `${priorityMeta[task.priority].label} priority`;
+  const base = t("priority.explanation", { priority: t(`priority.${task.priority}.label`) });
+
+  // Factor labels are written as standalone phrases ("Due today"), so they are
+  // lower-cased to read as a continuation. That holds for Cyrillic too.
+  const phrase = (factor: SmartFactor) => factorLabel(factor, t).toLowerCase();
+
   if (raising.length === 0) {
-    const lowering = ranked.filter((f) => f.weight > 0 && f.label !== "Completed");
-    return lowering.length ? `${base} · ${lowering[0]!.label.toLowerCase()}` : base;
+    const lowering = ranked.filter(
+      (f) => f.weight > 0 && f.key !== "priority.factor.completed",
+    );
+    return lowering.length
+      ? t("priority.explanationWith", { base, factors: phrase(lowering[0]!) })
+      : base;
   }
-  return `${base} · ${raising.map((f) => f.label.toLowerCase()).join(" · ")}`;
+  return t("priority.explanationWith", { base, factors: raising.map(phrase).join(" · ") });
 }
 
 // ---------------------------------------------------------------------------

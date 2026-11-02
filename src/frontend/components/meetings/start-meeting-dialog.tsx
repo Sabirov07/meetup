@@ -6,6 +6,7 @@ import { useState, useTransition } from "react";
 import { toast } from "sonner";
 import { createMeeting } from "@/backend/actions/meetings";
 import type { MemberSummary } from "@/shared/domain/types";
+import { useT } from "@/frontend/i18n";
 import { cn } from "@/frontend/lib/utils";
 import { Avatar } from "@/frontend/components/ui/avatar";
 import { Button } from "@/frontend/components/ui/button";
@@ -76,6 +77,7 @@ function MeetingForm({
 
   const googleReady = google.configured && google.connected;
   const [mode, setMode] = useState<Mode>(googleReady ? "google" : "link");
+  const t = useT();
   const [title, setTitle] = useState("");
   const [meetUrl, setMeetUrl] = useState("");
   const [participants, setParticipants] = useState<string[]>(() =>
@@ -87,7 +89,7 @@ function MeetingForm({
     setError(null);
     startTransition(async () => {
       const result = await createMeeting({
-        title: title.trim() || "Untitled meeting",
+        title: title.trim() || t("start.untitled"),
         mode,
         meetUrl: mode === "link" ? meetUrl.trim() : undefined,
         participantMemberIds: participants,
@@ -100,10 +102,8 @@ function MeetingForm({
       }
 
       const meeting = result.data;
-      toast.success("Meeting created", {
-        description: meeting.meetUrl
-          ? "Opening Google Meet in a new tab."
-          : meeting.title,
+      toast.success(t("start.created"), {
+        description: meeting.meetUrl ? t("start.openingGoogle") : meeting.title,
       });
 
       // Opened from the click's own transition, so the popup blocker allows it.
@@ -118,41 +118,40 @@ function MeetingForm({
   return (
     <>
       <DialogHeader>
-        <DialogTitle>Start a meeting</DialogTitle>
-        <DialogDescription>
-          The call opens in a separate tab so this workspace stays available
-          beside it.
-        </DialogDescription>
+        <DialogTitle>{t("start.title")}</DialogTitle>
+        <DialogDescription>{t("start.description")}</DialogDescription>
       </DialogHeader>
 
       <DialogBody className="space-y-4">
-        <Field label="What is this meeting about?" htmlFor="meeting-title">
+        <Field label={t("start.field.title")} htmlFor="meeting-title">
           <Input
             id="meeting-title"
             autoFocus
             value={title}
             onChange={(event) => setTitle(event.target.value)}
-            placeholder="Weekly build review"
+            placeholder={t("start.field.titlePlaceholder")}
           />
         </Field>
 
         <div className="space-y-1.5">
-          <p className="text-xs font-medium text-text-secondary">
-            Meeting link
-          </p>
+          <p className="text-xs font-medium text-text-secondary">{t("start.linkHeading")}</p>
 
           <ModeOption
             selected={mode === "google"}
             disabled={!googleReady}
             onSelect={() => setMode("google")}
             icon={Video}
-            title="Create a Google Meet"
+            title={t("start.mode.google")}
             description={
               googleReady
-                ? `Creates a real meeting space on ${google.email ?? "your Google account"}.`
-                : google.configured
-                  ? "Connect your Google account in Settings to use this."
-                  : "Needs Google credentials on the server. See Settings."
+                ? t("start.mode.googleReady", {
+                    account: google.email ?? t("start.mode.googleAccountFallback"),
+                  })
+                : t(
+                    google.configured
+                      ? "start.mode.googleNeedsConnect"
+                      : "start.mode.googleNeedsServer",
+                  )
             }
           />
 
@@ -160,8 +159,8 @@ function MeetingForm({
             selected={mode === "link"}
             onSelect={() => setMode("link")}
             icon={Link2}
-            title="Use an existing link"
-            description="Paste a meet.google.com link you already have."
+            title={t("start.mode.link")}
+            description={t("start.mode.linkDescription")}
           />
 
           {mode === "link" && (
@@ -169,8 +168,8 @@ function MeetingForm({
               <Input
                 value={meetUrl}
                 onChange={(event) => setMeetUrl(event.target.value)}
-                placeholder="https://meet.google.com/abc-defg-hij"
-                aria-label="Google Meet link"
+                placeholder={t("start.mode.linkPlaceholder")}
+                aria-label={t("start.mode.linkLabel")}
               />
               <a
                 href="https://meet.google.com/new"
@@ -179,7 +178,7 @@ function MeetingForm({
                 className="mt-1.5 inline-flex items-center gap-1 text-2xs text-accent-bright hover:underline"
               >
                 <ExternalLink className="h-3 w-3" />
-                Open Google Meet to create one, then paste it here
+                {t("start.mode.linkHelp")}
               </a>
             </div>
           )}
@@ -188,15 +187,13 @@ function MeetingForm({
             selected={mode === "none"}
             onSelect={() => setMode("none")}
             icon={Info}
-            title="No link yet"
-            description="Just record the meeting now and add a transcript afterwards."
+            title={t("start.mode.none")}
+            description={t("start.mode.noneDescription")}
           />
         </div>
 
         <div className="space-y-1.5">
-          <p className="text-xs font-medium text-text-secondary">
-            Participants
-          </p>
+          <p className="text-xs font-medium text-text-secondary">{t("start.participants")}</p>
           <div className="space-y-0.5">
             {members.map((member) => (
               <label
@@ -216,7 +213,7 @@ function MeetingForm({
                 <Avatar member={member} size="sm" />
                 <span className="min-w-0 flex-1 truncate">{member.name}</span>
                 {member.id === currentMemberId && (
-                  <span className="text-2xs text-text-faint">You</span>
+                  <span className="text-2xs text-text-faint">{t("common.you")}</span>
                 )}
               </label>
             ))}
@@ -235,16 +232,16 @@ function MeetingForm({
 
       <DialogFooter>
         <Button variant="ghost" onClick={() => onOpenChange(false)}>
-          Cancel
+          {t("common.cancel")}
         </Button>
         <Button
           variant="primary"
           onClick={submit}
           loading={pending}
-          loadingLabel="Creating…"
+          loadingLabel={t("common.creating")}
           disabled={mode === "link" && !meetUrl.trim()}
         >
-          {mode === "none" ? "Create record" : "Create & open"}
+          {t(mode === "none" ? "start.submitRecord" : "start.submitOpen")}
         </Button>
       </DialogFooter>
     </>

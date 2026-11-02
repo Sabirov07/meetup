@@ -4,11 +4,13 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { AlertCircle, ArrowRight } from "lucide-react";
 import { signIn } from "@/backend/actions/auth";
+import { useT } from "@/frontend/i18n";
 import { Button } from "@/frontend/components/ui/button";
 import { Field, Input } from "@/frontend/components/ui/field";
 
 export function LoginForm() {
   const router = useRouter();
+  const t = useT();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
@@ -34,7 +36,7 @@ export function LoginForm() {
 
   return (
     <form onSubmit={onSubmit} className="space-y-3.5" noValidate>
-      <Field label="Email" htmlFor="email">
+      <Field label={t("auth.field.email")} htmlFor="email">
         <Input
           id="email"
           name="email"
@@ -42,11 +44,11 @@ export function LoginForm() {
           autoComplete="email"
           autoFocus
           required
-          placeholder="you@company.com"
+          placeholder={t("auth.field.emailPlaceholder")}
         />
       </Field>
 
-      <Field label="Password" htmlFor="password">
+      <Field label={t("auth.field.password")} htmlFor="password">
         <Input
           id="password"
           name="password"
@@ -73,9 +75,9 @@ export function LoginForm() {
         size="lg"
         className="w-full"
         loading={pending}
-        loadingLabel="Signing in…"
+        loadingLabel={t("auth.signIn.submitting")}
       >
-        Sign in
+        {t("auth.signIn.submit")}
         <ArrowRight className="h-3.5 w-3.5" />
       </Button>
     </form>

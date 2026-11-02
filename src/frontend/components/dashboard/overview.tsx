@@ -2,11 +2,12 @@
 
 import { ArrowRight, CalendarClock, Plus, Sparkles, Video } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import type { ActivityView, MeetingView, MemberSummary } from "@/shared/domain/types";
 import { activityMeta, meetingStatusMeta } from "@/shared/domain/labels";
 import { attentionSummary } from "@/shared/domain/recommendations";
-import { formatWhen, greetingFor } from "@/frontend/lib/format";
+import { useI18n } from "@/frontend/i18n";
+import { useActivityLine } from "@/frontend/components/activity/activity-line";
 import { Avatar, AvatarStack } from "@/frontend/components/ui/avatar";
 import { Badge, Count } from "@/frontend/components/ui/badge";
 import { Button } from "@/frontend/components/ui/button";
@@ -39,8 +40,18 @@ export function Overview({
   google: GoogleState;
 }) {
   const { tasks, members, now, upsertTask } = useTasks();
+  const { t, f, locale } = useI18n();
   const [newTaskFor, setNewTaskFor] = useState<string | null | undefined>(undefined);
   const [meetingOpen, setMeetingOpen] = useState(false);
+
+  // Titles for the compact feed, so an event can name what it happened to.
+  const titles = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const task of tasks) map.set(task.id, task.title);
+    for (const meeting of meetings) map.set(meeting.id, meeting.title);
+    return map;
+  }, [tasks, meetings]);
+  const activityLine = useActivityLine(titles);
 
   const others = members.filter((m) => m.id !== member.id);
   const nextMeeting = meetings.find(
@@ -54,23 +65,25 @@ export function Overview({
         <section className="flex flex-wrap items-end justify-between gap-3">
           <div className="min-w-0">
             <p className="text-2xs text-text-faint">
-              {now.toLocaleDateString(undefined, {
+              {now.toLocaleDateString(locale, {
                 weekday: "long",
                 month: "long",
                 day: "numeric",
               })}
             </p>
             <h1 className="mt-0.5 text-xl font-semibold tracking-[-0.025em] text-text">
-              {greetingFor(now)}, {member.name.split(" ")[0]}
+              {t("overview.greeting", {
+                greeting: f.greeting(now),
+                name: member.name.split(" ")[0]!,
+              })}
             </h1>
             <p className="mt-1 text-[13px] leading-5 text-text-muted">
-              {attentionSummary(tasks, now)}
+              {attentionSummary(tasks, now, t)}
               {pendingProposals > 0 && (
                 <>
                   {" "}
                   <Link href="/review" className="text-accent-bright hover:underline">
-                    {pendingProposals} proposed{" "}
-                    {pendingProposals === 1 ? "task is" : "tasks are"} waiting for review.
+                    {t("overview.proposalsWaiting", { count: pendingProposals })}
                   </Link>
                 </>
               )}
@@ -80,11 +93,11 @@ export function Overview({
           <div className="flex shrink-0 items-center gap-2">
             <Button variant="secondary" size="lg" onClick={() => setNewTaskFor(member.id)}>
               <Plus className="h-3.5 w-3.5" />
-              Create task
+              {t("overview.createTask")}
             </Button>
             <Button variant="primary" size="lg" onClick={() => setMeetingOpen(true)}>
               <Video className="h-3.5 w-3.5" />
-              Start meeting
+              {t("header.startMeeting")}
             </Button>
           </div>
         </section>
@@ -98,8 +111,8 @@ export function Overview({
           <div className="grid min-w-0 gap-4 lg:grid-cols-2">
             <OwnerPanel
               member={member}
-              title="My tasks"
-              subtitle={member.jobTitle ?? "Assigned to you"}
+              title={t("nav.myTasks")}
+              subtitle={member.jobTitle ?? t("overview.assignedToYou")}
               onAdd={() => setNewTaskFor(member.id)}
               className="max-h-[38rem]"
             />
@@ -108,17 +121,19 @@ export function Overview({
               <OwnerPanel
                 member={counterpart}
                 title={
-                  others.length > 1 ? "Team tasks" : `${counterpart.name.split(" ")[0]}’s tasks`
+                  others.length > 1
+                    ? t("nav.teamTasks")
+                    : t("nav.personTasks", { name: counterpart.name.split(" ")[0]! })
                 }
-                subtitle={counterpart.jobTitle ?? "Assigned to them"}
+                subtitle={counterpart.jobTitle ?? t("overview.assignedToThem")}
                 onAdd={() => setNewTaskFor(counterpart.id)}
                 className="max-h-[38rem]"
               />
             ) : (
               <OwnerPanel
                 member={null}
-                title="Unassigned"
-                subtitle="Waiting for an owner"
+                title={t("common.unassigned")}
+                subtitle={t("overview.waitingForOwner")}
                 onAdd={() => setNewTaskFor(null)}
                 className="max-h-[38rem]"
               />
@@ -137,13 +152,13 @@ export function Overview({
               <header className="flex items-center gap-2 border-b border-line px-3 py-2.5">
                 <CalendarClock className="h-3.5 w-3.5 text-text-faint" />
                 <h2 className="text-[13px] font-semibold tracking-[-0.01em] text-text">
-                  {nextMeeting ? "Next meeting" : "Meetings"}
+                  {nextMeeting ? t("overview.nextMeeting") : t("nav.meetings")}
                 </h2>
                 <Link
                   href="/meetings"
                   className="ml-auto text-2xs text-accent-bright hover:underline"
                 >
-                  All
+                  {t("overview.all")}
                 </Link>
               </header>
 
@@ -154,11 +169,11 @@ export function Overview({
                       {nextMeeting.title}
                     </p>
                     <Badge tone={meetingStatusMeta[nextMeeting.status].tone}>
-                      {meetingStatusMeta[nextMeeting.status].label}
+                      {t(`meetingStatus.${nextMeeting.status}.label`)}
                     </Badge>
                   </div>
                   <p className="mt-0.5 text-2xs text-text-muted">
-                    {formatWhen(nextMeeting.scheduledAt, now)}
+                    {f.when(nextMeeting.scheduledAt, now)}
                   </p>
                   {nextMeeting.participants.length > 0 && (
                     <div className="mt-2">
@@ -177,12 +192,12 @@ export function Overview({
                 <EmptyState
                   compact
                   icon={Video}
-                  title="Nothing scheduled"
-                  description="Start a meeting and its tasks will land here afterwards."
+                  title={t("overview.nothingScheduled")}
+                  description={t("overview.nothingScheduledHelp")}
                   action={
                     <Button size="sm" variant="secondary" onClick={() => setMeetingOpen(true)}>
                       <Video className="h-3 w-3" />
-                      Start meeting
+                      {t("header.startMeeting")}
                     </Button>
                   }
                 />
@@ -197,8 +212,7 @@ export function Overview({
                   >
                     <Sparkles className="h-3.5 w-3.5 shrink-0 text-accent-bright" />
                     <span className="min-w-0 flex-1 text-2xs leading-4 text-text-secondary">
-                      {pendingProposals} proposed{" "}
-                      {pendingProposals === 1 ? "task needs" : "tasks need"} your review
+                      {t("overview.proposalsNeedReview", { count: pendingProposals })}
                     </span>
                     <ArrowRight className="h-3 w-3 shrink-0 text-text-faint" />
                   </Link>
@@ -210,19 +224,19 @@ export function Overview({
             <section className="flex min-h-0 flex-col overflow-hidden rounded-xl border border-line bg-surface">
               <header className="flex shrink-0 items-center gap-2 border-b border-line px-3 py-2.5">
                 <h2 className="text-[13px] font-semibold tracking-[-0.01em] text-text">
-                  Recent activity
+                  {t("overview.recentActivity")}
                 </h2>
                 <Link
                   href="/activity"
                   className="ml-auto text-2xs text-accent-bright hover:underline"
                 >
-                  All
+                  {t("overview.all")}
                 </Link>
               </header>
               <div className="min-h-0 flex-1 overflow-y-auto">
                 {activity.length === 0 ? (
                   <p className="px-3 py-5 text-center text-2xs text-text-faint">
-                    Nothing has happened yet.
+                    {t("overview.nothingHappened")}
                   </p>
                 ) : (
                   activity.slice(0, 7).map((event) => (
@@ -234,9 +248,9 @@ export function Overview({
                       <div className="min-w-0 flex-1">
                         <p className="text-2xs leading-4 text-text-secondary">
                           <span className="font-medium text-text">
-                            {event.actor?.name.split(" ")[0] ?? "Someone"}
+                            {event.actor?.name.split(" ")[0] ?? t("activity.someone")}
                           </span>{" "}
-                          {event.summary}
+                          {activityLine(event)}
                         </p>
                         <p className="mt-0.5 text-2xs text-text-faint">
                           <RelativeTime value={event.createdAt} />
@@ -274,8 +288,8 @@ export function Overview({
 
 /** Used by the activity page header. */
 export function ActivityTypeBadge({ type }: { type: ActivityView["type"] }) {
-  const meta = activityMeta[type];
-  return <Badge tone={meta.tone}>{meta.label}</Badge>;
+  const { t } = useI18n();
+  return <Badge tone={activityMeta[type].tone}>{t(`activity.${type}.label`)}</Badge>;
 }
 
 export { Count as OverviewCount };

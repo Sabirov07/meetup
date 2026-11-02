@@ -4,6 +4,9 @@ import { Bell, ChevronRight, Plus, Search, Video } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { MemberSummary, WorkspaceSummary } from "@/shared/domain/types";
+import type { ShellAlert, ShellAlertId } from "@/backend/data/overview";
+import type { TranslationKey } from "@/shared/i18n";
+import { useI18n } from "@/frontend/i18n";
 import { Badge, Count, Kbd } from "@/frontend/components/ui/badge";
 import { Button } from "@/frontend/components/ui/button";
 import { Tooltip } from "@/frontend/components/ui/feedback";
@@ -15,12 +18,47 @@ import {
 import { findNavItem } from "./nav";
 import { SidebarTrigger } from "./sidebar";
 
-export type HeaderAlert = {
-  id: string;
-  href: string;
-  title: string;
-  detail: string;
-  tone: string;
+export type HeaderAlert = ShellAlert;
+
+/**
+ * How each attention condition is presented. The server only says *which*
+ * condition fired and how big it is; the link, the colour and the wording are
+ * decided here, where the active language is known.
+ */
+const alertPresentation: Record<
+  ShellAlertId,
+  { href: string; tone: string; title: TranslationKey; detail: TranslationKey }
+> = {
+  overdue: {
+    href: "/my-tasks",
+    tone: "tone-danger",
+    title: "alerts.overdue.title",
+    detail: "alerts.overdue.detail",
+  },
+  today: {
+    href: "/my-tasks",
+    tone: "tone-warning",
+    title: "alerts.today.title",
+    detail: "alerts.today.detail",
+  },
+  review: {
+    href: "/review",
+    tone: "tone-accent",
+    title: "alerts.review.title",
+    detail: "alerts.review.detail",
+  },
+  unclear: {
+    href: "/all-tasks",
+    tone: "tone-warning",
+    title: "alerts.unclear.title",
+    detail: "alerts.unclear.detail",
+  },
+  transcripts: {
+    href: "/meetings",
+    tone: "tone-info",
+    title: "alerts.transcripts.title",
+    detail: "alerts.transcripts.detail",
+  },
 };
 
 export function Header({
@@ -46,16 +84,19 @@ export function Header({
   crumb?: string;
 }) {
   const pathname = usePathname();
+  const { t } = useI18n();
   const navItem = findNavItem(pathname);
 
   const title =
     navItem?.href === "/employer-tasks"
       ? workspace.members.length > 2
-        ? "Team tasks"
+        ? t("nav.teamTasks")
         : counterpart
-          ? `${counterpart.name.split(" ")[0]}’s tasks`
-          : navItem.label
-      : (navItem?.label ?? "Meetup");
+          ? t("nav.personTasks", { name: counterpart.name.split(" ")[0]! })
+          : t(navItem.labelKey)
+      : navItem
+        ? t(navItem.labelKey)
+        : "Meetup";
 
   return (
     <header className="sticky top-0 z-30 flex h-12 shrink-0 items-center gap-2 border-b border-line bg-canvas/85 px-3 backdrop-blur-sm sm:px-4">
@@ -90,14 +131,14 @@ export function Header({
           className="hidden h-8 items-center gap-2 rounded-md border border-line bg-surface pl-2.5 pr-2 text-xs text-text-faint transition-colors hover:border-line-strong hover:text-text-muted md:flex"
         >
           <Search className="h-3.5 w-3.5" />
-          <span className="pr-6">Search…</span>
+          <span className="pr-6">{t("header.searchPlaceholder")}</span>
           <Kbd>⌘K</Kbd>
         </button>
         <Button
           variant="ghost"
           size="icon-sm"
           onClick={onOpenSearch}
-          aria-label="Search"
+          aria-label={t("common.search")}
           className="md:hidden"
         >
           <Search className="h-4 w-4" />
@@ -108,7 +149,9 @@ export function Header({
           <PopoverTrigger asChild>
             <button
               aria-label={
-                alerts.length > 0 ? `Notifications, ${alerts.length} items` : "Notifications"
+                alerts.length > 0
+                  ? t("header.notificationsWithCount", { count: alerts.length })
+                  : t("header.notifications")
               }
               className="relative rounded-md p-1.5 text-text-secondary transition-colors hover:bg-hover hover:text-text"
             >
@@ -120,36 +163,43 @@ export function Header({
           </PopoverTrigger>
           <PopoverContent className="w-[20rem] p-0">
             <div className="flex items-center justify-between border-b border-line px-3 py-2">
-              <span className="text-[13px] font-medium text-text">Needs attention</span>
+              <span className="text-[13px] font-medium text-text">
+                {t("header.needsAttention")}
+              </span>
               {pendingReview > 0 && (
                 <Link href="/review" className="text-2xs text-accent-bright hover:underline">
-                  Review {pendingReview}
+                  {t("header.reviewCount", { count: pendingReview })}
                 </Link>
               )}
             </div>
             <div className="max-h-[18rem] overflow-y-auto">
               {alerts.length === 0 ? (
                 <p className="px-3 py-6 text-center text-xs text-text-faint">
-                  Nothing needs you right now.
+                  {t("header.nothingNeedsYou")}
                 </p>
               ) : (
-                alerts.map((alert) => (
-                  <Link
-                    key={alert.id}
-                    href={alert.href}
-                    className="flex items-start gap-2 border-b border-line px-3 py-2 transition-colors last:border-b-0 hover:bg-hover"
-                  >
-                    <span className={`${alert.tone} mt-1 h-1.5 w-1.5 shrink-0 rounded-full tone-dot`} />
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate text-xs font-medium text-text">
-                        {alert.title}
+                alerts.map((alert) => {
+                  const presentation = alertPresentation[alert.id];
+                  return (
+                    <Link
+                      key={alert.id}
+                      href={presentation.href}
+                      className="flex items-start gap-2 border-b border-line px-3 py-2 transition-colors last:border-b-0 hover:bg-hover"
+                    >
+                      <span
+                        className={`${presentation.tone} mt-1 h-1.5 w-1.5 shrink-0 rounded-full tone-dot`}
+                      />
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-xs font-medium text-text">
+                          {t(presentation.title, { count: alert.count })}
+                        </span>
+                        <span className="mt-0.5 block text-2xs leading-4 text-text-muted">
+                          {t(presentation.detail)}
+                        </span>
                       </span>
-                      <span className="mt-0.5 block text-2xs leading-4 text-text-muted">
-                        {alert.detail}
-                      </span>
-                    </span>
-                  </Link>
-                ))
+                    </Link>
+                  );
+                })
               )}
             </div>
           </PopoverContent>
@@ -158,16 +208,16 @@ export function Header({
         <span className="mx-0.5 hidden h-5 w-px bg-line sm:block" />
 
         {/* Primary actions */}
-        <Tooltip content="Create a task">
+        <Tooltip content={t("header.createTask")}>
           <Button variant="secondary" size="md" onClick={onNewTask}>
             <Plus className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">New task</span>
+            <span className="hidden sm:inline">{t("header.newTask")}</span>
           </Button>
         </Tooltip>
 
         <Button variant="primary" size="md" onClick={onStartMeeting}>
           <Video className="h-3.5 w-3.5" />
-          <span className="hidden sm:inline">Start meeting</span>
+          <span className="hidden sm:inline">{t("header.startMeeting")}</span>
         </Button>
       </div>
     </header>

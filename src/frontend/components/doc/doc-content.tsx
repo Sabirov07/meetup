@@ -9,6 +9,7 @@ import {
   type DocListItem,
   type InlineNode,
 } from "@/shared/doc/markdown";
+import { useT } from "@/frontend/i18n";
 import { cn } from "@/frontend/lib/utils";
 import { Checkbox } from "@/frontend/components/ui/feedback";
 import { Dialog, DialogContent } from "@/frontend/components/ui/dialog";
@@ -39,6 +40,7 @@ export function DocContent({
   onToggleCheckbox?: (line: number) => void;
   className?: string;
 }) {
+  const t = useT();
   const blocks = parseDoc(markdown);
   const [zoomed, setZoomed] = useState<{ src: string; alt: string } | null>(null);
 
@@ -78,14 +80,16 @@ export function DocContent({
               className="max-h-[88vh] w-full object-contain"
             />
             <div className="flex items-center justify-between gap-3 border-t border-line px-4 py-2">
-              <span className="truncate text-2xs text-text-muted">{zoomed.alt || "Image"}</span>
+              <span className="truncate text-2xs text-text-muted">
+                {zoomed.alt || t("doc.image")}
+              </span>
               <a
                 href={zoomed.src}
                 download
                 className="flex shrink-0 items-center gap-1.5 text-2xs text-accent-bright hover:underline"
               >
                 <Download className="h-3 w-3" />
-                Download
+                {t("doc.download")}
               </a>
             </div>
           </DialogContent>
@@ -215,6 +219,8 @@ function ChecklistRow({
   onToggle?: (line: number) => void;
   onZoom: (image: { src: string; alt: string }) => void;
 }) {
+  const t = useT();
+
   return (
     <li
       className="flex items-start gap-2"
@@ -224,7 +230,7 @@ function ChecklistRow({
         checked={item.checked === true}
         disabled={!onToggle}
         onCheckedChange={() => onToggle?.(item.line)}
-        aria-label={item.checked ? "Mark as not done" : "Mark as done"}
+        aria-label={t(item.checked ? "doc.markNotDone" : "doc.markDone")}
         className="mt-[0.2rem] disabled:opacity-100"
       />
       <span className={cn("min-w-0 flex-1", item.checked && "text-text-faint line-through")}>
@@ -245,6 +251,8 @@ function Figure({
   relaxed: boolean;
   onZoom: (image: { src: string; alt: string }) => void;
 }) {
+  const t = useT();
+
   return (
     <figure className="group/figure">
       <button
@@ -261,7 +269,7 @@ function Figure({
         />
         <span className="pointer-events-none absolute right-2 top-2 flex items-center gap-1 rounded-md bg-black/65 px-1.5 py-1 text-2xs text-white opacity-0 transition-opacity group-hover/figure:opacity-100">
           <Maximize2 className="h-3 w-3" />
-          Full size
+          {t("doc.fullSize")}
         </span>
       </button>
       {alt && (
@@ -272,6 +280,7 @@ function Figure({
 }
 
 function CodeBlock({ language, value }: { language: string | null; value: string }) {
+  const t = useT();
   const [copied, setCopied] = useState(false);
 
   return (
@@ -292,7 +301,7 @@ function CodeBlock({ language, value }: { language: string | null; value: string
           className="flex items-center gap-1 rounded px-1 py-0.5 text-2xs text-text-faint transition-colors hover:text-text"
         >
           {copied ? <Check className="h-3 w-3 text-success" /> : <Copy className="h-3 w-3" />}
-          {copied ? "Copied" : "Copy"}
+          {copied ? t("common.copied") : t("common.copy")}
         </button>
       </div>
       <pre className="overflow-x-auto px-2.5 py-2">

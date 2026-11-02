@@ -1,0 +1,158 @@
+import type { Entries } from "./entry";
+
+/**
+ * Display text for every enum in the domain.
+ *
+ * `shared/domain/labels.ts` stays the home of the *presentation* metadata —
+ * tone classes, sort ranks, dot colours — and of the English wording the server
+ * writes into stored activity summaries. The text a person reads on screen is
+ * resolved from here instead, keyed by the same enum values.
+ */
+export const enums = {
+  "status.TODO.label": ["To do", "К выполнению"],
+  "status.TODO.short": ["To do", "В очереди"],
+  "status.IN_PROGRESS.label": ["In progress", "В работе"],
+  "status.IN_PROGRESS.short": ["Active", "Активно"],
+  "status.BLOCKED.label": ["Waiting / Blocked", "Ожидание / Блокировано"],
+  "status.BLOCKED.short": ["Waiting", "Ожидание"],
+  "status.COMPLETED.label": ["Completed", "Завершено"],
+  "status.COMPLETED.short": ["Done", "Готово"],
+
+  "priority.URGENT.label": ["Urgent", "Срочный"],
+  "priority.HIGH.label": ["High", "Высокий"],
+  "priority.MEDIUM.label": ["Medium", "Средний"],
+  "priority.LOW.label": ["Low", "Низкий"],
+
+  "category.DEVELOPMENT.label": ["Development", "Разработка"],
+  "category.AI_AUTOMATION.label": ["AI & Automation", "ИИ и автоматизация"],
+  "category.INFRASTRUCTURE.label": ["Infrastructure & DevOps", "Инфраструктура и DevOps"],
+  "category.RESEARCH.label": ["Research", "Исследования"],
+  "category.BUSINESS_OPS.label": ["Business Operations", "Операционная работа"],
+  "category.FINANCE.label": ["Finance & Payments", "Финансы и платежи"],
+  "category.COMMUNICATION.label": ["Communication", "Коммуникация"],
+  "category.ADMINISTRATION.label": ["Administration", "Администрирование"],
+  "category.PLANNING.label": ["Planning", "Планирование"],
+  "category.REVIEW_APPROVAL.label": ["Review & Approval", "Проверка и согласование"],
+  "category.GENERAL.label": ["General", "Общее"],
+
+  "evidence.CONFIRMED.label": ["Confirmed", "Подтверждено"],
+  "evidence.CONFIRMED.description": [
+    "Stated explicitly in the conversation, or set by a person.",
+    "Прямо сказано в разговоре или задано человеком.",
+  ],
+  "evidence.INFERRED.label": ["Inferred", "Выведено"],
+  "evidence.INFERRED.description": [
+    "Read from surrounding context — worth a glance before approving.",
+    "Понято из контекста — стоит взглянуть перед принятием.",
+  ],
+  "evidence.RECOMMENDED.label": ["Suggested", "Предложено"],
+  "evidence.RECOMMENDED.description": [
+    "Not stated in the conversation. This is the model’s suggestion.",
+    "В разговоре не прозвучало. Это предположение модели.",
+  ],
+
+  "meetingStatus.SCHEDULED.label": ["Scheduled", "Запланирована"],
+  "meetingStatus.SCHEDULED.description": ["Not started yet.", "Ещё не началась."],
+  "meetingStatus.READY_TO_JOIN.label": ["Ready to join", "Можно подключаться"],
+  "meetingStatus.READY_TO_JOIN.description": ["Starting soon.", "Скоро начнётся."],
+  "meetingStatus.IN_PROGRESS.label": ["In progress", "Идёт"],
+  "meetingStatus.IN_PROGRESS.description": ["Happening now.", "Происходит сейчас."],
+  "meetingStatus.AWAITING_TRANSCRIPT.label": ["Awaiting transcript", "Ожидание расшифровки"],
+  "meetingStatus.AWAITING_TRANSCRIPT.description": [
+    "Meeting ended. Google may still be generating the transcript.",
+    "Встреча закончилась. Google может ещё готовить расшифровку.",
+  ],
+  "meetingStatus.PROCESSING.label": ["Processing", "Обработка"],
+  "meetingStatus.PROCESSING.description": ["Analysing the transcript.", "Разбираем расшифровку."],
+  "meetingStatus.REVIEW_REQUIRED.label": ["Review required", "Нужна проверка"],
+  "meetingStatus.REVIEW_REQUIRED.description": [
+    "Proposed tasks are waiting for your approval.",
+    "Предложенные задачи ждут вашего решения.",
+  ],
+  "meetingStatus.COMPLETED.label": ["Completed", "Завершена"],
+  "meetingStatus.COMPLETED.description": ["Fully processed.", "Полностью обработана."],
+  "meetingStatus.FAILED.label": ["Failed", "Ошибка"],
+  "meetingStatus.FAILED.description": ["Something went wrong.", "Что-то пошло не так."],
+
+  "transcriptStatus.NOT_REQUESTED.label": ["Not requested", "Не запрашивалась"],
+  "transcriptStatus.NOT_REQUESTED.detail": [
+    "No transcript has been requested for this meeting.",
+    "Расшифровка для этой встречи не запрашивалась.",
+  ],
+  "transcriptStatus.AWAITING.label": ["Awaiting transcript", "Ожидание расшифровки"],
+  "transcriptStatus.AWAITING.detail": [
+    "Google Meet transcripts are not available the instant a call ends.",
+    "Расшифровки Google Meet появляются не сразу после звонка.",
+  ],
+  "transcriptStatus.FETCHING.label": ["Fetching", "Загрузка"],
+  "transcriptStatus.FETCHING.detail": ["Retrieving the transcript.", "Получаем расшифровку."],
+  "transcriptStatus.READY.label": ["Transcript ready", "Расшифровка готова"],
+  "transcriptStatus.READY.detail": ["Transcript stored.", "Расшифровка сохранена."],
+  "transcriptStatus.UNAVAILABLE.label": ["Unavailable", "Недоступна"],
+  "transcriptStatus.UNAVAILABLE.detail": [
+    "No transcript exists. Meet only produces one when transcription is switched on and the organiser is on a Google Workspace plan.",
+    "Расшифровки нет. Meet создаёт её только при включённой транскрипции и плане Google Workspace у организатора.",
+  ],
+  "transcriptStatus.FAILED.label": ["Retrieval failed", "Не удалось получить"],
+  "transcriptStatus.FAILED.detail": ["Retrieval failed.", "Получить не удалось."],
+
+  "sort.SMART.label": ["Smart priority", "Умный приоритет"],
+  "sort.SMART.description": [
+    "Priority, weighted by deadlines, blocking impact and status.",
+    "Приоритет с учётом сроков, блокировок и статуса.",
+  ],
+  "sort.PRIORITY.label": ["Priority", "Приоритет"],
+  "sort.PRIORITY.description": ["Urgent first.", "Сначала срочное."],
+  "sort.DUE_DATE.label": ["Due date", "Срок"],
+  "sort.DUE_DATE.description": ["Soonest deadline first.", "Сначала ближайший срок."],
+  "sort.STATUS.label": ["Status", "Статус"],
+  "sort.STATUS.description": ["Grouped by workflow stage.", "Сгруппировано по этапу работы."],
+  "sort.CREATED_AT.label": ["Newest", "Новые"],
+  "sort.CREATED_AT.description": [
+    "Most recently created first.",
+    "Сначала недавно созданные.",
+  ],
+  "sort.UPDATED_AT.label": ["Recently updated", "Недавно обновлённые"],
+  "sort.UPDATED_AT.description": [
+    "Most recently touched first.",
+    "Сначала те, что меняли последними.",
+  ],
+  "sort.ALPHABETICAL.label": ["A–Z", "А–Я"],
+  "sort.ALPHABETICAL.description": ["By title.", "По названию."],
+  "sort.MANUAL.label": ["Manual order", "Свой порядок"],
+  "sort.MANUAL.description": [
+    "The order you arranged by hand.",
+    "Порядок, который вы задали сами.",
+  ],
+
+  "recommendation.UNBLOCK_DEPENDENCY.label": ["Dependency", "Зависимость"],
+  "recommendation.REQUEST_ACCESS.label": ["Access needed", "Нужен доступ"],
+  "recommendation.CLARIFY_DEADLINE.label": ["Unclear deadline", "Неясный срок"],
+  "recommendation.HIGH_IMPACT_BLOCKER.label": ["High impact", "Сильно влияет"],
+  "recommendation.POSSIBLE_DUPLICATE.label": ["Possible duplicate", "Возможный дубль"],
+  "recommendation.STALE_TASK.label": ["Going stale", "Застаивается"],
+  "recommendation.OVERDUE_CLUSTER.label": ["Overdue", "Просрочено"],
+  "recommendation.AWAITING_OTHER_PERSON.label": ["Waiting on someone", "Ждём человека"],
+
+  "activity.TASK_CREATED.label": ["created", "создано"],
+  "activity.TASK_UPDATED.label": ["updated", "обновлено"],
+  "activity.TASK_STATUS_CHANGED.label": ["moved", "перемещено"],
+  "activity.TASK_OWNER_CHANGED.label": ["reassigned", "переназначено"],
+  "activity.TASK_PRIORITY_CHANGED.label": ["reprioritised", "приоритет"],
+  "activity.TASK_DUE_DATE_CHANGED.label": ["rescheduled", "срок"],
+  "activity.TASK_COMPLETED.label": ["completed", "завершено"],
+  "activity.TASK_REOPENED.label": ["reopened", "открыто снова"],
+  "activity.TASK_DELETED.label": ["deleted", "удалено"],
+  "activity.TASK_COMMENTED.label": ["commented", "комментарий"],
+  "activity.MEETING_CREATED.label": ["scheduled a meeting", "встреча создана"],
+  "activity.MEETING_UPDATED.label": ["updated a meeting", "встреча изменена"],
+  "activity.TRANSCRIPT_READY.label": ["transcript ready", "расшифровка готова"],
+  "activity.TRANSCRIPT_FAILED.label": ["transcript failed", "сбой расшифровки"],
+  "activity.ANALYSIS_COMPLETED.label": ["analysis complete", "анализ готов"],
+  "activity.PROPOSAL_APPROVED.label": ["approved a proposal", "предложение принято"],
+  "activity.PROPOSAL_REJECTED.label": ["rejected a proposal", "предложение отклонено"],
+  "activity.MEMBER_JOINED.label": ["joined", "присоединился"],
+  "activity.KNOWLEDGE_CREATED.label": ["added a page", "страница добавлена"],
+  "activity.KNOWLEDGE_UPDATED.label": ["edited a page", "страница изменена"],
+  "activity.KNOWLEDGE_DELETED.label": ["deleted a page", "страница удалена"],
+} satisfies Entries;

@@ -6,6 +6,8 @@ import { History } from "lucide-react";
 import type { ActivityView as ActivityEvent, MemberSummary, TaskView } from "@/shared/domain/types";
 import { activityMeta } from "@/shared/domain/labels";
 import { computeStats } from "@/shared/domain/stats";
+import { useI18n } from "@/frontend/i18n";
+import { useActivityLine } from "./activity-line";
 
 import { cn } from "@/frontend/lib/utils";
 import { Avatar } from "@/frontend/components/ui/avatar";
@@ -30,9 +32,13 @@ export function ActivityView({
   tasks: TaskView[];
   members: MemberSummary[];
 }) {
+  const { t, f } = useI18n();
   // Activity is historical, so a single render-time clock is fine here.
   const [now] = useState(() => new Date());
   const stats = useMemo(() => computeStats(tasks, members, now), [tasks, members, now]);
+
+  const titles = useMemo(() => new Map(tasks.map((task) => [task.id, task.title])), [tasks]);
+  const activityLine = useActivityLine(titles);
 
   const grouped = useMemo(() => {
     const groups = new Map<string, ActivityEvent[]>();
@@ -43,25 +49,14 @@ export function ActivityView({
     return [...groups.entries()];
   }, [events]);
 
-  function dayLabel(dateString: string): string {
-    const date = new Date(dateString);
-    const today = new Date(now).toDateString();
-    const yesterday = new Date(now.getTime() - 86_400_000).toDateString();
-    if (dateString === today) return "Today";
-    if (dateString === yesterday) return "Yesterday";
-    return date.toLocaleDateString(undefined, {
-      weekday: "long",
-      month: "short",
-      day: "numeric",
-    });
-  }
-
   return (
     <div className="mx-auto w-full max-w-[64rem] space-y-4 px-3 py-4 sm:px-4 lg:px-6">
       <header className="min-w-0">
-        <h1 className="text-lg font-semibold tracking-[-0.02em] text-text">Activity</h1>
+        <h1 className="text-lg font-semibold tracking-[-0.02em] text-text">
+          {t("activity.heading")}
+        </h1>
         <p className="mt-1 text-[13px] leading-5 text-text-muted">
-          Everything that has changed, and how the workspace is tracking.
+          {t("activity.description")}
         </p>
       </header>
 
@@ -69,48 +64,56 @@ export function ActivityView({
       <section className="grid gap-3 sm:grid-cols-2">
         <div className="rounded-xl border border-line bg-surface p-3.5">
           <div className="flex items-baseline justify-between">
-            <p className="eyebrow">Completion</p>
+            <p className="eyebrow">{t("activity.completion")}</p>
             <p className="tnum text-base font-semibold text-text">{stats.completionRate}%</p>
           </div>
           <Progress
             value={stats.completionRate}
             tone="bg-success"
             className="mt-2"
-            aria-label="Overall completion rate"
+            aria-label={t("activity.completionRate")}
           />
           <p className="mt-1.5 text-2xs text-text-muted">
-            {stats.completed} of {stats.completed + stats.totalOpen} tasks done
-            {stats.completedThisWeek > 0 && ` · ${stats.completedThisWeek} this week`}
+            {t("activity.doneOfTotal", {
+              done: stats.completed,
+              total: stats.completed + stats.totalOpen,
+            })}
+            {stats.completedThisWeek > 0 &&
+              ` · ${t("activity.doneThisWeek", { count: stats.completedThisWeek })}`}
           </p>
 
           <div className="mt-3 space-y-1">
-            <p className="eyebrow">Status mix</p>
+            <p className="eyebrow">{t("activity.statusMix")}</p>
             <SegmentBar
-              aria-label="Status distribution"
+              aria-label={t("activity.statusDistribution")}
               segments={[
-                { label: "Completed", value: stats.completed, tone: "bg-success" },
-                { label: "In progress", value: stats.inProgress, tone: "bg-accent" },
-                { label: "Waiting", value: stats.waiting, tone: "bg-warning" },
+                { label: t("status.COMPLETED.label"), value: stats.completed, tone: "bg-success" },
                 {
-                  label: "To do",
+                  label: t("status.IN_PROGRESS.label"),
+                  value: stats.inProgress,
+                  tone: "bg-accent",
+                },
+                { label: t("status.BLOCKED.short"), value: stats.waiting, tone: "bg-warning" },
+                {
+                  label: t("status.TODO.label"),
                   value: Math.max(0, stats.totalOpen - stats.inProgress - stats.waiting),
                   tone: "bg-line-strong",
                 },
               ]}
             />
             <div className="flex flex-wrap gap-x-3 gap-y-0.5 pt-1 text-2xs text-text-faint">
-              <span>{stats.inProgress} in progress</span>
-              <span>{stats.waiting} waiting</span>
+              <span>{t("activity.inProgressCount", { count: stats.inProgress })}</span>
+              <span>{t("activity.waitingCount", { count: stats.waiting })}</span>
               <span className={stats.overdue > 0 ? "text-danger" : undefined}>
-                {stats.overdue} overdue
+                {t("activity.overdueCount", { count: stats.overdue })}
               </span>
-              <span>{stats.dueToday} due today</span>
+              <span>{t("activity.dueTodayCount", { count: stats.dueToday })}</span>
             </div>
           </div>
         </div>
 
         <div className="rounded-xl border border-line bg-surface p-3.5">
-          <p className="eyebrow">Open work by owner</p>
+          <p className="eyebrow">{t("activity.openByOwner")}</p>
           <div className="mt-2.5 space-y-2.5">
             {stats.byMember.map(({ member, open, overdue, completed }) => {
               const total = open + completed;
@@ -121,16 +124,20 @@ export function ActivityView({
                     <span className="min-w-0 flex-1 truncate text-2xs text-text-secondary">
                       {member.name}
                     </span>
-                    <span className="tnum shrink-0 text-2xs text-text">{open} open</span>
+                    <span className="tnum shrink-0 text-2xs text-text">
+                      {t("activity.openCount", { count: open })}
+                    </span>
                     {overdue > 0 && (
-                      <span className="tnum shrink-0 text-2xs text-danger">{overdue} late</span>
+                      <span className="tnum shrink-0 text-2xs text-danger">
+                        {t("activity.lateCount", { count: overdue })}
+                      </span>
                     )}
                   </div>
                   <Progress
                     value={total === 0 ? 0 : (completed / total) * 100}
                     tone="bg-success"
                     className="mt-1"
-                    aria-label={`${member.name} completion`}
+                    aria-label={t("activity.memberCompletion", { name: member.name })}
                   />
                 </div>
               );
@@ -139,8 +146,12 @@ export function ActivityView({
             {stats.unassignedOpen > 0 && (
               <div className="flex items-center gap-2 pt-0.5">
                 <Avatar member={null} size="sm" />
-                <span className="min-w-0 flex-1 text-2xs text-text-muted">Unassigned</span>
-                <span className="tnum text-2xs text-warning">{stats.unassignedOpen} open</span>
+                <span className="min-w-0 flex-1 text-2xs text-text-muted">
+                  {t("common.unassigned")}
+                </span>
+                <span className="tnum text-2xs text-warning">
+                  {t("activity.openCount", { count: stats.unassignedOpen })}
+                </span>
               </div>
             )}
           </div>
@@ -150,8 +161,7 @@ export function ActivityView({
               href="/all-tasks"
               className="mt-3 block text-2xs text-accent-bright hover:underline"
             >
-              {stats.needsReview} {stats.needsReview === 1 ? "task needs" : "tasks need"} an
-              owner or deadline decision
+              {t("activity.needsDecision", { count: stats.needsReview })}
             </Link>
           )}
         </div>
@@ -161,21 +171,23 @@ export function ActivityView({
       <section className="rounded-xl border border-line bg-surface">
         <div className="flex items-center gap-2 border-b border-line px-3.5 py-2.5">
           <History className="h-3.5 w-3.5 text-text-faint" />
-          <h2 className="text-[13px] font-semibold tracking-[-0.01em] text-text">History</h2>
+          <h2 className="text-[13px] font-semibold tracking-[-0.01em] text-text">
+            {t("activity.history")}
+          </h2>
           <Count className="ml-auto">{events.length}</Count>
         </div>
 
         {events.length === 0 ? (
           <EmptyState
             icon={History}
-            title="Nothing has happened yet"
-            description="Task changes, meetings and approved proposals all show up here."
+            title={t("activity.empty.title")}
+            description={t("activity.empty.description")}
           />
         ) : (
           grouped.map(([day, dayEvents]) => (
             <div key={day}>
               <p className="sticky top-12 z-10 border-b border-line bg-canvas/85 px-3.5 py-1.5 text-2xs font-medium text-text-muted backdrop-blur-sm">
-                {dayLabel(day)}
+                {f.dayHeading(day, now)}
               </p>
               {dayEvents.map((event) => {
                 const meta = activityMeta[event.type];
@@ -193,9 +205,9 @@ export function ActivityView({
                     <div className="min-w-0 flex-1">
                       <p className="text-2xs leading-5 text-text-secondary">
                         <span className="font-medium text-text">
-                          {event.actor?.name ?? "Someone"}
+                          {event.actor?.name ?? t("activity.someone")}
                         </span>{" "}
-                        {event.summary}
+                        {activityLine(event)}
                       </p>
                       <div className="mt-0.5 flex flex-wrap items-center gap-1.5">
                         <span className="text-2xs text-text-faint">
@@ -211,13 +223,13 @@ export function ActivityView({
                             href={`/meetings/${event.meetingId}`}
                             className="text-2xs text-accent-bright hover:underline"
                           >
-                            View meeting
+                            {t("activity.viewMeeting")}
                           </Link>
                         )}
                       </div>
                     </div>
                     <span className={cn("shrink-0 pt-0.5")}>
-                      <Badge tone={meta.tone}>{meta.label}</Badge>
+                      <Badge tone={meta.tone}>{t(`activity.${event.type}.label`)}</Badge>
                     </span>
                   </div>
                 );

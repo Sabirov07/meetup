@@ -13,6 +13,8 @@ import {
   type MeetingView,
   type TaskView,
 } from "@/shared/domain/types";
+import { message } from "@/backend/i18n/message";
+import type { TranslationKey } from "@/shared/i18n";
 import { fail, guarded, logActivity, ok, parseDateInput, type ActionResult } from "./shared";
 
 /**
@@ -28,7 +30,7 @@ export async function analyseMeeting(meetingId: string): Promise<ActionResult<Me
 
     if (!isAiConfigured()) {
       return fail(
-        "Transcript analysis needs an Anthropic API key. Add ANTHROPIC_API_KEY to .env.local and restart the server.",
+        await message("errors.analysis.needsKey"),
       );
     }
 
@@ -39,11 +41,11 @@ export async function analyseMeeting(meetingId: string): Promise<ActionResult<Me
 
     if (!transcript?.content) {
       return fail(
-        "There is no transcript stored for this meeting yet, so there is nothing to analyse.",
+        await message("errors.analysis.noTranscript"),
       );
     }
     if (transcript.status !== "READY") {
-      return fail("The transcript is not ready yet.");
+      return fail(await message("errors.analysis.transcriptNotReady"));
     }
 
     const full = await db.meeting.findUnique({
@@ -136,23 +138,23 @@ export async function analyseMeeting(meetingId: string): Promise<ActionResult<Me
         metadata: { model: result.model, tasks: result.analysis.tasks.length },
       });
     } catch (error) {
-      const message =
+      const reason =
         error instanceof AiNotConfiguredError
           ? error.message
           : error instanceof Error
             ? error.message
-            : "The analysis failed.";
+            : await message("errors.analysis.failed");
 
       await db.meetingAnalysis.update({
         where: { meetingId },
-        data: { status: "FAILED", failureReason: message },
+        data: { status: "FAILED", failureReason: reason },
       });
       await db.meeting.update({ where: { id: meetingId }, data: { status: "FAILED" } });
-      return fail(message);
+      return fail(reason);
     }
 
     const view = await getMeeting(meetingId, session.workspace.id);
-    if (!view) return fail("That meeting no longer exists.");
+    if (!view) return fail(await message("errors.meeting.goneShort"));
     refresh();
     return ok(view);
   });
@@ -182,7 +184,7 @@ export async function approveProposal(
     const session = await requireSessionForAction();
     const parsed = approveInput.safeParse(raw);
     if (!parsed.success) {
-      return fail(parsed.error.issues[0]?.message ?? "That approval is not valid.");
+      return fail(await issue(parsed.error.issues[0]?.message, "errors.analysis.approvalInvalid"));
     }
     const input = parsed.data;
 
@@ -206,7 +208,7 @@ export async function approveProposal(
       },
     });
 
-    if (!proposal) return fail("That proposal no longer exists.");
+    if (!proposal) return fail(await message("errors.proposal.gone"));
     if (proposal.status === "APPROVED" && proposal.createdTaskId) {
       const existing = await getTask(proposal.createdTaskId, session.workspace.id);
       if (existing) return ok(existing);
@@ -220,7 +222,7 @@ export async function approveProposal(
         where: { id: ownerMemberId, workspaceId: session.workspace.id },
         select: { id: true },
       });
-      if (!member) return fail("That person is not a member of this workspace.");
+      if (!member) return fail(await message("errors.member.notInWorkspace"));
     }
 
     const dueDateValue =
@@ -294,7 +296,7 @@ export async function approveProposal(
     await settleMeetingStatus(proposal.meetingId);
 
     const view = await getTask(task.id, session.workspace.id);
-    if (!view) return fail("The task was created but could not be read back.");
+    if (!view) return fail(await message("errors.task.createdNotReadable"));
     refresh();
     return ok(view);
   });
@@ -307,7 +309,7 @@ export async function rejectProposal(proposalId: string): Promise<ActionResult<u
       where: { id: proposalId, meeting: { workspaceId: session.workspace.id } },
       select: { id: true, title: true, meetingId: true },
     });
-    if (!proposal) return fail("That proposal no longer exists.");
+    if (!proposal) return fail(await message("errors.proposal.gone"));
 
     await db.taskProposal.update({
       where: { id: proposalId },
@@ -358,4 +360,9 @@ async function settleMeetingStatus(meetingId: string): Promise<void> {
     where: { id: meetingId },
     data: { status: pending > 0 ? "REVIEW_REQUIRED" : "COMPLETED" },
   });
+}
+
+/** Resolves a Zod issue's key, falling back to a generic message. */
+async function issue(key: string | undefined, fallback: TranslationKey): Promise<string> {
+  return message((key ?? fallback) as TranslationKey);
 }

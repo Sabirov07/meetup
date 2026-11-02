@@ -12,10 +12,12 @@ import { isMeetUrl } from "@/backend/google/config";
 import { createSpace } from "@/backend/google/meet";
 import { GoogleNotConfiguredError, GoogleNotConnectedError } from "@/backend/google/oauth";
 import type { MeetingView } from "@/shared/domain/types";
+import { message } from "@/backend/i18n/message";
+import type { TranslationKey } from "@/shared/i18n";
 import { fail, guarded, logActivity, ok, type ActionResult } from "./shared";
 
 const createInput = z.object({
-  title: z.string().trim().min(3, "Give the meeting a title.").max(160),
+  title: z.string().trim().min(3, "errors.meeting.titleTooShort").max(160),
   /** `google` asks Google for a real space; `link` stores a link you provide. */
   mode: z.enum(["google", "link", "none"]),
   meetUrl: z.string().trim().optional(),
@@ -33,7 +35,7 @@ export async function createMeeting(
     const session = await requireSessionForAction();
     const parsed = createInput.safeParse(raw);
     if (!parsed.success) {
-      return fail(parsed.error.issues[0]?.message ?? "That meeting is not valid.");
+      return fail(await issue(parsed.error.issues[0]?.message, "errors.meeting.invalid"));
     }
     const input = parsed.data;
 
@@ -52,22 +54,22 @@ export async function createMeeting(
       } catch (error) {
         if (error instanceof GoogleNotConfiguredError) {
           return fail(
-            "Google Meet is not configured on the server yet. Add a link manually, or set the Google credentials in Settings.",
+            await message("errors.meeting.googleNotConfigured"),
           );
         }
         if (error instanceof GoogleNotConnectedError) {
-          return fail("Connect your Google account in Settings first.");
+          return fail(await message("errors.meeting.googleNotConnected"));
         }
         return fail(
           error instanceof Error
-            ? `Google could not create the meeting: ${error.message}`
-            : "Google could not create the meeting.",
+            ? await message("errors.meeting.googleFailedWith", { reason: error.message })
+            : await message("errors.meeting.googleFailed"),
         );
       }
     } else if (input.mode === "link") {
-      if (!input.meetUrl) return fail("Paste the meeting link.");
+      if (!input.meetUrl) return fail(await message("errors.meeting.pasteLink"));
       if (!isMeetUrl(input.meetUrl)) {
-        return fail("That does not look like a Google Meet link (meet.google.com).");
+        return fail(await message("errors.meeting.notMeetLink"));
       }
       meetUrl = input.meetUrl;
     }
@@ -117,7 +119,7 @@ export async function createMeeting(
     });
 
     const view = await getMeeting(meeting.id, session.workspace.id);
-    if (!view) return fail("The meeting was created but could not be read back.");
+    if (!view) return fail(await message("errors.meeting.createdNotReadable"));
     refresh();
     return ok(view);
   });
@@ -143,7 +145,7 @@ export async function setMeetingStatus(
   return guarded(async () => {
     const session = await requireSessionForAction();
     const parsed = statusInput.safeParse(raw);
-    if (!parsed.success) return fail("That status is not valid.");
+    if (!parsed.success) return fail(await message("errors.meeting.statusInvalid"));
 
     const meeting = await assertMeetingInWorkspace(parsed.data.id, session.workspace.id);
 
@@ -167,7 +169,7 @@ export async function setMeetingStatus(
     });
 
     const view = await getMeeting(parsed.data.id, session.workspace.id);
-    if (!view) return fail("That meeting no longer exists.");
+    if (!view) return fail(await message("errors.meeting.goneShort"));
     refresh();
     return ok(view);
   });
@@ -189,10 +191,10 @@ export async function saveManualTranscript(input: {
     const session = await requireSessionForAction();
     const content = input.content.trim();
     if (content.length < 40) {
-      return fail("That transcript is too short to be useful.");
+      return fail(await message("errors.meeting.transcriptTooShort"));
     }
     if (content.length > 400_000) {
-      return fail("That transcript is too large. Trim it to the relevant part.");
+      return fail(await message("errors.meeting.transcriptTooLong"));
     }
 
     const meeting = await assertMeetingInWorkspace(input.meetingId, session.workspace.id);
@@ -230,7 +232,7 @@ export async function saveManualTranscript(input: {
     });
 
     const view = await getMeeting(input.meetingId, session.workspace.id);
-    if (!view) return fail("That meeting no longer exists.");
+    if (!view) return fail(await message("errors.meeting.goneShort"));
     refresh();
     return ok(view);
   });
@@ -271,7 +273,7 @@ export async function getTranscriptText(
       select: { content: true, source: true, fetchedAt: true },
     });
 
-    if (!transcript?.content) return fail("No transcript is stored for this meeting.");
+    if (!transcript?.content) return fail(await message("errors.meeting.noTranscriptStored"));
 
     return ok({
       content: transcript.content,
@@ -279,4 +281,9 @@ export async function getTranscriptText(
       fetchedAt: transcript.fetchedAt?.toISOString() ?? null,
     });
   });
+}
+
+/** Resolves a Zod issue's key, falling back to a generic message. */
+async function issue(key: string | undefined, fallback: TranslationKey): Promise<string> {
+  return message((key ?? fallback) as TranslationKey);
 }

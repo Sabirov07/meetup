@@ -1,20 +1,25 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Toaster } from "sonner";
+import { bcp47 } from "@/shared/i18n";
+import { getTranslator, resolveLocale } from "@/backend/i18n/locale";
+import { I18nProvider } from "@/frontend/i18n";
 import { TooltipProvider } from "@/frontend/components/ui/feedback";
 import "@/frontend/styles/globals.css";
 
 const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
 const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
 
-export const metadata: Metadata = {
-  title: {
-    default: "Meetup",
-    template: "%s · Meetup",
-  },
-  description:
-    "Turn conversations into clear ownership. Meetup captures what was agreed, who owns it and what should happen next.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const { t } = await getTranslator();
+  return {
+    title: {
+      default: "Meetup",
+      template: "%s · Meetup",
+    },
+    description: t("app.description"),
+  };
+}
 
 export const viewport: Viewport = {
   themeColor: "#101114",
@@ -22,13 +27,24 @@ export const viewport: Viewport = {
   initialScale: 1,
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+/**
+ * The locale cookie is read here, so the first byte of HTML is already in the
+ * right language. That costs the app its static shell — which it never had:
+ * every route below is gated on the session cookie and declares the same.
+ */
+export const instant = false;
+
+export default async function RootLayout({ children }: LayoutProps<"/">) {
+  const locale = await resolveLocale();
+
   return (
-    <html lang="en" className={`${geistSans.variable} ${geistMono.variable}`}>
+    <html lang={bcp47[locale]} className={`${geistSans.variable} ${geistMono.variable}`}>
       <body className="min-h-dvh">
-        <TooltipProvider delayDuration={350} skipDelayDuration={200}>
-          {children}
-        </TooltipProvider>
+        <I18nProvider initialLocale={locale}>
+          <TooltipProvider delayDuration={350} skipDelayDuration={200}>
+            {children}
+          </TooltipProvider>
+        </I18nProvider>
         <Toaster
           position="bottom-right"
           gap={8}

@@ -16,6 +16,8 @@ import {
   type TaskView,
 } from "@/shared/domain/types";
 import { priorityMeta, statusMeta } from "@/shared/domain/labels";
+import { message } from "@/backend/i18n/message";
+import type { TranslationKey } from "@/shared/i18n";
 import {
   fail,
   guarded,
@@ -30,7 +32,7 @@ import {
  * update schemas can disagree about what a missing key means.
  */
 const taskFields = {
-  title: z.string().trim().min(3, "Give the task a title of at least 3 characters.").max(200),
+  title: z.string().trim().min(3, "errors.task.titleTooShort").max(200),
   /**
    * The task's document body, in Markdown. The ceiling is generous because
    * this is a document, not a summary field — several screens of brief with
@@ -39,7 +41,7 @@ const taskFields = {
   description: z
     .string()
     .trim()
-    .max(50_000, "That document is too long to save. Split it across tasks.")
+    .max(50_000, "errors.task.docTooLong")
     .nullable(),
   ownerMemberId: z.string().nullable(),
   status: z.enum(TASK_STATUSES),
@@ -72,7 +74,7 @@ export async function createTask(raw: TaskInput): Promise<ActionResult<TaskView>
     const session = await requireSessionForAction();
     const parsed = taskInput.safeParse(raw);
     if (!parsed.success) {
-      return fail(parsed.error.issues[0]?.message ?? "That task is not valid.");
+      return fail(await issue(parsed.error.issues[0]?.message, "errors.task.invalid"));
     }
     const input = parsed.data;
 
@@ -110,7 +112,7 @@ export async function createTask(raw: TaskInput): Promise<ActionResult<TaskView>
     });
 
     const task = await getTask(created.id, session.workspace.id);
-    if (!task) return fail("The task was created but could not be read back.");
+    if (!task) return fail(await message("errors.task.createdNotReadable"));
     refresh();
     return ok(task);
   });
@@ -150,7 +152,7 @@ export async function updateTask(raw: TaskUpdateInput): Promise<ActionResult<Tas
     const session = await requireSessionForAction();
     const parsed = updateInput.safeParse(raw);
     if (!parsed.success) {
-      return fail(parsed.error.issues[0]?.message ?? "That change is not valid.");
+      return fail(await issue(parsed.error.issues[0]?.message, "errors.task.changeInvalid"));
     }
     const { id, ...changes } = parsed.data;
     const before = await assertTaskInWorkspace(id, session.workspace.id);
@@ -178,7 +180,7 @@ export async function updateTask(raw: TaskUpdateInput): Promise<ActionResult<Tas
 
     if (Object.keys(data).length === 0) {
       const unchanged = await getTask(id, session.workspace.id);
-      return unchanged ? ok(unchanged) : fail("That task no longer exists.");
+      return unchanged ? ok(unchanged) : fail(await message("errors.task.goneShort"));
     }
 
     // A person touched this task, so it is now a confirmed commitment and
@@ -261,7 +263,7 @@ export async function updateTask(raw: TaskUpdateInput): Promise<ActionResult<Tas
     }
 
     const task = await getTask(id, session.workspace.id);
-    if (!task) return fail("That task no longer exists.");
+    if (!task) return fail(await message("errors.task.goneShort"));
     refresh();
     return ok(task);
   });
@@ -291,7 +293,7 @@ export async function reorderTasks(
   return guarded(async () => {
     const session = await requireSessionForAction();
     const parsed = z.array(z.string().min(1)).max(500).safeParse(orderedIds);
-    if (!parsed.success) return fail("That ordering is not valid.");
+    if (!parsed.success) return fail(await message("errors.task.orderInvalid"));
 
     const owned = await db.task.findMany({
       where: { id: { in: parsed.data }, workspaceId: session.workspace.id },
@@ -343,7 +345,7 @@ export async function addDependency(input: {
   return guarded(async () => {
     const session = await requireSessionForAction();
     if (input.taskId === input.dependsOnTaskId) {
-      return fail("A task cannot depend on itself.");
+      return fail(await message("errors.task.selfDependency"));
     }
     await assertTaskInWorkspace(input.taskId, session.workspace.id);
     await assertTaskInWorkspace(input.dependsOnTaskId, session.workspace.id);
@@ -363,7 +365,7 @@ export async function addDependency(input: {
     while (stack.length) {
       const current = stack.pop()!;
       if (current === input.taskId) {
-        return fail("That would create a circular dependency.");
+        return fail(await message("errors.task.circularDependency"));
       }
       if (seen.has(current)) continue;
       seen.add(current);
@@ -382,7 +384,7 @@ export async function addDependency(input: {
     });
 
     const task = await getTask(input.taskId, session.workspace.id);
-    if (!task) return fail("That task no longer exists.");
+    if (!task) return fail(await message("errors.task.goneShort"));
     refresh();
     return ok(task);
   });
@@ -401,7 +403,7 @@ export async function removeDependency(input: {
     });
 
     const task = await getTask(input.taskId, session.workspace.id);
-    if (!task) return fail("That task no longer exists.");
+    if (!task) return fail(await message("errors.task.goneShort"));
     refresh();
     return ok(task);
   });
@@ -418,8 +420,8 @@ export async function addComment(input: {
   return guarded(async () => {
     const session = await requireSessionForAction();
     const body = input.body.trim();
-    if (body.length === 0) return fail("Write something first.");
-    if (body.length > 4000) return fail("That note is too long.");
+    if (body.length === 0) return fail(await message("errors.task.emptyNote"));
+    if (body.length > 4000) return fail(await message("errors.task.noteTooLong"));
 
     const task = await assertTaskInWorkspace(input.taskId, session.workspace.id);
 
@@ -447,4 +449,9 @@ export async function fetchComments(taskId: string): Promise<ActionResult<Commen
     await assertTaskInWorkspace(taskId, session.workspace.id);
     return ok(await listComments(taskId, session.workspace.id));
   });
+}
+
+/** Resolves a Zod issue's key, falling back to a generic message. */
+async function issue(key: string | undefined, fallback: TranslationKey): Promise<string> {
+  return message((key ?? fallback) as TranslationKey);
 }

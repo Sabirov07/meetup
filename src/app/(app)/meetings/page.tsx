@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import { connection } from "next/server";
 import { requireSession } from "@/backend/auth/guards";
+import { getTranslator } from "@/backend/i18n/locale";
 import { listMeetings } from "@/backend/data/meetings";
 import { isAiConfigured } from "@/backend/ai/extract";
 import { googleIntegrationStatus } from "@/backend/google/config";
@@ -13,7 +14,10 @@ import { Skeleton } from "@/frontend/components/ui/feedback";
 // prerendered ahead of knowing who is signed in.
 export const instant = false;
 
-export const metadata: Metadata = { title: "Meetings" };
+export async function generateMetadata(): Promise<Metadata> {
+  const { t } = await getTranslator();
+  return { title: t("nav.meetings") };
+}
 
 export default function MeetingsPage() {
   return (

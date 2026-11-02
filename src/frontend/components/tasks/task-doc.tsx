@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { updateTask } from "@/backend/actions/tasks";
 import { docStats, isEmptyDoc, toggleCheckboxLine } from "@/shared/doc/markdown";
 import type { TaskView } from "@/shared/domain/types";
+import { useT, useTx } from "@/frontend/i18n";
 import { cn } from "@/frontend/lib/utils";
 import { Button } from "@/frontend/components/ui/button";
 import { Dialog, DialogContent, DialogTitle } from "@/frontend/components/ui/dialog";
@@ -33,6 +34,8 @@ export function TaskDoc({
   onCapturesEscapeChange?: (captures: boolean) => void;
 }) {
   const { upsertTask } = useTasks();
+  const t = useT();
+  const tx = useTx();
 
   const [editing, setEditing] = useState(false);
   const [expanded, setExpanded] = useState(false);
@@ -54,7 +57,7 @@ export function TaskDoc({
   const { draft, setDraft, replace, state, flush } = useAutosavedDoc({
     initial: task.description ?? "",
     save,
-    errorTitle: "Could not save the document",
+    errorTitle: "doc.saveFailed",
   });
 
   // The block menu inside the expanded dialog has the same claim on Escape.
@@ -89,28 +92,28 @@ export function TaskDoc({
       <div className="mb-2 flex items-center justify-between gap-2">
         <p className="eyebrow flex items-center gap-1.5">
           <FileText className="h-3 w-3" />
-          Document
+          {t("doc.heading")}
         </p>
         <div className="flex items-center gap-1.5">
           <SaveBadge state={state} />
           {!empty && <DocStatsLine stats={stats} />}
           {!editing && (
-            <Tooltip content="Edit">
+            <Tooltip content={t("doc.edit")}>
               <Button
                 variant="ghost"
                 size="icon-xs"
-                aria-label="Edit document"
+                aria-label={t("doc.editDocument")}
                 onClick={() => setEditing(true)}
               >
                 <Pencil className="h-3 w-3" />
               </Button>
             </Tooltip>
           )}
-          <Tooltip content="Open full width">
+          <Tooltip content={t("doc.openFullWidth")}>
             <Button
               variant="ghost"
               size="icon-xs"
-              aria-label="Open the document full width"
+              aria-label={t("doc.openFullWidthLabel")}
               onClick={() => setExpanded(true)}
             >
               <Maximize2 className="h-3 w-3" />
@@ -133,11 +136,13 @@ export function TaskDoc({
           footer={
             <div className="flex items-center justify-between gap-2 pt-1.5">
               <p className="text-2xs text-text-faint">
-                <kbd className="font-sans">/</kbd> for blocks · paste or drop an image ·{" "}
-                <kbd className="font-sans">⌘↵</kbd> when done
+                {tx("doc.editorHint", {
+                  slash: <kbd className="font-sans">/</kbd>,
+                  save: <kbd className="font-sans">⌘↵</kbd>,
+                })}
               </p>
               <Button size="sm" variant="secondary" onClick={finish}>
-                Done
+                {t("common.done")}
               </Button>
             </div>
           }
@@ -148,9 +153,7 @@ export function TaskDoc({
           className="-mx-1 flex w-full items-center gap-2 rounded px-1 py-1 text-left hover:bg-hover"
         >
           <PenLine className="h-3.5 w-3.5 shrink-0 text-text-faint" />
-          <span className="text-[13px] text-text-faint">
-            Write the brief — headings, checklists, screenshots.
-          </span>
+          <span className="text-[13px] text-text-faint">{t("doc.empty")}</span>
         </button>
       ) : (
         <div
@@ -188,7 +191,7 @@ export function TaskDoc({
                 <DialogTitle className="truncate">{task.title}</DialogTitle>
                 <p className="mt-0.5 flex items-center gap-1.5 text-2xs text-text-faint">
                   <FileText className="h-3 w-3" />
-                  Document
+                  {t("doc.heading")}
                   {!empty && (
                     <>
                       <span aria-hidden>·</span>
@@ -199,11 +202,15 @@ export function TaskDoc({
               </div>
               <SaveBadge state={state} />
               <div className="flex shrink-0 items-center gap-1">
-                <Tooltip content={expandedView === "split" ? "Hide the preview" : "Show the preview"}>
+                <Tooltip
+                  content={t(
+                    expandedView === "split" ? "doc.hidePreview" : "doc.showPreview",
+                  )}
+                >
                   <Button
                     variant="ghost"
                     size="icon-sm"
-                    aria-label="Toggle the preview"
+                    aria-label={t("doc.togglePreview")}
                     aria-pressed={expandedView === "split"}
                     onClick={() =>
                       setExpandedView((view) => (view === "split" ? "write" : "split"))
@@ -213,7 +220,12 @@ export function TaskDoc({
                     <Columns2 className="h-3.5 w-3.5" />
                   </Button>
                 </Tooltip>
-                <Button variant="ghost" size="icon-sm" aria-label="Close" onClick={finish}>
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  aria-label={t("common.close")}
+                  onClick={finish}
+                >
                   <X className="h-3.5 w-3.5" />
                 </Button>
               </div>
@@ -234,9 +246,10 @@ export function TaskDoc({
                 className="h-full"
                 footer={
                   <p className="shrink-0 pt-2 text-2xs text-text-faint">
-                    Autosaves as you write. <kbd className="font-sans">/</kbd> inserts a block,{" "}
-                    <kbd className="font-sans">⌘K</kbd> links the selection, and images can be
-                    pasted or dropped anywhere in the text.
+                    {tx("doc.expandedHint", {
+                      slash: <kbd className="font-sans">/</kbd>,
+                      link: <kbd className="font-sans">⌘K</kbd>,
+                    })}
                   </p>
                 }
               />

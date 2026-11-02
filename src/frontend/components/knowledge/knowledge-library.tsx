@@ -22,6 +22,7 @@ import {
   updateKnowledgeDoc,
 } from "@/backend/actions/knowledge";
 import type { KnowledgeDocSummary } from "@/shared/domain/types";
+import { useT } from "@/frontend/i18n";
 import { cn } from "@/frontend/lib/utils";
 import { Avatar } from "@/frontend/components/ui/avatar";
 import { Button } from "@/frontend/components/ui/button";
@@ -41,6 +42,7 @@ import { RelativeTime } from "@/frontend/components/ui/relative-time";
  */
 export function KnowledgeLibrary({ docs: initial }: { docs: KnowledgeDocSummary[] }) {
   const router = useRouter();
+  const t = useT();
   const [docs, setDocs] = useState(initial);
   const [query, setQuery] = useState("");
   const [activeLabels, setActiveLabels] = useState<string[]>([]);
@@ -77,7 +79,7 @@ export function KnowledgeLibrary({ docs: initial }: { docs: KnowledgeDocSummary[
     startCreating(async () => {
       const result = await createKnowledgeDoc();
       if (!result.ok) {
-        toast.error("Could not start that page", { description: result.error });
+        toast.error(t("knowledge.createFailed"), { description: result.error });
         return;
       }
       router.push(`/knowledge/${result.data.id}`);
@@ -94,7 +96,7 @@ export function KnowledgeLibrary({ docs: initial }: { docs: KnowledgeDocSummary[
       setDocs((previous) =>
         previous.map((item) => (item.id === doc.id ? { ...item, isPinned: !next } : item)),
       );
-      toast.error("Could not change that page", { description: result.error });
+      toast.error(t("knowledge.changeFailed"), { description: result.error });
     }
   }
 
@@ -104,25 +106,26 @@ export function KnowledgeLibrary({ docs: initial }: { docs: KnowledgeDocSummary[
     const result = await deleteKnowledgeDoc(doc.id);
     if (!result.ok) {
       setDocs(snapshot);
-      toast.error("Could not delete that page", { description: result.error });
+      toast.error(t("knowledge.deleteFailed"), { description: result.error });
       return;
     }
-    toast.success("Page deleted", { description: doc.title });
+    toast.success(t("knowledge.deleted"), { description: doc.title });
   }
 
   return (
     <div className="mx-auto w-full max-w-[72rem] space-y-5 px-3 py-4 sm:px-4 lg:px-6">
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div className="min-w-0">
-          <h1 className="text-lg font-semibold tracking-[-0.02em] text-text">Knowledge</h1>
+          <h1 className="text-lg font-semibold tracking-[-0.02em] text-text">
+            {t("knowledge.heading")}
+          </h1>
           <p className="mt-1 text-[13px] leading-5 text-text-muted">
-            The things worth keeping: how the work is done, what was decided, and what the next
-            person needs to know.
+            {t("knowledge.description")}
           </p>
         </div>
         <Button variant="primary" size="lg" loading={creating} onClick={create}>
           <Plus className="h-3.5 w-3.5" />
-          New page
+          {t("knowledge.newPage")}
         </Button>
       </header>
 
@@ -133,8 +136,8 @@ export function KnowledgeLibrary({ docs: initial }: { docs: KnowledgeDocSummary[
             <Input
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              placeholder="Search the library…"
-              aria-label="Search the library"
+              placeholder={t("knowledge.searchPlaceholder")}
+              aria-label={t("knowledge.searchLabel")}
               className="pl-8"
             />
           </div>
@@ -169,7 +172,7 @@ export function KnowledgeLibrary({ docs: initial }: { docs: KnowledgeDocSummary[
                   className="flex items-center gap-1 px-1 text-2xs text-text-faint hover:text-text"
                 >
                   <X className="h-3 w-3" />
-                  Clear
+                  {t("common.clear")}
                 </button>
               )}
             </div>
@@ -180,20 +183,20 @@ export function KnowledgeLibrary({ docs: initial }: { docs: KnowledgeDocSummary[
       {docs.length === 0 ? (
         <EmptyState
           icon={Library}
-          title="The library is empty"
-          description="Start a page for anything the team keeps re-explaining — how a release goes out, what was agreed with a client, where the credentials live."
+          title={t("knowledge.empty.title")}
+          description={t("knowledge.empty.description")}
           action={
             <Button variant="secondary" loading={creating} onClick={create}>
               <Plus className="h-3.5 w-3.5" />
-              Write the first page
+              {t("knowledge.empty.action")}
             </Button>
           }
         />
       ) : matches.length === 0 ? (
         <EmptyState
           icon={Search}
-          title="Nothing matches"
-          description="Try a different word, or clear the labels you are filtering by."
+          title={t("knowledge.noMatches.title")}
+          description={t("knowledge.noMatches.description")}
         />
       ) : (
         <div className="space-y-5">
@@ -201,7 +204,7 @@ export function KnowledgeLibrary({ docs: initial }: { docs: KnowledgeDocSummary[
             <section className="space-y-2">
               <p className="eyebrow flex items-center gap-1.5">
                 <Pin className="h-3 w-3" />
-                Pinned
+                {t("knowledge.pinned")}
               </p>
               <div className="grid gap-2.5 sm:grid-cols-2">
                 {pinned.map((doc) => (
@@ -214,7 +217,9 @@ export function KnowledgeLibrary({ docs: initial }: { docs: KnowledgeDocSummary[
           {rest.length > 0 && (
             <section className="space-y-2">
               {pinned.length > 0 && (
-                <p className="eyebrow">{filtering ? "Other matches" : "All pages"}</p>
+                <p className="eyebrow">
+                  {t(filtering ? "knowledge.otherMatches" : "knowledge.allPages")}
+                </p>
               )}
               <div className="grid gap-2.5 sm:grid-cols-2">
                 {rest.map((doc) => (
@@ -238,6 +243,8 @@ function DocCard({
   onTogglePin: (doc: KnowledgeDocSummary) => void;
   onDelete: (doc: KnowledgeDocSummary) => void;
 }) {
+  const t = useT();
+
   return (
     <article className="group/card relative flex flex-col rounded-xl border border-line bg-surface p-3 transition-colors hover:border-line-strong">
       <div className="flex items-start gap-2">
@@ -249,14 +256,14 @@ function DocCard({
           </Link>
         </h2>
         {doc.isPinned && (
-          <Tooltip content="Pinned">
+          <Tooltip content={t("knowledge.pinned")}>
             <Pin className="h-3 w-3 shrink-0 text-accent-bright" />
           </Tooltip>
         )}
         <Menu>
           <MenuTrigger asChild>
             <button
-              aria-label={`Actions for ${doc.title}`}
+              aria-label={t("knowledge.actionsFor", { title: doc.title })}
               className="relative z-10 shrink-0 rounded p-0.5 text-text-faint opacity-0 transition-opacity hover:text-text focus-visible:opacity-100 group-hover/card:opacity-100"
             >
               <MoreHorizontal className="h-3.5 w-3.5" />
@@ -265,12 +272,12 @@ function DocCard({
           <MenuContent>
             <MenuItem onSelect={() => onTogglePin(doc)}>
               {doc.isPinned ? <PinOff className="h-3.5 w-3.5" /> : <Pin className="h-3.5 w-3.5" />}
-              {doc.isPinned ? "Unpin" : "Pin to the top"}
+              {t(doc.isPinned ? "knowledge.unpin" : "knowledge.pinToTop")}
             </MenuItem>
             <MenuSeparator />
             <MenuItem destructive onSelect={() => onDelete(doc)}>
               <Trash2 className="h-3.5 w-3.5" />
-              Delete page
+              {t("knowledge.deletePage")}
             </MenuItem>
           </MenuContent>
         </Menu>
@@ -279,7 +286,9 @@ function DocCard({
       {doc.excerpt ? (
         <p className="mt-1.5 line-clamp-2 text-2xs leading-5 text-text-muted">{doc.excerpt}</p>
       ) : (
-        <p className="mt-1.5 text-2xs italic leading-5 text-text-faint">Empty page.</p>
+        <p className="mt-1.5 text-2xs italic leading-5 text-text-faint">
+          {t("knowledge.emptyPage")}
+        </p>
       )}
 
       {doc.labels.length > 0 && (
@@ -305,7 +314,7 @@ function DocCard({
               {doc.images}
             </span>
           )}
-          <span className="tabular-nums">{doc.words} w</span>
+          <span className="tabular-nums">{t("knowledge.words", { count: doc.words })}</span>
         </span>
       </footer>
     </article>

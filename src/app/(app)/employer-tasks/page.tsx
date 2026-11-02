@@ -4,6 +4,7 @@ import { connection } from "next/server";
 import { requireSession } from "@/backend/auth/guards";
 import { listMeetings } from "@/backend/data/meetings";
 import { listTasks } from "@/backend/data/tasks";
+import { getTranslator } from "@/backend/i18n/locale";
 import { TaskPage } from "@/frontend/components/tasks/task-page";
 import { TaskStoreProvider } from "@/frontend/components/tasks/task-store";
 import { BoardSkeleton } from "@/frontend/components/tasks/board-skeleton";
@@ -12,7 +13,10 @@ import { BoardSkeleton } from "@/frontend/components/tasks/board-skeleton";
 // prerendered ahead of knowing who is signed in.
 export const instant = false;
 
-export const metadata: Metadata = { title: "Employer’s tasks" };
+export async function generateMetadata(): Promise<Metadata> {
+  const { t } = await getTranslator();
+  return { title: t("nav.employerTasks") };
+}
 
 export default function EmployerTasksPage() {
   return (
@@ -44,11 +48,10 @@ async function EmployerTasksData() {
       initialFilters={counterpart ? undefined : { owners: others.map((m) => m.id) }}
     >
       <TaskPage
-        heading={counterpart ? `${counterpart.name}’s tasks` : "Team tasks"}
+        heading={counterpart ? "nav.personTasks" : "nav.teamTasks"}
+        headingName={counterpart?.name}
         description={
-          counterpart
-            ? "What sits with them. Useful for seeing what you are waiting on."
-            : "Everything owned by someone other than you."
+          counterpart ? "tasks.page.employer.description" : "tasks.page.team.description"
         }
         // With more than two people this becomes an owner-filtered view of all
         // tasks rather than a single person's board.

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import { connection } from "next/server";
 import { requireSession } from "@/backend/auth/guards";
+import { getTranslator } from "@/backend/i18n/locale";
 import { listAnalyses } from "@/backend/data/meetings";
 import { isAiConfigured } from "@/backend/ai/extract";
 import { ReviewView } from "@/frontend/components/review/review-view";
@@ -11,7 +12,10 @@ import { Skeleton } from "@/frontend/components/ui/feedback";
 // prerendered ahead of knowing who is signed in.
 export const instant = false;
 
-export const metadata: Metadata = { title: "AI review" };
+export async function generateMetadata(): Promise<Metadata> {
+  const { t } = await getTranslator();
+  return { title: t("nav.review") };
+}
 
 export default function ReviewPage() {
   return (

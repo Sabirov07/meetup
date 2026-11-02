@@ -1,6 +1,7 @@
 import "server-only";
 
 import { db } from "@/backend/db";
+import { message } from "@/backend/i18n/message";
 import type { ActivityType } from "@/shared/domain/types";
 
 /** Uniform result shape, so every client call site handles errors the same way. */
@@ -25,10 +26,10 @@ export async function guarded<T>(fn: () => Promise<ActionResult<T>>): Promise<Ac
   try {
     return await fn();
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Something went wrong. Please try again.";
+    const text =
+      error instanceof Error ? error.message : await message("errors.generic");
     if (process.env.NODE_ENV === "development") console.error("[action]", error);
-    return fail(message);
+    return fail(text);
   }
 }
 

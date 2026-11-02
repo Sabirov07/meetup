@@ -17,9 +17,9 @@ import { useMemo } from "react";
 import { toast } from "sonner";
 import { docStats, plainText } from "@/shared/doc/markdown";
 import type { TaskView } from "@/shared/domain/types";
-import { categoryMeta, priorityMeta, statusMeta } from "@/shared/domain/labels";
+import { priorityMeta, statusMeta } from "@/shared/domain/labels";
 import { blockingImpact, smartExplanation, unmetDependencies } from "@/shared/domain/priority";
-import { formatDueDate, formatEffort } from "@/frontend/lib/format";
+import { useI18n, useT } from "@/frontend/i18n";
 import { cn } from "@/frontend/lib/utils";
 import { Avatar } from "@/frontend/components/ui/avatar";
 import { Badge, Dot } from "@/frontend/components/ui/badge";
@@ -52,6 +52,7 @@ export function TaskRow({
   draggable?: boolean;
 }) {
   const { now, members, move, remove, setOpenTaskId } = useTasks();
+  const { t, f } = useI18n();
 
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: task.id,
@@ -59,7 +60,7 @@ export function TaskRow({
     data: { type: "task", task },
   });
 
-  const due = formatDueDate(task.dueDate, now);
+  const due = f.dueDate(task.dueDate, now);
   const done = task.status === "COMPLETED";
 
   // A document is a signal in its own right: it says this task has a brief,
@@ -80,7 +81,7 @@ export function TaskRow({
   }, [task.description]);
   const blocks = blockingImpact(task);
   const unmet = unmetDependencies(task);
-  const effort = formatEffort(task.estimateMinutes);
+  const effort = f.effort(task.estimateMinutes);
 
   function toggleComplete(event: React.MouseEvent) {
     event.stopPropagation();
@@ -117,10 +118,17 @@ export function TaskRow({
       )}
     >
       {/* Completion toggle. Hit area is deliberately larger than the glyph. */}
-      <Tooltip content={done ? "Mark as to do" : "Mark complete"} delay={500}>
+      <Tooltip
+        content={done ? t("tasks.row.markTodo") : t("tasks.row.markComplete")}
+        delay={500}
+      >
         <button
           onClick={toggleComplete}
-          aria-label={done ? `Mark ${task.title} as to do` : `Mark ${task.title} complete`}
+          aria-label={
+            done
+              ? t("tasks.row.markTodoNamed", { title: task.title })
+              : t("tasks.row.markCompleteNamed", { title: task.title })
+          }
           className={cn(
             "flex h-4 w-4 shrink-0 items-center justify-center rounded-full border transition-colors",
             done
@@ -149,11 +157,11 @@ export function TaskRow({
           </p>
 
           {task.needsReview && (
-            <Tooltip content="The owner or deadline was unclear. Worth a look.">
+            <Tooltip content={t("tasks.row.reviewTip")}>
               <span className="shrink-0">
                 <Badge tone="tone-warning">
                   <CircleDashed className="h-2.5 w-2.5" />
-                  Review
+                  {t("tasks.row.reviewBadge")}
                 </Badge>
               </span>
             </Tooltip>
@@ -163,8 +171,8 @@ export function TaskRow({
             <Tooltip
               content={
                 task.sourceMeeting
-                  ? `Created from “${task.sourceMeeting.title}”`
-                  : "Created from a conversation"
+                  ? t("tasks.row.fromMeeting", { title: task.sourceMeeting.title })
+                  : t("tasks.row.fromConversation")
               }
             >
               <span className="shrink-0">
@@ -177,7 +185,7 @@ export function TaskRow({
         <div className="mt-0.5 flex min-w-0 items-center gap-2 text-2xs text-text-faint">
           <span className="flex shrink-0 items-center gap-1">
             <Dot tone={statusMeta[task.status].tone} />
-            {statusMeta[task.status].short}
+            {t(`status.${task.status}.short`)}
           </span>
 
           {task.category !== "GENERAL" && (
@@ -188,7 +196,7 @@ export function TaskRow({
               {/* The one item allowed to shrink, so the signals after it stay
                   whole rather than all degrading together. */}
               <span className="min-w-0 shrink truncate">
-                {categoryMeta[task.category].label}
+                {t(`category.${task.category}.label`)}
               </span>
             </span>
           )}
@@ -197,11 +205,13 @@ export function TaskRow({
             <>
               <span aria-hidden>·</span>
               <Tooltip
-                content={`Waiting on: ${unmet.map((d) => d.title).join(", ")}`}
+                content={t("tasks.row.waitingOnTip", {
+                  titles: unmet.map((d) => d.title).join(", "),
+                })}
               >
                 <span className="flex shrink-0 items-center gap-1 text-warning">
                   <Clock className="h-2.5 w-2.5" />
-                  Waiting on {unmet.length}
+                  {t("tasks.row.waitingOn", { count: unmet.length })}
                 </span>
               </Tooltip>
             </>
@@ -210,10 +220,10 @@ export function TaskRow({
           {blocks > 0 && (
             <>
               <span aria-hidden>·</span>
-              <Tooltip content={`Blocks ${blocks} other ${blocks === 1 ? "task" : "tasks"}`}>
+              <Tooltip content={t("tasks.row.blocksTip", { count: blocks })}>
                 <span className="flex shrink-0 items-center gap-1 text-info">
                   <GitBranch className="h-2.5 w-2.5" />
-                  Blocks {blocks}
+                  {t("tasks.row.blocks", { count: blocks })}
                 </span>
               </Tooltip>
             </>
@@ -281,10 +291,10 @@ export function TaskRow({
       </div>
 
       {/* Priority */}
-      <Tooltip content={smartExplanation(task, now)}>
+      <Tooltip content={smartExplanation(task, now, t)}>
         <span className="shrink-0">
           <Badge tone={priorityMeta[task.priority].tone}>
-            {priorityMeta[task.priority].label}
+            {t(`priority.${task.priority}.label`)}
           </Badge>
         </span>
       </Tooltip>
@@ -301,14 +311,14 @@ export function TaskRow({
         <MenuTrigger asChild>
           <button
             onClick={(event) => event.stopPropagation()}
-            aria-label={`Actions for ${task.title}`}
+            aria-label={t("tasks.row.actionsFor", { title: task.title })}
             className="shrink-0 rounded-md p-1 text-text-faint opacity-0 transition-opacity hover:bg-raised hover:text-text focus-visible:opacity-100 group-hover:opacity-100 data-[state=open]:opacity-100"
           >
             <MoreHorizontal className="h-3.5 w-3.5" />
           </button>
         </MenuTrigger>
         <MenuContent onClick={(event) => event.stopPropagation()}>
-          <MenuLabel>Status</MenuLabel>
+          <MenuLabel>{t("tasks.facet.status")}</MenuLabel>
           <MenuRadioGroup
             value={task.status}
             onValueChange={(value) =>
@@ -318,13 +328,13 @@ export function TaskRow({
             {TASK_STATUSES.map((status) => (
               <MenuRadioItem key={status} value={status}>
                 <Dot tone={statusMeta[status].tone} />
-                {statusMeta[status].label}
+                {t(`status.${status}.label`)}
               </MenuRadioItem>
             ))}
           </MenuRadioGroup>
 
           <MenuSeparator />
-          <MenuLabel>Priority</MenuLabel>
+          <MenuLabel>{t("tasks.facet.priority")}</MenuLabel>
           <MenuRadioGroup
             value={task.priority}
             onValueChange={(value) =>
@@ -334,20 +344,24 @@ export function TaskRow({
                   id: task.id,
                   priority: value as TaskView["priority"],
                 });
-                if (!result.ok) toast.error("Could not change priority", { description: result.error });
+                if (!result.ok) {
+                  toast.error(t("tasks.row.changePriorityFailed"), {
+                    description: result.error,
+                  });
+                }
               })()
             }
           >
             {TASK_PRIORITIES.map((priority) => (
               <MenuRadioItem key={priority} value={priority}>
                 <Dot tone={priorityMeta[priority].tone} />
-                {priorityMeta[priority].label}
+                {t(`priority.${priority}.label`)}
               </MenuRadioItem>
             ))}
           </MenuRadioGroup>
 
           <MenuSeparator />
-          <MenuLabel>Owner</MenuLabel>
+          <MenuLabel>{t("tasks.facet.owner")}</MenuLabel>
           <MenuRadioGroup
             value={task.owner?.id ?? "UNASSIGNED"}
             onValueChange={(value) =>
@@ -360,14 +374,16 @@ export function TaskRow({
                 {member.name}
               </MenuRadioItem>
             ))}
-            <MenuRadioItem value="UNASSIGNED">Unassigned</MenuRadioItem>
+            <MenuRadioItem value="UNASSIGNED">{t("common.unassigned")}</MenuRadioItem>
           </MenuRadioGroup>
 
           <MenuSeparator />
-          <MenuItem onSelect={() => setOpenTaskId(task.id)}>Open details</MenuItem>
+          <MenuItem onSelect={() => setOpenTaskId(task.id)}>
+            {t("tasks.row.openDetails")}
+          </MenuItem>
           <MenuItem destructive onSelect={() => remove(task.id)}>
             <Trash2 className="h-3.5 w-3.5" />
-            Delete
+            {t("common.delete")}
           </MenuItem>
         </MenuContent>
       </Menu>
@@ -377,11 +393,15 @@ export function TaskRow({
 
 /** Rendered under the cursor while dragging. */
 export function TaskDragPreview({ task }: { task: TaskView }) {
+  const t = useT();
+
   return (
     <div className="flex w-[22rem] max-w-[80vw] items-center gap-2.5 rounded-lg border border-line-accent bg-overlay px-2.5 py-2 shadow-popover">
       <Dot tone={statusMeta[task.status].tone} />
       <p className="min-w-0 flex-1 truncate text-[13px] font-medium text-text">{task.title}</p>
-      <Badge tone={priorityMeta[task.priority].tone}>{priorityMeta[task.priority].label}</Badge>
+      <Badge tone={priorityMeta[task.priority].tone}>
+        {t(`priority.${task.priority}.label`)}
+      </Badge>
       <Avatar member={task.owner} size="md" />
     </div>
   );

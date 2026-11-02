@@ -1,3 +1,6 @@
+"use client";
+
+import { useT } from "@/frontend/i18n";
 import { cn } from "@/frontend/lib/utils";
 
 /**
@@ -48,6 +51,8 @@ export function Wordmark({
   className?: string;
   showTagline?: boolean;
 }) {
+  const t = useT();
+
   return (
     <span className={cn("flex min-w-0 items-center gap-2", className)}>
       <Logo />
@@ -56,7 +61,7 @@ export function Wordmark({
           Meetup
         </span>
         {showTagline && (
-          <span className="block truncate text-2xs text-text-faint">Conversations to work</span>
+          <span className="block truncate text-2xs text-text-faint">{t("common.tagline")}</span>
         )}
       </span>
     </span>

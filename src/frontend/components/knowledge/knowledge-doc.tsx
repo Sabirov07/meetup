@@ -21,6 +21,7 @@ import { toast } from "sonner";
 import { deleteKnowledgeDoc, updateKnowledgeDoc } from "@/backend/actions/knowledge";
 import { docStats, isEmptyDoc, toggleCheckboxLine } from "@/shared/doc/markdown";
 import type { KnowledgeDocView } from "@/shared/domain/types";
+import { useT, useTx } from "@/frontend/i18n";
 import { cn } from "@/frontend/lib/utils";
 import { Avatar } from "@/frontend/components/ui/avatar";
 import { Button } from "@/frontend/components/ui/button";
@@ -44,6 +45,8 @@ import { useAutosavedDoc } from "@/frontend/components/doc/use-autosaved-doc";
  */
 export function KnowledgeDocPage({ doc: initial }: { doc: KnowledgeDocView }) {
   const router = useRouter();
+  const t = useT();
+  const tx = useTx();
 
   const [doc, setDoc] = useState(initial);
   const [editing, setEditing] = useState(isEmptyDoc(initial.body));
@@ -62,7 +65,7 @@ export function KnowledgeDocPage({ doc: initial }: { doc: KnowledgeDocView }) {
   const { draft, setDraft, replace, state, flush } = useAutosavedDoc({
     initial: initial.body ?? "",
     save: saveBody,
-    errorTitle: "Could not save this page",
+    errorTitle: "knowledge.saveFailed",
   });
 
   const stats = docStats(draft);
@@ -71,7 +74,7 @@ export function KnowledgeDocPage({ doc: initial }: { doc: KnowledgeDocView }) {
   async function patch(change: Parameters<typeof updateKnowledgeDoc>[0]) {
     const result = await updateKnowledgeDoc(change);
     if (result.ok) setDoc(result.data);
-    else toast.error("Could not save that change", { description: result.error });
+    else toast.error(t("knowledge.saveChangeFailed"), { description: result.error });
     return result.ok;
   }
 
@@ -95,10 +98,10 @@ export function KnowledgeDocPage({ doc: initial }: { doc: KnowledgeDocView }) {
   async function remove() {
     const result = await deleteKnowledgeDoc(doc.id);
     if (!result.ok) {
-      toast.error("Could not delete this page", { description: result.error });
+      toast.error(t("knowledge.deleteFailed"), { description: result.error });
       return;
     }
-    toast.success("Page deleted", { description: doc.title });
+    toast.success(t("knowledge.deleted"), { description: doc.title });
     router.push("/knowledge");
   }
 
@@ -110,16 +113,20 @@ export function KnowledgeDocPage({ doc: initial }: { doc: KnowledgeDocView }) {
           className="flex items-center gap-1.5 text-2xs text-text-muted transition-colors hover:text-text"
         >
           <ArrowLeft className="h-3 w-3" />
-          Knowledge
+          {t("knowledge.heading")}
         </Link>
 
         <div className="flex items-center gap-1.5">
           <SaveBadge state={state} />
-          <Tooltip content={doc.isPinned ? "Unpin from the top" : "Pin to the top"}>
+          <Tooltip
+            content={t(doc.isPinned ? "knowledge.unpinFromTop" : "knowledge.pinToTop")}
+          >
             <Button
               variant="ghost"
               size="icon-sm"
-              aria-label={doc.isPinned ? "Unpin this page" : "Pin this page"}
+              aria-label={t(
+                doc.isPinned ? "knowledge.unpinThisPage" : "knowledge.pinThisPage",
+              )}
               aria-pressed={doc.isPinned}
               onClick={() => void patch({ id: doc.id, isPinned: !doc.isPinned })}
               className={cn(doc.isPinned && "text-accent-bright")}
@@ -129,23 +136,23 @@ export function KnowledgeDocPage({ doc: initial }: { doc: KnowledgeDocView }) {
           </Tooltip>
           <Menu>
             <MenuTrigger asChild>
-              <Button variant="ghost" size="icon-sm" aria-label="Page actions">
+              <Button variant="ghost" size="icon-sm" aria-label={t("knowledge.pageActions")}>
                 <MoreHorizontal className="h-3.5 w-3.5" />
               </Button>
             </MenuTrigger>
             <MenuContent>
               <MenuItem onSelect={() => setEditing((value) => !value)}>
                 <Pencil className="h-3.5 w-3.5" />
-                {editing ? "Stop editing" : "Edit page"}
+                {t(editing ? "knowledge.stopEditing" : "knowledge.editPage")}
               </MenuItem>
               <MenuItem onSelect={() => void patch({ id: doc.id, isPinned: !doc.isPinned })}>
                 {doc.isPinned ? <PinOff className="h-3.5 w-3.5" /> : <Pin className="h-3.5 w-3.5" />}
-                {doc.isPinned ? "Unpin" : "Pin to the top"}
+                {t(doc.isPinned ? "knowledge.unpin" : "knowledge.pinToTop")}
               </MenuItem>
               <MenuSeparator />
               <MenuItem destructive onSelect={remove}>
                 <Trash2 className="h-3.5 w-3.5" />
-                Delete page
+                {t("knowledge.deletePage")}
               </MenuItem>
             </MenuContent>
           </Menu>
@@ -165,16 +172,20 @@ export function KnowledgeDocPage({ doc: initial }: { doc: KnowledgeDocView }) {
             event.currentTarget.blur();
           }
         }}
-        aria-label="Page title"
-        placeholder="Untitled page"
+        aria-label={t("knowledge.pageTitle")}
+        placeholder={t("knowledge.untitled")}
         className="-mx-2 w-[calc(100%+1rem)] rounded-md bg-transparent px-2 py-1 text-xl font-semibold tracking-[-0.02em] text-text outline-none transition-colors placeholder:text-text-faint hover:bg-hover focus:bg-hover"
       />
 
       <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1.5 px-0.5 text-2xs text-text-faint">
         {doc.updatedBy && <Avatar member={doc.updatedBy} size="xs" />}
         <span>
-          {doc.updatedBy ? `${doc.updatedBy.name} edited ` : "Edited "}
-          <RelativeTime value={doc.updatedAt} />
+          {doc.updatedBy
+            ? tx("knowledge.editedBy", {
+                name: doc.updatedBy.name,
+                when: <RelativeTime value={doc.updatedAt} />,
+              })
+            : tx("knowledge.edited", { when: <RelativeTime value={doc.updatedAt} /> })}
         </span>
         {!empty && (
           <>
@@ -197,7 +208,7 @@ export function KnowledgeDocPage({ doc: initial }: { doc: KnowledgeDocView }) {
               onClick={() =>
                 void patch({ id: doc.id, labels: doc.labels.filter((l) => l !== label) })
               }
-              aria-label={`Remove the ${label} label`}
+              aria-label={t("knowledge.removeLabel", { label })}
               className="text-text-faint opacity-0 transition-opacity hover:text-danger group-hover/label:opacity-100"
             >
               <X className="h-2.5 w-2.5" />
@@ -218,7 +229,7 @@ export function KnowledgeDocPage({ doc: initial }: { doc: KnowledgeDocView }) {
                 setAddingLabel(false);
               }
             }}
-            placeholder="onboarding"
+            placeholder={t("knowledge.labelPlaceholder")}
             className="h-6 w-32 text-2xs"
           />
         ) : (
@@ -227,7 +238,7 @@ export function KnowledgeDocPage({ doc: initial }: { doc: KnowledgeDocView }) {
             className="flex items-center gap-1 rounded-full border border-dashed border-line-strong px-2 py-0.5 text-2xs text-text-faint transition-colors hover:border-accent hover:text-accent-bright"
           >
             <Plus className="h-2.5 w-2.5" />
-            Label
+            {t("knowledge.addLabel")}
           </button>
         )}
       </div>
@@ -242,7 +253,7 @@ export function KnowledgeDocPage({ doc: initial }: { doc: KnowledgeDocView }) {
           autoFocus
           view={view}
           minHeight="min-h-[24rem]"
-          placeholder="Write it down. Paste a screenshot, or type / for a block."
+          placeholder={t("knowledge.editorPlaceholder")}
           onSaveRequest={() => {
             setEditing(false);
             flush();
@@ -253,10 +264,10 @@ export function KnowledgeDocPage({ doc: initial }: { doc: KnowledgeDocView }) {
           }}
           toolbarExtras={
             <>
-              <Tooltip content={view === "split" ? "Hide the preview" : "Show the preview"}>
+              <Tooltip content={t(view === "split" ? "doc.hidePreview" : "doc.showPreview")}>
                 <button
                   type="button"
-                  aria-label="Toggle the preview"
+                  aria-label={t("doc.togglePreview")}
                   aria-pressed={view === "split"}
                   onMouseDown={(event) => event.preventDefault()}
                   onClick={() => setView((current) => (current === "split" ? "write" : "split"))}
@@ -279,15 +290,16 @@ export function KnowledgeDocPage({ doc: initial }: { doc: KnowledgeDocView }) {
                 }}
               >
                 <Check className="h-3 w-3" />
-                Done
+                {t("common.done")}
               </Button>
             </>
           }
           footer={
             <p className="pt-1.5 text-2xs text-text-faint">
-              Autosaves as you write. <kbd className="font-sans">/</kbd> inserts a block,{" "}
-              <kbd className="font-sans">⌘K</kbd> links the selection, and images can be pasted or
-              dropped anywhere in the text.
+              {tx("doc.expandedHint", {
+                slash: <kbd className="font-sans">/</kbd>,
+                link: <kbd className="font-sans">⌘K</kbd>,
+              })}
             </p>
           }
         />

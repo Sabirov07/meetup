@@ -9,13 +9,15 @@ import {
 } from "@/backend/auth/guards";
 import { disconnectGoogle } from "@/backend/google/oauth";
 import { ACCENT_TOKENS } from "@/shared/domain/types";
+import { message } from "@/backend/i18n/message";
+import type { TranslationKey } from "@/shared/i18n";
 import { fail, guarded, ok, type ActionResult } from "./shared";
 
 export async function renameWorkspace(name: string): Promise<ActionResult<undefined>> {
   return guarded(async () => {
     const session = await requireAdministrator();
     const parsed = z.string().trim().min(2).max(80).safeParse(name);
-    if (!parsed.success) return fail("Give the workspace a name of at least 2 characters.");
+    if (!parsed.success) return fail(await message("errors.workspace.nameTooShort"));
 
     await db.workspace.update({
       where: { id: session.workspace.id },
@@ -28,7 +30,7 @@ export async function renameWorkspace(name: string): Promise<ActionResult<undefi
 
 const profileInput = z.object({
   memberId: z.string().min(1),
-  name: z.string().trim().min(2, "Names need at least 2 characters.").max(80),
+  name: z.string().trim().min(2, "errors.workspace.personNameTooShort").max(80),
   jobTitle: z.string().trim().max(60).nullable(),
   accentToken: z.enum(ACCENT_TOKENS),
 });
@@ -46,7 +48,7 @@ export async function updateMemberProfile(
     const session = await requireSessionForAction();
     const parsed = profileInput.safeParse(raw);
     if (!parsed.success) {
-      return fail(parsed.error.issues[0]?.message ?? "That profile is not valid.");
+      return fail(await issue(parsed.error.issues[0]?.message, "errors.workspace.profileInvalid"));
     }
     const input = parsed.data;
 
@@ -54,11 +56,11 @@ export async function updateMemberProfile(
       where: { id: input.memberId, workspaceId: session.workspace.id },
       select: { id: true, userId: true },
     });
-    if (!member) return fail("That person is not a member of this workspace.");
+    if (!member) return fail(await message("errors.member.notInWorkspace"));
 
     const isSelf = member.id === session.member.id;
     if (!isSelf && session.member.role !== "ADMINISTRATOR") {
-      return fail("Only an administrator can edit someone else's profile.");
+      return fail(await message("errors.workspace.notYourProfile"));
     }
 
     await db.$transaction([
@@ -88,7 +90,7 @@ export async function setMemberRole(input: {
       where: { id: input.memberId, workspaceId: session.workspace.id },
       select: { id: true },
     });
-    if (!member) return fail("That person is not a member of this workspace.");
+    if (!member) return fail(await message("errors.member.notInWorkspace"));
 
     // Never let the last administrator demote themselves out of the workspace.
     if (input.role === "MEMBER") {
@@ -96,7 +98,7 @@ export async function setMemberRole(input: {
         where: { workspaceId: session.workspace.id, role: "ADMINISTRATOR" },
       });
       if (admins <= 1 && member.id === session.member.id) {
-        return fail("The workspace needs at least one administrator.");
+        return fail(await message("errors.workspace.needsAdmin"));
       }
     }
 
@@ -116,4 +118,9 @@ export async function disconnectGoogleAccount(): Promise<ActionResult<undefined>
     refresh();
     return ok(undefined);
   });
+}
+
+/** Resolves a Zod issue's key, falling back to a generic message. */
+async function issue(key: string | undefined, fallback: TranslationKey): Promise<string> {
+  return message((key ?? fallback) as TranslationKey);
 }

@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { AlertCircle, ArrowRight } from "lucide-react";
 import { signUp } from "@/backend/actions/auth";
+import { useT } from "@/frontend/i18n";
 import { Button } from "@/frontend/components/ui/button";
 import { Field, Input } from "@/frontend/components/ui/field";
 
@@ -11,6 +12,7 @@ const MIN_PASSWORD = 8;
 
 export function SignUpForm() {
   const router = useRouter();
+  const t = useT();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
@@ -37,7 +39,7 @@ export function SignUpForm() {
 
   return (
     <form onSubmit={onSubmit} className="space-y-3.5" noValidate>
-      <Field label="Your name" htmlFor="name">
+      <Field label={t("auth.field.name")} htmlFor="name">
         <Input
           id="name"
           name="name"
@@ -45,25 +47,25 @@ export function SignUpForm() {
           autoComplete="name"
           autoFocus
           required
-          placeholder="Alex Morgan"
+          placeholder={t("auth.field.namePlaceholder")}
         />
       </Field>
 
-      <Field label="Email" htmlFor="email">
+      <Field label={t("auth.field.email")} htmlFor="email">
         <Input
           id="email"
           name="email"
           type="email"
           autoComplete="email"
           required
-          placeholder="you@company.com"
+          placeholder={t("auth.field.emailPlaceholder")}
         />
       </Field>
 
       <Field
-        label="Password"
+        label={t("auth.field.password")}
         htmlFor="password"
-        hint={`${MIN_PASSWORD} characters or more`}
+        hint={t("auth.field.passwordHint", { count: MIN_PASSWORD })}
       >
         <Input
           id="password"
@@ -92,9 +94,9 @@ export function SignUpForm() {
         size="lg"
         className="w-full"
         loading={pending}
-        loadingLabel="Creating your workspace…"
+        loadingLabel={t("auth.signUp.submitting")}
       >
-        Create account
+        {t("auth.signUp.submit")}
         <ArrowRight className="h-3.5 w-3.5" />
       </Button>
     </form>

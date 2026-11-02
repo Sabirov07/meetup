@@ -8,6 +8,7 @@ import { Dialog, DialogTitle } from "@/frontend/components/ui/dialog";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { StartMeetingDialog, type GoogleState } from "@/frontend/components/meetings/start-meeting-dialog";
 import { TaskFormDialog } from "@/frontend/components/tasks/task-form-dialog";
+import { useI18n } from "@/frontend/i18n";
 import { CommandPalette } from "./command-palette";
 import { Header, type HeaderAlert } from "./header";
 import { Sidebar, type NavCounts } from "./sidebar";
@@ -37,6 +38,7 @@ export function AppShell({
   initialCollapsed: boolean;
   children: ReactNode;
 }) {
+  const { t } = useI18n();
   const [collapsed, setCollapsed] = useState(initialCollapsed);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -115,7 +117,7 @@ export function AppShell({
             aria-describedby={undefined}
             className="fixed inset-y-0 left-0 z-50 w-[15rem] border-r border-line-strong shadow-modal focus:outline-none data-[state=open]:animate-slide-in-right lg:hidden"
           >
-            <DialogTitle className="sr-only">Navigation</DialogTitle>
+            <DialogTitle className="sr-only">{t("sidebar.openNavigation")}</DialogTitle>
             <Sidebar
               workspace={workspace}
               member={member}
