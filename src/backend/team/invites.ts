@@ -222,8 +222,22 @@ export async function acceptInvite(args: {
 
     await tx.userPreference.upsert({
       where: { userId: args.userId },
-      create: { userId: args.userId, lastWorkspaceId: invite.workspaceId },
+      create: {
+        userId: args.userId,
+        lastWorkspaceId: invite.workspaceId,
+        primaryWorkspaceId: invite.workspaceId,
+      },
       update: { lastWorkspaceId: invite.workspaceId },
+    });
+
+    // Joining a second workspace must not displace the main one someone
+    // already has. But an account whose only workspace is the one it has just
+    // joined has no main one to protect, and would otherwise be left with
+    // none — falling back to creation order, which is what this column exists
+    // to stop being the answer.
+    await tx.userPreference.updateMany({
+      where: { userId: args.userId, primaryWorkspaceId: null },
+      data: { primaryWorkspaceId: invite.workspaceId },
     });
 
     return true;
