@@ -6,15 +6,18 @@ import type { MemberSummary } from "@/shared/domain/types";
 
 /**
  * Identity colours are assigned per person from a fixed set, so the same
- * person is always the same colour everywhere in the product.
+ * person is always the same colour everywhere in the product. The values live
+ * in `globals.css` as `--color-id-*`, which is what lets a chip be a dark fill
+ * with pale initials in the dark theme and the reverse in the light one without
+ * this file knowing either palette.
  */
 const accents: Record<string, string> = {
-  violet: "bg-[#4a3fa8] text-[#d6d0ff]",
-  amber: "bg-[#5c4214] text-[#f5d9a0]",
-  teal: "bg-[#13453a] text-[#8fe3c6]",
-  blue: "bg-[#1c3a63] text-[#aed2ff]",
-  rose: "bg-[#542029] text-[#ffc2ca]",
-  slate: "bg-[#2f343d] text-[#c3c8d2]",
+  violet: "bg-id-violet text-id-violet-fg",
+  amber: "bg-id-amber text-id-amber-fg",
+  teal: "bg-id-teal text-id-teal-fg",
+  blue: "bg-id-blue text-id-blue-fg",
+  rose: "bg-id-rose text-id-rose-fg",
+  slate: "bg-id-slate text-id-slate-fg",
 };
 
 const sizes = {

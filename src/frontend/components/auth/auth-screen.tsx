@@ -5,6 +5,7 @@ import type { ReactNode } from "react";
 import { useT } from "@/frontend/i18n";
 import { Logo } from "@/frontend/components/brand";
 import { LanguageInlineToggle } from "@/frontend/components/shell/language-switch";
+import { ThemeInlineToggle } from "@/frontend/components/shell/theme-switch";
 import { AuthNotice } from "./auth-notice";
 import { GoogleButton, OrDivider } from "./google-button";
 
@@ -78,7 +79,10 @@ export function AuthScreen({
           </Link>
         </p>
 
-        <LanguageInlineToggle className="mt-6" />
+        <div className="mt-6 flex items-center justify-center gap-2">
+          <LanguageInlineToggle />
+          <ThemeInlineToggle />
+        </div>
       </div>
     </main>
   );

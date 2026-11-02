@@ -19,6 +19,7 @@ import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from "@/front
 import { WorkspaceSwitcher } from "@/frontend/components/team/workspace-switcher";
 import { useI18n } from "@/frontend/i18n";
 import { LanguageMenuSection } from "./language-switch";
+import { ThemeMenuSection } from "./theme-switch";
 import { navSections, type NavItem } from "./nav";
 
 export type NavCounts = { pendingReview: number; myOpen: number; theirOpen: number };
@@ -212,6 +213,8 @@ export function Sidebar({
             </div>
             <MenuSeparator />
             <LanguageMenuSection />
+            <MenuSeparator />
+            <ThemeMenuSection />
             <MenuSeparator />
             <MenuItem asChild>
               <Link href="/team">

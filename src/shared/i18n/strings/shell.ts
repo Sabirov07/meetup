@@ -118,4 +118,17 @@ export const shell = {
     "Applies immediately, on this device and anywhere else you sign in.",
     "Применяется сразу — на этом устройстве и везде, где вы входите.",
   ],
+
+  "theme.label": ["Theme", "Тема"],
+  "theme.heading": ["Appearance", "Оформление"],
+  "theme.description": [
+    "Applies immediately, on this device only.",
+    "Применяется сразу и только на этом устройстве.",
+  ],
+  "theme.dark.label": ["Dark", "Тёмная"],
+  "theme.dark.hint": ["The default", "По умолчанию"],
+  "theme.light.label": ["Light", "Светлая"],
+  "theme.light.hint": ["For bright rooms", "Для яркого света"],
+  "theme.switchTo.dark": ["Switch to the dark theme", "Включить тёмную тему"],
+  "theme.switchTo.light": ["Switch to the light theme", "Включить светлую тему"],
 } satisfies Entries;

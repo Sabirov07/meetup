@@ -7,7 +7,7 @@ import type { ComponentProps, ReactNode } from "react";
 import { cn } from "@/frontend/lib/utils";
 
 const controlBase =
-  "w-full rounded-md border border-line-strong bg-canvas text-text transition-colors placeholder:text-text-faint hover:border-[#41465232] focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/25 disabled:opacity-50";
+  "w-full rounded-md border border-line-strong bg-canvas text-text transition-colors placeholder:text-text-faint hover:border-text-faint/60 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/25 disabled:opacity-50";
 
 export function Label({ className, ...props }: ComponentProps<typeof LabelPrimitive.Root>) {
   return (

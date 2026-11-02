@@ -17,6 +17,7 @@ import {
 } from "@/frontend/components/ui/menu";
 import { findNavItem } from "./nav";
 import { SidebarTrigger } from "./sidebar";
+import { ThemeInlineToggle } from "./theme-switch";
 
 export type HeaderAlert = ShellAlert;
 
@@ -204,6 +205,8 @@ export function Header({
             </div>
           </PopoverContent>
         </Popover>
+
+        <ThemeInlineToggle />
 
         <span className="mx-0.5 hidden h-5 w-px bg-line sm:block" />
 

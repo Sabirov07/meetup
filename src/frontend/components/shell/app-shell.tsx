@@ -120,7 +120,7 @@ export function AppShell({
       {/* Mobile drawer */}
       <Dialog open={mobileOpen} onOpenChange={setMobileOpen}>
         <DialogPrimitive.Portal>
-          <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-black/60 data-[state=open]:animate-fade-in lg:hidden" />
+          <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-scrim data-[state=open]:animate-fade-in lg:hidden" />
           <DialogPrimitive.Content
             aria-describedby={undefined}
             className="fixed inset-y-0 left-0 z-50 w-[15rem] border-r border-line-strong shadow-modal focus:outline-none data-[state=open]:animate-slide-in-right lg:hidden"

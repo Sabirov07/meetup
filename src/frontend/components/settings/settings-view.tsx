@@ -31,6 +31,7 @@ import {
 import type { TranslationKey } from "@/shared/i18n";
 import { useT, useTx } from "@/frontend/i18n";
 import { LanguageChoice } from "@/frontend/components/shell/language-switch";
+import { ThemeChoice } from "@/frontend/components/shell/theme-switch";
 import { cn } from "@/frontend/lib/utils";
 import { Avatar } from "@/frontend/components/ui/avatar";
 import { Badge } from "@/frontend/components/ui/badge";
@@ -87,6 +88,11 @@ export function SettingsView({
       {/* Language. First, because it decides how everything below reads. */}
       <Section title={t("language.heading")} description={t("language.description")}>
         <LanguageChoice />
+      </Section>
+
+      {/* Appearance. Second, for the same reason: it decides how it all looks. */}
+      <Section title={t("theme.heading")} description={t("theme.description")}>
+        <ThemeChoice />
       </Section>
 
       {/* Workspace */}

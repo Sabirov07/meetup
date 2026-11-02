@@ -14,7 +14,7 @@ function Overlay({ className }: { className?: string }) {
   return (
     <DialogPrimitive.Overlay
       className={cn(
-        "fixed inset-0 z-50 bg-black/60 data-[state=open]:animate-fade-in",
+        "fixed inset-0 z-50 bg-scrim data-[state=open]:animate-fade-in",
         className,
       )}
     />

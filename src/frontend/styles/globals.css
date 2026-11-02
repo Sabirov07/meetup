@@ -3,22 +3,34 @@
 /* ===========================================================================
    Meetup design system
    ---------------------------------------------------------------------------
-   A dark-first product surface. Three rules hold the whole thing together:
+   A dark-first product surface with a light counterpart. Four rules hold the
+   whole thing together:
 
    1. No component ever writes a raw colour. Everything resolves through a
-      semantic token, so re-tuning the palette is a single-file change.
-   2. Surfaces step up in lightness as they come forward (canvas → sidebar →
-      surface → raised → overlay). Depth comes from that step and a hairline
+      semantic token, so re-tuning a palette is a single-file change — and it
+      is the only reason a second theme costs one block of CSS instead of a
+      pass over every component.
+   2. Surfaces step away from the canvas as they come forward (canvas →
+      sidebar → surface → raised → overlay): lighter in the dark theme,
+      whiter in the light one. Depth comes from that step and a hairline
       border, not from heavy shadows or glow.
-   3. Foreground colours are contrast-checked against `--color-surface`:
-        text        #F4F5F7  14.0:1
-        secondary   #A8ADB8   6.9:1
-        muted       #868D9B   5.4:1   (AA for body text)
-        faint       #6B7280   3.3:1   (decorative and disabled only)
-      Accent #8B7CFF reads 5.3:1 as text, but only 3.3:1 behind white — so
-      solid buttons use the deeper `--color-accent-solid` (#6E5BF0, 4.8:1
-      behind white) while the brighter tone is reserved for text, icons,
-      borders and graphics.
+   3. A token keeps its *role* across themes, not its lightness. `raised` is
+      always the filled chip that reads against `surface`; in the dark theme
+      that makes it lighter than the card, in the light theme darker.
+   4. Foreground colours are contrast-checked against `--color-surface`:
+
+        dark (#191B20)                 light (#FFFFFF)
+        text        #F4F5F7  14.0:1    #15171C  17.9:1
+        secondary   #A8ADB8   6.9:1    #4E545F   7.0:1
+        muted       #868D9B   5.4:1    #666D7A   5.2:1   (AA for body text)
+        faint       #6B7280   3.3:1    #8B919D   3.2:1   (decorative only)
+
+      Accent #8B7CFF reads 5.3:1 on the dark surface but only 3.3:1 behind
+      white — so solid buttons use `--color-accent-solid` (#6E5BF0, 4.8:1
+      behind white) in both themes, which is also what keeps the brand purple
+      identical either way. The brighter tone is reserved for text, icons,
+      borders and graphics, and flips to a *deeper* purple in the light theme,
+      where prominence means darker.
    =========================================================================== */
 
 @theme {
@@ -60,6 +72,26 @@
   --color-info-dim: #152c4a;
   --color-neutral: #9aa1af;
   --color-neutral-dim: #262a32;
+
+  /* --- Scrim. The wash behind a modal or the mobile drawer. ------------ */
+  --color-scrim: rgb(0 0 0 / 0.6);
+
+  /* --- Identity ---------------------------------------------------------
+     A person keeps one colour everywhere in the product, so these are
+     assigned per account rather than chosen per component. Each is a filled
+     chip: `-fg` is the text that sits on it. ------------------------------ */
+  --color-id-violet: #4a3fa8;
+  --color-id-violet-fg: #d6d0ff;
+  --color-id-amber: #5c4214;
+  --color-id-amber-fg: #f5d9a0;
+  --color-id-teal: #13453a;
+  --color-id-teal-fg: #8fe3c6;
+  --color-id-blue: #1c3a63;
+  --color-id-blue-fg: #aed2ff;
+  --color-id-rose: #542029;
+  --color-id-rose-fg: #ffc2ca;
+  --color-id-slate: #2f343d;
+  --color-id-slate-fg: #c3c8d2;
 
   /* --- Type ------------------------------------------------------------ */
   --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
@@ -111,6 +143,84 @@
 }
 
 /* ===========================================================================
+   Light theme
+   ---------------------------------------------------------------------------
+   The same tokens, re-tuned. `data-theme` is written on <html> by the server
+   from a cookie, so the first paint is already in the chosen theme — and the
+   switch itself is a single attribute change, with no restyled components and
+   nothing to reload.
+
+   Unlayered on purpose: `@theme` emits into Tailwind's lowest layer, and base
+   styles into `base`, so these declarations win over both without needing
+   `!important` anywhere.
+   =========================================================================== */
+
+:root[data-theme="light"] {
+  color-scheme: light;
+
+  /* Surfaces. Forward is whiter; `canvas` is the recess a card sits in. */
+  --color-canvas: #f6f7f9;
+  --color-sidebar: #f1f2f5;
+  --color-surface: #ffffff;
+  --color-raised: #e9ebef;
+  --color-overlay: #ffffff;
+  --color-hover: #edeff3;
+
+  /* Borders */
+  --color-line: #e3e5ea;
+  --color-line-strong: #d1d5dc;
+  --color-line-accent: #b4a9ff;
+
+  /* Text */
+  --color-text: #15171c;
+  --color-text-secondary: #4e545f;
+  --color-text-muted: #666d7a;
+  --color-text-faint: #8b919d;
+  --color-text-inverse: #ffffff;
+
+  /* Accent. `solid` is unchanged — the brand purple is the brand purple. */
+  --color-accent: #6250e6;
+  --color-accent-bright: #4f3bd1;
+  --color-accent-solid: #6e5bf0;
+  --color-accent-solid-hover: #5e4ae2;
+  --color-accent-dim: #ebe8ff;
+
+  /* Semantic. Deep enough to read as small text on their own dim tint. */
+  --color-success: #0a6f4d;
+  --color-success-dim: #dcf5e9;
+  --color-warning: #8a5a05;
+  --color-warning-dim: #fcefcf;
+  --color-danger: #b3202f;
+  --color-danger-dim: #fde2e4;
+  --color-info: #1558c0;
+  --color-info-dim: #ddeafc;
+  --color-neutral: #525a68;
+  --color-neutral-dim: #e8eaee;
+
+  /* A lighter wash: 60% black over a white page is a blackout, not a scrim. */
+  --color-scrim: rgb(16 18 24 / 0.32);
+
+  /* Identity chips invert: pale fill, deep initials. */
+  --color-id-violet: #e4e0ff;
+  --color-id-violet-fg: #43349c;
+  --color-id-amber: #fbe8c4;
+  --color-id-amber-fg: #7a5205;
+  --color-id-teal: #cdf0e2;
+  --color-id-teal-fg: #0a5f43;
+  --color-id-blue: #d8e7fd;
+  --color-id-blue-fg: #15508f;
+  --color-id-rose: #fcdfe3;
+  --color-id-rose-fg: #9c2231;
+  --color-id-slate: #e5e7ec;
+  --color-id-slate-fg: #474d58;
+
+  /* Elevation. Shadow is cast by the page, not by the dark. */
+  --shadow-raised: 0 1px 2px rgb(16 18 24 / 0.06);
+  --shadow-popover: 0 8px 24px -6px rgb(16 18 24 / 0.14), 0 2px 6px -2px rgb(16 18 24 / 0.08);
+  --shadow-modal: 0 24px 60px -12px rgb(16 18 24 / 0.2);
+}
+
+/* ===========================================================================
    Base
    =========================================================================== */
 
@@ -120,6 +230,7 @@
   }
 
   html {
+    /* The dark default; `:root[data-theme="light"]` above flips it. */
     color-scheme: dark;
     -webkit-tap-highlight-color: transparent;
   }
@@ -179,7 +290,7 @@
     background-clip: content-box;
   }
   ::-webkit-scrollbar-thumb:hover {
-    background-color: #454a56;
+    background-color: var(--color-text-faint);
   }
 
   @media (prefers-reduced-motion: reduce) {
