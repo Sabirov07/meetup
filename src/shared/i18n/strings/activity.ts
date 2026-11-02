@@ -104,4 +104,7 @@ export const activity = {
   "activity.line.KNOWLEDGE_CREATED": ["added the page", "добавил(а) страницу"],
   "activity.line.KNOWLEDGE_UPDATED": ["edited the page", "изменил(а) страницу"],
   "activity.line.KNOWLEDGE_DELETED": ["deleted the page", "удалил(а) страницу"],
+  "activity.line.SPACE_CREATED": ["created a section", "создал(а) раздел"],
+  "activity.line.SPACE_UPDATED": ["edited a section", "изменил(а) раздел"],
+  "activity.line.SPACE_DELETED": ["deleted a section", "удалил(а) раздел"],
 } satisfies Entries;

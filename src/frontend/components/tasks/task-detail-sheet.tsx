@@ -25,6 +25,7 @@ import {
 } from "@/backend/actions/tasks";
 import type { CommentView } from "@/backend/data/tasks";
 import {
+  NO_SPACE,
   TASK_CATEGORIES,
   TASK_PRIORITIES,
   TASK_STATUSES,
@@ -54,6 +55,7 @@ import {
   SelectTrigger,
   Textarea,
 } from "@/frontend/components/ui/field";
+import { spaceDot } from "@/frontend/components/spaces/space-color";
 import { TaskDoc } from "./task-doc";
 import { TaskFormDialog } from "./task-form-dialog";
 import { useTasks } from "./task-store";
@@ -99,7 +101,7 @@ function TaskDetail({
   task: TaskView;
   onDocCapturesEscapeChange: (captures: boolean) => void;
 }) {
-  const { members, now, move, remove, upsertTask, setOpenTaskId, tasks } = useTasks();
+  const { members, spaces, now, move, remove, upsertTask, setOpenTaskId, tasks } = useTasks();
   const { t, f } = useI18n();
   const tx = useTx();
 
@@ -366,6 +368,39 @@ function TaskDetail({
               )}
             </div>
           </Property>
+
+          {spaces.length > 0 && (
+            <Property label={t("spaces.field")}>
+              <Select
+                value={task.space?.id ?? NO_SPACE}
+                onValueChange={(value) =>
+                  void save({ id: task.id, spaceId: value === NO_SPACE ? null : value })
+                }
+              >
+                <SelectTrigger size="sm" className="w-full">
+                  <span className="flex min-w-0 items-center gap-1.5">
+                    {task.space && (
+                      <span
+                        className={cn(
+                          "h-2 w-2 shrink-0 rounded-full",
+                          spaceDot(task.space.colorToken),
+                        )}
+                      />
+                    )}
+                    <span className="truncate">{task.space?.name ?? t("spaces.unfiled")}</span>
+                  </span>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={NO_SPACE}>{t("spaces.unfiled")}</SelectItem>
+                  {spaces.map((space) => (
+                    <SelectItem key={space.id} value={space.id}>
+                      {space.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </Property>
+          )}
 
           <Property label={t("detail.property.category")}>
             <Select
@@ -650,6 +685,7 @@ function TaskDetail({
         open={editOpen}
         onOpenChange={setEditOpen}
         members={members}
+        spaces={spaces}
         task={task}
         onSaved={upsertTask}
       />

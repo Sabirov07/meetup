@@ -3,6 +3,7 @@
 import { ArrowDownUp, Filter, Search, Sparkles, X } from "lucide-react";
 import { useMemo } from "react";
 import {
+  NO_SPACE,
   SORT_MODES,
   TASK_CATEGORIES,
   TASK_PRIORITIES,
@@ -34,6 +35,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/frontend/components/ui/menu";
+import { spaceDot } from "@/frontend/components/spaces/space-color";
 import { useTasks } from "./task-store";
 
 const dueWindows: { value: DueWindow; label: TranslationKey }[] = [
@@ -48,13 +50,17 @@ export function TaskToolbar({
   meetings = [],
   /** Hide the owner facet on pages already scoped to one person. */
   showOwnerFilter = true,
+  /** Hide the section facet on a page that is already one section. */
+  showSpaceFilter = true,
   className,
 }: {
   meetings?: { id: string; title: string }[];
   showOwnerFilter?: boolean;
+  showSpaceFilter?: boolean;
   className?: string;
 }) {
-  const { tasks, members, filters, setFilters, resetFilters, sort, setSort, now } = useTasks();
+  const { tasks, members, spaces, filters, setFilters, resetFilters, sort, setSort, now } =
+    useTasks();
   const { t } = useI18n();
   const tx = useTx();
 
@@ -132,6 +138,33 @@ export function TaskToolbar({
                   }
                 >
                   {t("common.unassigned")}
+                </FacetRow>
+              </FacetGroup>
+            )}
+
+            {showSpaceFilter && spaces.length > 0 && (
+              <FacetGroup label={t("spaces.facet")}>
+                {spaces.map((space) => (
+                  <FacetRow
+                    key={space.id}
+                    checked={filters.spaces.includes(space.id)}
+                    onChange={() =>
+                      setFilters((prev) => ({ ...prev, spaces: toggle(prev.spaces, space.id) }))
+                    }
+                  >
+                    <span
+                      className={cn("h-2 w-2 shrink-0 rounded-full", spaceDot(space.colorToken))}
+                    />
+                    {space.name}
+                  </FacetRow>
+                ))}
+                <FacetRow
+                  checked={filters.spaces.includes(NO_SPACE)}
+                  onChange={() =>
+                    setFilters((prev) => ({ ...prev, spaces: toggle(prev.spaces, NO_SPACE) }))
+                  }
+                >
+                  {t("spaces.unfiled")}
                 </FacetRow>
               </FacetGroup>
             )}

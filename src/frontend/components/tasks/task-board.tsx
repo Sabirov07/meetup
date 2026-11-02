@@ -17,7 +17,13 @@ import { Inbox, Plus } from "lucide-react";
 import { useMemo, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 import { reorderTasks } from "@/backend/actions/tasks";
-import { TASK_STATUSES, type MemberSummary, type TaskStatus, type TaskView } from "@/shared/domain/types";
+import {
+  NO_SPACE,
+  TASK_STATUSES,
+  type MemberSummary,
+  type TaskStatus,
+  type TaskView,
+} from "@/shared/domain/types";
 import { statusMeta } from "@/shared/domain/labels";
 import { applyFilters } from "@/shared/domain/filters";
 import { sortTasks } from "@/shared/domain/priority";
@@ -347,11 +353,14 @@ export function OwnerPanel({
 
 export function StatusColumns({
   ownerFilter,
+  spaceFilter,
   showOwner = true,
   onAdd,
 }: {
   /** Member id, `UNASSIGNED`, or undefined for every task. */
   ownerFilter?: string;
+  /** Section id, `NO_SPACE`, or undefined for every section. */
+  spaceFilter?: string;
   showOwner?: boolean;
   onAdd?: (status: TaskStatus) => void;
 }) {
@@ -359,17 +368,20 @@ export function StatusColumns({
   const t = useT();
 
   const visible = useMemo(() => {
-    const scoped =
+    let scoped =
       ownerFilter === undefined
         ? tasks
         : tasks.filter((t) => (t.owner?.id ?? UNASSIGNED) === ownerFilter);
+    if (spaceFilter !== undefined) {
+      scoped = scoped.filter((t) => (t.space?.id ?? NO_SPACE) === spaceFilter);
+    }
     // Completed is a column here, so it must not be filtered away by default.
     return sortTasks(
       applyFilters(scoped, { ...filters, includeCompleted: true }, now),
       sort,
       now,
     );
-  }, [tasks, filters, sort, now, ownerFilter]);
+  }, [tasks, filters, sort, now, ownerFilter, spaceFilter]);
 
   return (
     <div className="grid min-h-0 flex-1 gap-3 lg:grid-cols-4">

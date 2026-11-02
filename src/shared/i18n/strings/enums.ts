@@ -159,4 +159,7 @@ export const enums = {
   "activity.KNOWLEDGE_CREATED.label": ["added a page", "страница добавлена"],
   "activity.KNOWLEDGE_UPDATED.label": ["edited a page", "страница изменена"],
   "activity.KNOWLEDGE_DELETED.label": ["deleted a page", "страница удалена"],
+  "activity.SPACE_CREATED.label": ["new section", "раздел создан"],
+  "activity.SPACE_UPDATED.label": ["section edited", "раздел изменён"],
+  "activity.SPACE_DELETED.label": ["section deleted", "раздел удалён"],
 } satisfies Entries;

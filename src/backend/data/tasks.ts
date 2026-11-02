@@ -19,6 +19,8 @@ const memberSelect = {
   user: { select: { id: true, name: true, email: true, accentToken: true } },
 } as const;
 
+const spaceSelect = { id: true, name: true, colorToken: true } as const;
+
 const taskSelect = {
   id: true,
   title: true,
@@ -39,6 +41,7 @@ const taskSelect = {
   createdAt: true,
   updatedAt: true,
   completedAt: true,
+  space: { select: spaceSelect },
   owner: { select: memberSelect },
   creator: { select: memberSelect },
   sourceMeeting: { select: { id: true, title: true } },
@@ -71,6 +74,7 @@ type TaskRow = {
   createdAt: Date;
   updatedAt: Date;
   completedAt: Date | null;
+  space: { id: string; name: string; colorToken: string } | null;
   owner: Parameters<typeof toMemberSummary>[0] | null;
   creator: Parameters<typeof toMemberSummary>[0] | null;
   sourceMeeting: { id: string; title: string } | null;
@@ -85,6 +89,7 @@ export function toTaskView(row: TaskRow): TaskView {
     id: row.id,
     title: row.title,
     description: row.description,
+    space: row.space,
     owner: row.owner ? toMemberSummary(row.owner) : null,
     creator: row.creator ? toMemberSummary(row.creator) : null,
     status: row.status,

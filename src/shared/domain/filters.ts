@@ -1,3 +1,4 @@
+import { NO_SPACE } from "./types";
 import type { TaskCategory, TaskPriority, TaskStatus, TaskView } from "./types";
 import { isOverdue, unmetDependencies } from "./priority";
 
@@ -7,6 +8,8 @@ export type TaskFilters = {
   search: string;
   /** Member ids. Empty means every owner. `"UNASSIGNED"` matches no owner. */
   owners: string[];
+  /** Section ids. Empty means every section. `NO_SPACE` matches unfiled work. */
+  spaces: string[];
   statuses: TaskStatus[];
   priorities: TaskPriority[];
   categories: TaskCategory[];
@@ -22,6 +25,7 @@ export type TaskFilters = {
 export const emptyFilters: TaskFilters = {
   search: "",
   owners: [],
+  spaces: [],
   statuses: [],
   priorities: [],
   categories: [],
@@ -36,6 +40,7 @@ export function countActiveFilters(f: TaskFilters): number {
   let n = 0;
   if (f.search.trim()) n++;
   if (f.owners.length) n++;
+  if (f.spaces.length) n++;
   if (f.statuses.length) n++;
   if (f.priorities.length) n++;
   if (f.categories.length) n++;
@@ -93,6 +98,7 @@ export function applyFilters(tasks: TaskView[], f: TaskFilters, now: Date): Task
         task.description ?? "",
         task.labels.join(" "),
         task.owner?.name ?? "",
+        task.space?.name ?? "",
         task.sourceMeeting?.title ?? "",
       ]
         .join(" ")
@@ -103,6 +109,11 @@ export function applyFilters(tasks: TaskView[], f: TaskFilters, now: Date): Task
     if (f.owners.length) {
       const key = task.owner?.id ?? "UNASSIGNED";
       if (!f.owners.includes(key)) return false;
+    }
+
+    if (f.spaces.length) {
+      const key = task.space?.id ?? NO_SPACE;
+      if (!f.spaces.includes(key)) return false;
     }
 
     if (f.statuses.length && !f.statuses.includes(task.status)) return false;

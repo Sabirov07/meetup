@@ -12,6 +12,7 @@ import {
   TASK_PRIORITIES,
   TASK_STATUSES,
   type MemberSummary,
+  type SpaceSummary,
   type TaskView,
 } from "@/shared/domain/types";
 import type { TranslationKey } from "@/shared/i18n";
@@ -48,6 +49,7 @@ const schema = z.object({
   title: z.string().trim().min(3, "form.field.titleTooShort"),
   description: z.string().trim().optional(),
   ownerMemberId: z.string(),
+  spaceId: z.string(),
   status: z.enum(TASK_STATUSES),
   priority: z.enum(TASK_PRIORITIES),
   category: z.enum(TASK_CATEGORIES),
@@ -59,13 +61,20 @@ const schema = z.object({
 type FormValues = z.infer<typeof schema>;
 
 const UNASSIGNED = "__unassigned__";
+/**
+ * Radix's Select treats "" as "nothing chosen" and will not render a item
+ * with an empty value, so "no section" needs a sentinel of its own.
+ */
+const NO_SECTION = "__no_section__";
 
 export function TaskFormDialog({
   open,
   onOpenChange,
   members,
+  spaces = [],
   task,
   defaultOwnerId,
+  defaultSpaceId,
   defaultStatus,
   defaultPriority,
   onSaved,
@@ -74,9 +83,13 @@ export function TaskFormDialog({
   open: boolean;
   onOpenChange: (open: boolean) => void;
   members: MemberSummary[];
+  /** The workspace's sections. Empty hides the picker rather than showing one choice. */
+  spaces?: SpaceSummary[];
   /** Present means edit; absent means create. */
   task?: TaskView | null;
   defaultOwnerId?: string | null;
+  /** Pre-selected section, e.g. when creating from a section's own board. */
+  defaultSpaceId?: string | null;
   defaultStatus?: TaskView["status"];
   defaultPriority?: TaskView["priority"];
   onSaved?: (task: TaskView) => void;
@@ -96,6 +109,7 @@ export function TaskFormDialog({
       title: "",
       description: "",
       ownerMemberId: UNASSIGNED,
+      spaceId: NO_SECTION,
       status: "TODO",
       priority: "MEDIUM",
       category: "GENERAL",
@@ -113,6 +127,7 @@ export function TaskFormDialog({
       title: task?.title ?? "",
       description: task?.description ?? "",
       ownerMemberId: task?.owner?.id ?? defaultOwnerId ?? UNASSIGNED,
+      spaceId: task?.space?.id ?? defaultSpaceId ?? NO_SECTION,
       status: task?.status ?? defaultStatus ?? "TODO",
       priority: task?.priority ?? defaultPriority ?? "MEDIUM",
       category: task?.category ?? "GENERAL",
@@ -124,7 +139,7 @@ export function TaskFormDialog({
           : "",
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, task?.id]);
+  }, [open, task?.id, defaultSpaceId]);
 
   async function onSubmit(values: FormValues) {
     const labels = values.labels
@@ -144,6 +159,7 @@ export function TaskFormDialog({
         : null,
       ownerMemberId:
         values.ownerMemberId === UNASSIGNED ? null : values.ownerMemberId,
+      spaceId: values.spaceId === NO_SECTION ? null : values.spaceId,
       status: values.status,
       priority: values.priority,
       category: values.category,
@@ -254,6 +270,30 @@ export function TaskFormDialog({
                   )}
                 />
               </Field>
+
+              {spaces.length > 0 && (
+                <Field label={t("spaces.field")} hint={t("spaces.fieldHint")}>
+                  <Controller
+                    control={form.control}
+                    name="spaceId"
+                    render={({ field }) => (
+                      <Select value={field.value} onValueChange={field.onChange}>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value={NO_SECTION}>{t("spaces.unfiled")}</SelectItem>
+                          {spaces.map((space) => (
+                            <SelectItem key={space.id} value={space.id}>
+                              {space.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  />
+                </Field>
+              )}
 
               <Field label={t("tasks.facet.status")}>
                 <Controller

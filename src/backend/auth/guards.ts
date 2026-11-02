@@ -145,6 +145,7 @@ export async function assertTaskInWorkspace(taskId: string, workspaceId: string)
       priority: true,
       dueDate: true,
       ownerMemberId: true,
+      spaceId: true,
       confirmedByHuman: true,
     },
   });
@@ -159,6 +160,22 @@ export async function assertMeetingInWorkspace(meetingId: string, workspaceId: s
   });
   if (!meeting) throw new Error(await message("errors.meeting.gone"));
   return meeting;
+}
+
+/**
+ * Confirms a space id names a section of the caller's workspace.
+ *
+ * Filing a task into a section from another workspace would be a quiet
+ * cross-tenant leak — the task would appear on a board its owners never
+ * opened — so the id is checked on every write that carries one.
+ */
+export async function assertSpaceInWorkspace(spaceId: string, workspaceId: string) {
+  const space = await db.space.findFirst({
+    where: { id: spaceId, workspaceId },
+    select: { id: true, name: true },
+  });
+  if (!space) throw new Error(await message("errors.space.gone"));
+  return space;
 }
 
 /** Confirms a member id names someone in the caller's workspace. */

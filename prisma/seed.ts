@@ -100,11 +100,11 @@ async function main() {
 
   const employeeMember = await db.workspaceMember.upsert({
     where: { workspaceId_userId: { workspaceId: workspace.id, userId: employee.id } },
-    update: { role: "MEMBER", jobTitle: EMPLOYEE.jobTitle },
+    update: { role: "ADMINISTRATOR", jobTitle: EMPLOYEE.jobTitle },
     create: {
       workspaceId: workspace.id,
       userId: employee.id,
-      role: "MEMBER",
+      role: "ADMINISTRATOR",
       jobTitle: EMPLOYEE.jobTitle,
     },
   });
@@ -233,6 +233,51 @@ async function main() {
   });
 
   // -------------------------------------------------------------------------
+  // Sections
+  // -------------------------------------------------------------------------
+
+  const seedSpaces = [
+    { name: "Product", colorToken: "violet", description: "The thing customers use" },
+    { name: "Engineering", colorToken: "blue", description: "Code, infrastructure and the pipeline" },
+    { name: "Operations", colorToken: "amber", description: "Money, access and everything administrative" },
+  ] as const;
+
+  const spaceIds = new Map<string, string>();
+  for (const [index, space] of seedSpaces.entries()) {
+    const row = await db.space.upsert({
+      where: { workspaceId_name: { workspaceId: workspace.id, name: space.name } },
+      update: { colorToken: space.colorToken, description: space.description },
+      create: {
+        workspaceId: workspace.id,
+        name: space.name,
+        colorToken: space.colorToken,
+        description: space.description,
+        position: (index + 1) * 100,
+        createdByMemberId: employerMember.id,
+      },
+      select: { id: true },
+    });
+    spaceIds.set(space.name, row.id);
+  }
+
+  /**
+   * Which section a seeded task is filed under, derived from its category so
+   * the two stay consistent without a `space` key on every entry. GENERAL and
+   * COMMUNICATION are deliberately left unfiled — a demo workspace where
+   * every single task is neatly sorted is not one anybody recognises.
+   */
+  const spaceForCategory: Partial<Record<SeedTask["category"], string>> = {
+    DEVELOPMENT: "Product",
+    AI_AUTOMATION: "Product",
+    RESEARCH: "Product",
+    INFRASTRUCTURE: "Engineering",
+    REVIEW_APPROVAL: "Engineering",
+    PLANNING: "Engineering",
+    FINANCE: "Operations",
+    ADMINISTRATION: "Operations",
+    BUSINESS_OPS: "Operations",
+  };
+
   // Tasks
   // -------------------------------------------------------------------------
 
@@ -483,6 +528,7 @@ async function main() {
     const created = await db.task.create({
       data: {
         workspaceId: workspace.id,
+        spaceId: spaceIds.get(spaceForCategory[t.category] ?? "") ?? null,
         title: t.title,
         description: t.description,
         ownerMemberId: t.owner,

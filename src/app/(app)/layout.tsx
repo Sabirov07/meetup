@@ -3,6 +3,7 @@ import { db } from "@/backend/db";
 import { requireSession } from "@/backend/auth/guards";
 import { getShellData } from "@/backend/data/overview";
 import { listMyWorkspaces } from "@/backend/data/team";
+import { countUnfiledTasks, listSpaces } from "@/backend/data/spaces";
 import { isAiConfigured } from "@/backend/ai/client";
 import { googleIntegrationStatus } from "@/backend/google/config";
 import { getConnectedAccount } from "@/backend/google/oauth";
@@ -23,9 +24,11 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
   const now = new Date();
 
   const session = await requireSession();
-  const [shell, workspaces, preference, googleAccount] = await Promise.all([
+  const [shell, workspaces, spaces, unfiledCount, preference, googleAccount] = await Promise.all([
     getShellData(session, now),
     listMyWorkspaces(session.userId, session.workspace.id),
+    listSpaces(session.workspace.id),
+    countUnfiledTasks(session.workspace.id),
     db.userPreference.findUnique({
       where: { userId: session.userId },
       select: { sidebarCollapsed: true },
@@ -39,6 +42,8 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
     <AppShell
       workspace={session.workspace}
       workspaces={workspaces}
+      spaces={spaces}
+      unfiledCount={unfiledCount}
       member={session.member}
       counterpart={shell.counterpart}
       counts={shell.counts}

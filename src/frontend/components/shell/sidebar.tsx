@@ -6,6 +6,7 @@ import { ChevronsLeft, LogOut, PanelLeft, Plus, Sparkles, SquarePen, Users, Vide
 import { signOut } from "@/backend/actions/auth";
 import type {
   MemberSummary,
+  SpaceSummary,
   WorkspaceOption,
   WorkspaceSummary,
 } from "@/shared/domain/types";
@@ -24,6 +25,7 @@ import {
   MenuTrigger,
 } from "@/frontend/components/ui/menu";
 import { WorkspaceSwitcher } from "@/frontend/components/team/workspace-switcher";
+import { SpaceNav } from "@/frontend/components/spaces/space-nav";
 import { useI18n } from "@/frontend/i18n";
 import { LanguageMenuSection } from "./language-switch";
 import { ThemeMenuSection } from "./theme-switch";
@@ -34,6 +36,8 @@ export type NavCounts = { pendingReview: number; myOpen: number; theirOpen: numb
 export function Sidebar({
   workspace,
   workspaces,
+  spaces,
+  unfiledCount,
   member,
   counterpart,
   counts,
@@ -47,6 +51,10 @@ export function Sidebar({
   workspace: WorkspaceSummary;
   /** Every workspace this person belongs to, for the switcher. */
   workspaces: WorkspaceOption[];
+  /** The sections of this workspace — the one part of the nav it writes itself. */
+  spaces: SpaceSummary[];
+  /** Open tasks filed under no section. */
+  unfiledCount: number;
   member: MemberSummary;
   counterpart: MemberSummary | null;
   counts: NavCounts;
@@ -248,6 +256,17 @@ export function Sidebar({
                 );
               })}
             </ul>
+
+            {/* The workspace's own sections sit directly under the fixed task
+                links: my work, then our areas, then everything else. */}
+            {section.headingKey === "nav.section.tasks" && (
+              <SpaceNav
+                spaces={spaces}
+                unfiledCount={unfiledCount}
+                collapsed={collapsed}
+                onNavigate={onNavigate}
+              />
+            )}
           </div>
         ))}
       </nav>

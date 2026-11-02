@@ -192,6 +192,9 @@ export const activityMeta: Record<ActivityType, { label: string; tone: string }>
   KNOWLEDGE_CREATED: { label: "added a page", tone: "tone-accent" },
   KNOWLEDGE_UPDATED: { label: "edited a page", tone: "tone-neutral" },
   KNOWLEDGE_DELETED: { label: "deleted a page", tone: "tone-danger" },
+  SPACE_CREATED: { label: "new section", tone: "tone-accent" },
+  SPACE_UPDATED: { label: "section edited", tone: "tone-neutral" },
+  SPACE_DELETED: { label: "section deleted", tone: "tone-danger" },
 };
 
 /** Initials for an avatar, from a display name. */

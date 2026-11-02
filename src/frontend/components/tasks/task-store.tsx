@@ -11,7 +11,12 @@ import {
 } from "react";
 import { toast } from "sonner";
 import { deleteTask as deleteTaskAction, moveTask, updateTask } from "@/backend/actions/tasks";
-import type { MemberSummary, SortMode, TaskView } from "@/shared/domain/types";
+import type {
+  MemberSummary,
+  SortMode,
+  SpaceSummary,
+  TaskView,
+} from "@/shared/domain/types";
 import { emptyFilters, type TaskFilters } from "@/shared/domain/filters";
 
 /**
@@ -29,6 +34,8 @@ import { emptyFilters, type TaskFilters } from "@/shared/domain/filters";
 type TaskStore = {
   tasks: TaskView[];
   members: MemberSummary[];
+  /** The workspace's sections, for the picker and the section facet. */
+  spaces: SpaceSummary[];
   currentMemberId: string;
   now: Date;
 
@@ -61,6 +68,7 @@ export function useTasks(): TaskStore {
 export function TaskStoreProvider({
   initialTasks,
   members,
+  spaces = [],
   currentMemberId,
   serverNow,
   defaultSort = "SMART",
@@ -69,6 +77,7 @@ export function TaskStoreProvider({
 }: {
   initialTasks: TaskView[];
   members: MemberSummary[];
+  spaces?: SpaceSummary[];
   currentMemberId: string;
   /** ISO string from the server, so the first client render matches. */
   serverNow: string;
@@ -193,6 +202,7 @@ export function TaskStoreProvider({
     () => ({
       tasks,
       members,
+      spaces,
       currentMemberId,
       now,
       filters,
@@ -210,6 +220,7 @@ export function TaskStoreProvider({
     [
       tasks,
       members,
+      spaces,
       currentMemberId,
       now,
       filters,

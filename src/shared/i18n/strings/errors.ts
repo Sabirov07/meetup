@@ -186,6 +186,26 @@ export const errors = {
   ],
   "errors.page.untitled": ["Untitled page", "Страница без названия"],
 
+  // --- Sections ---------------------------------------------------------
+  "errors.space.gone": [
+    "That section no longer exists, or it belongs to another workspace.",
+    "Этого раздела больше нет — либо он принадлежит другому пространству.",
+  ],
+  "errors.space.invalid": ["That section is not valid.", "Раздел заполнен неверно."],
+  "errors.space.needsName": ["A section needs a name.", "У раздела должно быть название."],
+  "errors.space.nameTaken": [
+    "There is already a section with that name.",
+    "Раздел с таким названием уже есть.",
+  ],
+  "errors.space.createdNotReadable": [
+    "The section was created but could not be read back.",
+    "Раздел создан, но прочитать его не удалось.",
+  ],
+  "errors.space.orderInvalid": [
+    "That section order is not valid.",
+    "Такой порядок разделов недопустим.",
+  ],
+
   "errors.upload.unreadable": [
     "That upload could not be read.",
     "Не удалось прочитать загруженный файл.",

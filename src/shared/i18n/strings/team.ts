@@ -36,8 +36,8 @@ export const team = {
   "team.role.changed": ["Role updated", "Роль изменена"],
   "team.role.failed": ["Could not change the role", "Не удалось изменить роль"],
   "team.role.adminHint": [
-    "Administrators can invite and remove people, change roles and rename the workspace.",
-    "Администраторы могут приглашать и удалять людей, менять роли и переименовывать пространство.",
+    "Everyone joins as an administrator: they can invite and remove people, change roles, manage sections and rename the workspace. Change someone to a member to take that away.",
+    "Все присоединяются администраторами: могут приглашать и удалять людей, менять роли, управлять разделами и переименовывать пространство. Чтобы ограничить человека, сделайте его участником.",
   ],
 
   // --- Removing someone -------------------------------------------------
@@ -74,6 +74,10 @@ export const team = {
   "team.invite.description": [
     "Create a link and send it however you already talk. No email is sent from here.",
     "Создайте ссылку и отправьте её там, где вы обычно общаетесь. Письма отсюда не уходят.",
+  ],
+  "team.invite.roleHint": [
+    "Administrator by default — they can run the workspace with you",
+    "По умолчанию администратор — сможет управлять пространством вместе с вами",
   ],
   "team.invite.email": ["Email", "Почта"],
   "team.invite.emailHint": [

@@ -5,6 +5,7 @@ import { z } from "zod";
 import { db } from "@/backend/db";
 import {
   assertMemberInWorkspace,
+  assertSpaceInWorkspace,
   assertTaskInWorkspace,
   requireSessionForAction,
 } from "@/backend/auth/guards";
@@ -44,6 +45,8 @@ const taskFields = {
     .max(50_000, "errors.task.docTooLong")
     .nullable(),
   ownerMemberId: z.string().nullable(),
+  /** The section it is filed under. Null is "No section". */
+  spaceId: z.string().nullable(),
   status: z.enum(TASK_STATUSES),
   priority: z.enum(TASK_PRIORITIES),
   category: z.enum(TASK_CATEGORIES),
@@ -58,6 +61,7 @@ const taskInput = z.object({
   title: taskFields.title,
   description: taskFields.description.optional(),
   ownerMemberId: taskFields.ownerMemberId.optional(),
+  spaceId: taskFields.spaceId.optional(),
   status: taskFields.status.default("TODO"),
   priority: taskFields.priority.default("MEDIUM"),
   category: taskFields.category.default("GENERAL"),
@@ -81,6 +85,9 @@ export async function createTask(raw: TaskInput): Promise<ActionResult<TaskView>
     if (input.ownerMemberId) {
       await assertMemberInWorkspace(input.ownerMemberId, session.workspace.id);
     }
+    if (input.spaceId) {
+      await assertSpaceInWorkspace(input.spaceId, session.workspace.id);
+    }
 
     const created = await db.task.create({
       data: {
@@ -88,6 +95,7 @@ export async function createTask(raw: TaskInput): Promise<ActionResult<TaskView>
         title: input.title,
         description: input.description ?? null,
         ownerMemberId: input.ownerMemberId ?? null,
+        spaceId: input.spaceId ?? null,
         creatorMemberId: session.member.id,
         status: input.status,
         priority: input.priority,
@@ -132,6 +140,7 @@ const updateInput = z.object({
   title: taskFields.title.optional(),
   description: taskFields.description.optional(),
   ownerMemberId: taskFields.ownerMemberId.optional(),
+  spaceId: taskFields.spaceId.optional(),
   status: taskFields.status.optional(),
   priority: taskFields.priority.optional(),
   category: taskFields.category.optional(),
@@ -160,11 +169,15 @@ export async function updateTask(raw: TaskUpdateInput): Promise<ActionResult<Tas
     if (changes.ownerMemberId) {
       await assertMemberInWorkspace(changes.ownerMemberId, session.workspace.id);
     }
+    if (changes.spaceId) {
+      await assertSpaceInWorkspace(changes.spaceId, session.workspace.id);
+    }
 
     const data: Record<string, unknown> = {};
     if (changes.title !== undefined) data.title = changes.title;
     if (changes.description !== undefined) data.description = changes.description;
     if (changes.ownerMemberId !== undefined) data.ownerMemberId = changes.ownerMemberId;
+    if (changes.spaceId !== undefined) data.spaceId = changes.spaceId;
     if (changes.priority !== undefined) data.priority = changes.priority;
     if (changes.category !== undefined) data.category = changes.category;
     if (changes.labels !== undefined) data.labels = changes.labels;
@@ -230,6 +243,21 @@ export async function updateTask(raw: TaskUpdateInput): Promise<ActionResult<Tas
           ? `reassigned “${before.title}” to ${name}`
           : `unassigned “${before.title}”`,
         meta: { field: "owner", from: before.ownerMemberId, to: changes.ownerMemberId },
+      });
+    }
+
+    if (changes.spaceId !== undefined && changes.spaceId !== before.spaceId) {
+      // Named rather than recorded as a bare "updated": moving work between
+      // sections is the kind of change a colleague notices and asks about.
+      const name = changes.spaceId
+        ? (await assertSpaceInWorkspace(changes.spaceId, session.workspace.id)).name
+        : null;
+      entries.push({
+        type: "TASK_UPDATED",
+        summary: name
+          ? `filed “${before.title}” under ${name}`
+          : `took “${before.title}” out of its section`,
+        meta: { field: "space", from: before.spaceId, to: changes.spaceId },
       });
     }
 

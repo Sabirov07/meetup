@@ -35,6 +35,7 @@ import {
   MenuTrigger,
 } from "@/frontend/components/ui/menu";
 import { TASK_PRIORITIES, TASK_STATUSES } from "@/shared/domain/types";
+import { spaceDot } from "@/frontend/components/spaces/space-color";
 import { useTasks } from "./task-store";
 
 /**
@@ -187,6 +188,25 @@ export function TaskRow({
             <Dot tone={statusMeta[task.status].tone} />
             {t(`status.${task.status}.short`)}
           </span>
+
+          {/* The section comes before the category: on a board that spans
+              several areas it is the first thing someone scans for. */}
+          {task.space && (
+            <span className="hidden min-w-0 shrink items-center gap-2 @[20rem]/row:flex">
+              <span aria-hidden className="shrink-0">
+                ·
+              </span>
+              <span className="flex min-w-0 shrink items-center gap-1">
+                <span
+                  className={cn(
+                    "h-1.5 w-1.5 shrink-0 rounded-full",
+                    spaceDot(task.space.colorToken),
+                  )}
+                />
+                <span className="min-w-0 shrink truncate">{task.space.name}</span>
+              </span>
+            </span>
+          )}
 
           {task.category !== "GENERAL" && (
             <span className="hidden min-w-0 shrink items-center gap-2 @[20rem]/row:flex">

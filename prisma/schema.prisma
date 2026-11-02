@@ -24,6 +24,10 @@ datasource db {
 // Enums
 // ---------------------------------------------------------------------------
 
+/// Everyone who joins a workspace arrives as an ADMINISTRATOR — running the
+/// place is the normal case, not a privilege handed out later. MEMBER remains
+/// so a workspace that wants a read-and-do-the-work role can still demote
+/// someone, and so the last-administrator guard has something to guard.
 enum WorkspaceRole {
   ADMINISTRATOR
   MEMBER
@@ -144,6 +148,9 @@ enum ActivityType {
   KNOWLEDGE_CREATED
   KNOWLEDGE_UPDATED
   KNOWLEDGE_DELETED
+  SPACE_CREATED
+  SPACE_UPDATED
+  SPACE_DELETED
 }
 
 enum RecommendationKind {
@@ -275,6 +282,7 @@ model Workspace {
   attachments     Attachment[]
   knowledgeDocs   KnowledgeDoc[]
   invites         WorkspaceInvite[]
+  spaces          Space[]
 
   @@map("workspaces")
 }
@@ -283,7 +291,9 @@ model WorkspaceMember {
   id          String        @id @default(cuid())
   workspaceId String
   userId      String
-  role        WorkspaceRole @default(MEMBER)
+  /// Everyone who joins can run the workspace. See the note on
+  /// `WorkspaceRole` for why the role still exists.
+  role        WorkspaceRole @default(ADMINISTRATOR)
   /// Job title shown under the person's name, e.g. "Engineer", "Founder".
   jobTitle    String?
   createdAt   DateTime      @default(now())
@@ -303,6 +313,7 @@ model WorkspaceMember {
   proposalsOwned       TaskProposal[]       @relation("ProposalSuggestedOwner")
   proposalsReviewed    TaskProposal[]       @relation("ProposalReviewer")
   sentInvites          WorkspaceInvite[]    @relation("InviteAuthor")
+  createdSpaces        Space[]              @relation("SpaceCreator")
 
   @@unique([workspaceId, userId])
   @@index([workspaceId])
@@ -330,7 +341,7 @@ model WorkspaceInvite {
   token       String       @unique
   /// Lower-cased. Null means the link is not tied to one person.
   email       String?
-  role        WorkspaceRole @default(MEMBER)
+  role        WorkspaceRole @default(ADMINISTRATOR)
   /// Pre-filled on the membership this invite creates, so a new joiner shows up
   /// in the team list already labelled rather than as an untitled stranger.
   jobTitle    String?
@@ -351,6 +362,46 @@ model WorkspaceInvite {
   @@index([workspaceId, status])
   @@index([email])
   @@map("workspace_invites")
+}
+
+
+/// A section of a workspace — "Front end", "Design", "Back end".
+///
+/// A space is a folder for work, not a second kind of access: everyone in the
+/// workspace sees every space. It exists because one board per workspace
+/// stops scaling the moment two disciplines share it, and because people
+/// think in areas ("what is design carrying?") before they think in
+/// assignees.
+///
+/// `Task.spaceId` is nullable on purpose. Tasks predate spaces, tasks arrive
+/// from meeting analysis with no area attached, and deleting a space must not
+/// delete the work inside it — all three land in the same place, which the UI
+/// calls "No section".
+model Space {
+  id          String  @id @default(cuid())
+  workspaceId String
+  name        String
+  /// Accent token, from ACCENT_TOKENS, used to tint the space in the sidebar.
+  colorToken  String  @default("violet")
+  /// One line about what belongs in here. Shown under the heading.
+  description String?
+  /// Hand-arranged order in the sidebar. Sparse, so a space can be dropped
+  /// between two others without renumbering the rest.
+  position    Float   @default(0)
+
+  createdByMemberId String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  workspace Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  createdBy WorkspaceMember? @relation("SpaceCreator", fields: [createdByMemberId], references: [id], onDelete: SetNull)
+  tasks     Task[]
+
+  /// Two spaces with the same name in one sidebar are a bug report waiting to
+  /// happen. Across workspaces the names repeat freely.
+  @@unique([workspaceId, name])
+  @@index([workspaceId, position])
+  @@map("spaces")
 }
 
 // ---------------------------------------------------------------------------
@@ -525,6 +576,10 @@ model TaskProposal {
 model Task {
   id          String  @id @default(cuid())
   workspaceId String
+  /// Which section of the workspace this belongs to. Null is "No section",
+  /// which is where a task lands when nobody chose one and where it returns
+  /// if its space is deleted.
+  spaceId     String?
   title       String
   /// The task's document body, held as Markdown. Images inside it are
   /// `![alt](/api/attachments/<id>)` references to `TaskAttachment` rows, so
@@ -563,6 +618,7 @@ model Task {
   completedAt DateTime?
 
   workspace     Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  space         Space?           @relation(fields: [spaceId], references: [id], onDelete: SetNull)
   owner         WorkspaceMember? @relation("TaskOwner", fields: [ownerMemberId], references: [id], onDelete: SetNull)
   creator       WorkspaceMember? @relation("TaskCreator", fields: [creatorMemberId], references: [id], onDelete: SetNull)
   sourceMeeting Meeting?         @relation(fields: [sourceMeetingId], references: [id], onDelete: SetNull)
@@ -580,6 +636,7 @@ model Task {
   @@index([workspaceId, status])
   @@index([workspaceId, ownerMemberId, status])
   @@index([workspaceId, dueDate])
+  @@index([spaceId, status])
   @@map("tasks")
 }
 

@@ -22,6 +22,7 @@ Against a real Postgres database, with no stubs:
 | Knowledge | A workspace library of pages: the same document editor, organised by label rather than by folder, with pinning, full-text search across bodies, and the command palette finding a page by a phrase written inside it. |
 | Images | Pasted, dropped or picked into a document. Stored in Postgres and served from `/api/attachments/[id]`, which requires a session in the owning workspace — so a screenshot in a task is not readable by URL alone. |
 | Boards | Dashboard owner panels + per-page kanban. Drag between statuses and between owners; a move reassigns, never copies. |
+| Sections | A workspace splits into named areas — front end, design, back end — each with its own board, counts and colour in the sidebar. Work that belongs nowhere lives in *No section*, and deleting a section never deletes the work inside it. |
 | Prioritisation | Smart priority engine with a visible, per-task explanation of *why* a task ranks where it does. |
 | Sorting | 8 modes. Manual order is never silently re-sorted. |
 | Filtering | 9 facets that combine correctly; filtered counts stay distinct from global counts. |
@@ -30,7 +31,7 @@ Against a real Postgres database, with no stubs:
 | AI review | Summary, decisions, open questions and proposed tasks, each labelled Confirmed / Inferred / Suggested. Approve, edit, bulk-approve or reject. |
 | Recommendations | Derived from live task state; every one cites the tasks it came from. |
 | Activity | Full audit trail — status, owner, priority and deadline changes, with from → to. |
-| Team | Invite by link, accept, roles, remove-with-handover, leave, and a per-member workload roster. One person can belong to several workspaces and switch between them. |
+| Team | Invite by link, accept, roles, remove-with-handover, leave, and a per-member workload roster. Everyone joins as an administrator, so the whole team can run the place. One person can belong to several workspaces and switch between them. |
 | Settings | Your own profile and avatar colour, workspace name, default ordering, and exactly which integration env vars are missing. |
 
 Everything above was exercised end to end in a browser against the live
@@ -143,10 +144,13 @@ sight of its work and nothing else.
 
 ### Adding someone
 
-1. **Team → Invite someone.** Choose what they join as:
-   - **Member** — does the work. Sees everything, can create and reassign.
-   - **Administrator** — also invites, removes, changes roles and renames the
-     workspace.
+1. **Team → Invite someone.** They join as an **administrator** unless you
+   say otherwise:
+   - **Administrator** (the default) — does the work, and also invites,
+     removes, changes roles, manages sections and renames the workspace.
+   - **Member** — does the work. Sees everything, can create and reassign,
+     but cannot manage the workspace itself. For the rare team that wants
+     that line drawn.
    Leave the email empty for a link anyone may use, or fill it in to pin the
    invite to one address. A job title here means they arrive already labelled.
 2. **Copy the link and send it however you already talk.** No mail is sent
@@ -179,6 +183,43 @@ point of inviting them.
 - **Leaving.** You can leave any workspace except your last one, and the last
   administrator cannot leave or be demoted while anyone else is still there —
   otherwise a workspace becomes unmanageable, or an account becomes unusable.
+
+### Splitting the work into sections
+
+One board for a whole company stops working the moment two disciplines share
+it. **Sections** are the fix: named areas of the same workspace — *ФРОНТ*,
+*Back End*, *Дизайн* — each with its own board.
+
+- **Make one** from the `+` beside **Sections** in the sidebar. A name, an
+  optional line about what belongs in it, and a colour from the same six the
+  avatars use. Anyone in the workspace can make, rename and recolour them.
+- **File work into one** from the section picker in the task form, or from
+  *Section* in the task drawer. A task started from a section's own board
+  arrives already filed under it.
+- **Read them anywhere.** Each section is a row in the sidebar with its own
+  open count, a dot on every task row, and a facet in the filter bar — so
+  *All tasks* can still be narrowed to one area without leaving the page.
+- **Work that belongs nowhere** collects under **No section**, which only
+  appears while something is actually in it.
+- **Deleting a section deletes the section.** The tasks inside it move to
+  *No section* and the confirmation says so before you click, because the
+  only question anyone has at that point is whether their work is about to
+  disappear with the folder.
+
+A section is a container, not a second kind of access: everyone in the
+workspace sees every section. Access is still the workspace, and only the
+workspace — see the sentence that opens this part of the README.
+
+### Who can manage the workspace
+
+**Everyone, by default.** A membership is created as `ADMINISTRATOR`, and so
+is an invite unless you change it. Joining a team and then having to ask the
+person who sent you the link for permission to rename a section is friction
+with nothing behind it.
+
+`MEMBER` still exists and is still offered in the invite form, for the team
+that genuinely wants a do-the-work-only role — and the last-administrator
+guard needs a second role to be meaningful. Change someone from the Team page.
 
 ### More than one workspace
 

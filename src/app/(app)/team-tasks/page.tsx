@@ -3,6 +3,7 @@ import { Suspense } from "react";
 import { connection } from "next/server";
 import { requireSession } from "@/backend/auth/guards";
 import { listMeetings } from "@/backend/data/meetings";
+import { listSpaces } from "@/backend/data/spaces";
 import { listTasks } from "@/backend/data/tasks";
 import { getTranslator } from "@/backend/i18n/locale";
 import { TaskPage } from "@/frontend/components/tasks/task-page";
@@ -44,9 +45,10 @@ async function TeamTasksData({
   const now = new Date();
   const [session, search] = await Promise.all([requireSession(), searchParams]);
 
-  const [tasks, meetings] = await Promise.all([
+  const [tasks, meetings, spaces] = await Promise.all([
     listTasks(session.workspace.id),
     listMeetings(session.workspace.id),
+    listSpaces(session.workspace.id),
   ]);
 
   const requested = Array.isArray(search.owner) ? search.owner[0] : search.owner;
@@ -63,6 +65,7 @@ async function TeamTasksData({
     <TaskStoreProvider
       initialTasks={tasks}
       members={session.workspace.members}
+      spaces={spaces}
       currentMemberId={session.member.id}
       serverNow={now.toISOString()}
       initialFilters={focus ? undefined : { owners: others.map((m) => m.id) }}

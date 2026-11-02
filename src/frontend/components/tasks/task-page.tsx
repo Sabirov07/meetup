@@ -4,10 +4,12 @@ import { LayoutGrid, List, Plus } from "lucide-react";
 import { useMemo, useState, useSyncExternalStore } from "react";
 import { applyFilters } from "@/shared/domain/filters";
 import { isOverdue } from "@/shared/domain/priority";
-import type {
-  MemberSummary,
-  TaskPriority,
-  TaskStatus,
+import {
+  NO_SPACE,
+  type MemberSummary,
+  type SpaceSummary,
+  type TaskPriority,
+  type TaskStatus,
 } from "@/shared/domain/types";
 import type { TranslationKey } from "@/shared/i18n";
 import { useT } from "@/frontend/i18n";
@@ -15,6 +17,7 @@ import { Avatar } from "@/frontend/components/ui/avatar";
 import { Button } from "@/frontend/components/ui/button";
 import { Tooltip } from "@/frontend/components/ui/feedback";
 import { cn } from "@/frontend/lib/utils";
+import { spaceDot } from "@/frontend/components/spaces/space-color";
 import { StatusColumns, TaskDndProvider } from "./task-board";
 import { TaskDetailSheet } from "./task-detail-sheet";
 import { useCreateActions } from "@/frontend/components/shell/create-actions";
@@ -55,10 +58,15 @@ type NewTaskDefaults = {
 export function TaskPage({
   heading,
   headingName,
+  headingText,
   description,
+  descriptionText,
   /** Member id, `UNASSIGNED`, or undefined for every task. */
   ownerFilter,
   owner,
+  /** Section id, `NO_SPACE`, or undefined for every section. */
+  spaceFilter,
+  space,
   meetings,
 }: {
   /**
@@ -68,24 +76,35 @@ export function TaskPage({
    */
   heading: TranslationKey;
   headingName?: string;
+  /**
+   * A section's name is typed by the person who made it, so it is the one
+   * heading on these pages that cannot be a key. When present it wins.
+   */
+  headingText?: string;
   description: TranslationKey;
+  descriptionText?: string;
   ownerFilter?: string;
   owner?: MemberSummary | null;
+  spaceFilter?: string;
+  space?: SpaceSummary | null;
   meetings: { id: string; title: string }[];
 }) {
-  const { tasks, members, now, filters, upsertTask } = useTasks();
+  const { tasks, members, spaces, now, filters, upsertTask } = useTasks();
   const t = useT();
   const createActions = useCreateActions();
   const [newTask, setNewTask] = useState<NewTaskDefaults | null>(null);
   const [view, setView] = useView();
 
-  const scoped = useMemo(
-    () =>
-      ownerFilter === undefined
-        ? tasks
-        : tasks.filter((t) => (t.owner?.id ?? "UNASSIGNED") === ownerFilter),
-    [tasks, ownerFilter],
-  );
+  const scoped = useMemo(() => {
+    let list = tasks;
+    if (ownerFilter !== undefined) {
+      list = list.filter((t) => (t.owner?.id ?? "UNASSIGNED") === ownerFilter);
+    }
+    if (spaceFilter !== undefined) {
+      list = list.filter((t) => (t.space?.id ?? NO_SPACE) === spaceFilter);
+    }
+    return list;
+  }, [tasks, ownerFilter, spaceFilter]);
 
   const open = scoped.filter((t) => t.status !== "COMPLETED");
   const overdue = scoped.filter((t) => isOverdue(t, now)).length;
@@ -102,11 +121,18 @@ export function TaskPage({
           <div className="min-w-0">
             <div className="flex items-center gap-2">
               {owner && <Avatar member={owner} size="lg" />}
+              {space && (
+                <span
+                  className={cn("h-2.5 w-2.5 shrink-0 rounded-full", spaceDot(space.colorToken))}
+                />
+              )}
               <h1 className="truncate text-lg font-semibold tracking-[-0.02em] text-text">
-                {t(heading, headingName ? { name: headingName } : undefined)}
+                {headingText ?? t(heading, headingName ? { name: headingName } : undefined)}
               </h1>
             </div>
-            <p className="mt-1 text-[13px] leading-5 text-text-muted">{t(description)}</p>
+            <p className="mt-1 text-[13px] leading-5 text-text-muted">
+              {descriptionText ?? t(description)}
+            </p>
             {/* Global counts stay distinct from the filtered count. */}
             <p className="mt-1 text-2xs text-text-faint">
               {t("tasks.counts.open", { count: open.length })} ·{" "}
@@ -139,13 +165,22 @@ export function TaskPage({
           </div>
         </header>
 
-        <TaskToolbar meetings={meetings} showOwnerFilter={ownerFilter === undefined} />
+        <TaskToolbar
+        meetings={meetings}
+        showOwnerFilter={ownerFilter === undefined}
+        showSpaceFilter={spaceFilter === undefined}
+      />
 
         {view === "LIST" ? (
-          <TaskTable ownerFilter={ownerFilter} onAdd={setNewTask} />
+          <TaskTable
+            ownerFilter={ownerFilter}
+            spaceFilter={spaceFilter}
+            onAdd={setNewTask}
+          />
         ) : (
           <StatusColumns
             ownerFilter={ownerFilter}
+            spaceFilter={spaceFilter}
             showOwner={ownerFilter === undefined}
             onAdd={(status) => setNewTask({ status })}
           />
@@ -158,6 +193,7 @@ export function TaskPage({
         open={newTask !== null}
         onOpenChange={(value) => !value && setNewTask(null)}
         members={members}
+        spaces={spaces}
         defaultOwnerId={
           newTask?.ownerMemberId !== undefined
             ? newTask.ownerMemberId
@@ -165,6 +201,9 @@ export function TaskPage({
               ? null
               : (ownerFilter ?? null)
         }
+        // A task started from a section's own board belongs to that section
+        // unless the person says otherwise.
+        defaultSpaceId={spaceFilter === NO_SPACE ? null : (spaceFilter ?? null)}
         defaultStatus={newTask?.status}
         defaultPriority={newTask?.priority}
         onSaved={upsertTask}

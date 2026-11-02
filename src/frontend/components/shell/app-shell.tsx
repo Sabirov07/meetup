@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react
 import { setSidebarCollapsed } from "@/backend/actions/preferences";
 import type {
   MemberSummary,
+  SpaceSummary,
   WorkspaceOption,
   WorkspaceSummary,
 } from "@/shared/domain/types";
@@ -28,6 +29,8 @@ import { Sidebar, type NavCounts } from "./sidebar";
 export function AppShell({
   workspace,
   workspaces,
+  spaces,
+  unfiledCount,
   member,
   counterpart,
   counts,
@@ -40,6 +43,10 @@ export function AppShell({
   workspace: WorkspaceSummary;
   /** Every workspace this person belongs to, for the sidebar switcher. */
   workspaces: WorkspaceOption[];
+  /** The sections of the active workspace, in sidebar order. */
+  spaces: SpaceSummary[];
+  /** Open tasks filed under no section. */
+  unfiledCount: number;
   member: MemberSummary;
   counterpart: MemberSummary | null;
   counts: NavCounts;
@@ -116,6 +123,8 @@ export function AppShell({
     <Sidebar
       workspace={workspace}
       workspaces={workspaces}
+      spaces={spaces}
+      unfiledCount={unfiledCount}
       member={member}
       counterpart={counterpart}
       counts={counts}
@@ -149,6 +158,8 @@ export function AppShell({
             <Sidebar
               workspace={workspace}
               workspaces={workspaces}
+              spaces={spaces}
+              unfiledCount={unfiledCount}
               member={member}
               counterpart={counterpart}
               counts={counts}
@@ -192,6 +203,7 @@ export function AppShell({
         open={taskOpen}
         onOpenChange={setTaskOpen}
         members={workspace.members}
+        spaces={spaces}
         defaultOwnerId={member.id}
         onDescribeTasks={() => setIntakeOpen(true)}
       />

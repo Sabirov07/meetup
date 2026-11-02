@@ -149,7 +149,10 @@ function InvitePanel() {
   const t = useT();
   const [email, setEmail] = useState("");
   const [jobTitle, setJobTitle] = useState("");
-  const [role, setRole] = useState<WorkspaceRole>("MEMBER");
+  // Administrator by default: everyone who joins is expected to run the
+  // place with you. Member is still offered for the rare workspace that
+  // wants a do-the-work-only role.
+  const [role, setRole] = useState<WorkspaceRole>("ADMINISTRATOR");
   const [link, setLink] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
@@ -182,7 +185,7 @@ function InvitePanel() {
             onChange={(event) => setJobTitle(event.target.value)}
           />
         </Field>
-        <Field label={t("team.invite.role")}>
+        <Field label={t("team.invite.role")} hint={t("team.invite.roleHint")}>
           <Select value={role} onValueChange={(value) => setRole(value as WorkspaceRole)}>
             <SelectTrigger className="w-full">{roleLabel}</SelectTrigger>
             <SelectContent>

@@ -115,7 +115,10 @@ export type ActivityType =
   | "MEMBER_LEFT"
   | "KNOWLEDGE_CREATED"
   | "KNOWLEDGE_UPDATED"
-  | "KNOWLEDGE_DELETED";
+  | "KNOWLEDGE_DELETED"
+  | "SPACE_CREATED"
+  | "SPACE_UPDATED"
+  | "SPACE_DELETED";
 
 // ---------------------------------------------------------------------------
 // View models — the exact shapes the UI consumes.
@@ -132,6 +135,31 @@ export type MemberSummary = {
   accentToken: string;
 };
 
+/**
+ * A section of the workspace, as a task carries it: enough to draw a dot and
+ * a name without a second lookup.
+ */
+export type SpaceRef = {
+  id: string;
+  name: string;
+  colorToken: string;
+};
+
+/** A section in the sidebar and on the sections page, with its workload. */
+export type SpaceSummary = SpaceRef & {
+  description: string | null;
+  position: number;
+  /** Not-completed tasks filed here. */
+  openTasks: number;
+  totalTasks: number;
+};
+
+/**
+ * The filter value, and the route segment, for tasks that belong to no
+ * section. A real space id is a cuid, so it can never collide with this.
+ */
+export const NO_SPACE = "none";
+
 export type TaskDependencyRef = {
   id: string;
   title: string;
@@ -142,6 +170,8 @@ export type TaskView = {
   id: string;
   title: string;
   description: string | null;
+  /** Which section it is filed under, or null for "No section". */
+  space: SpaceRef | null;
   owner: MemberSummary | null;
   creator: MemberSummary | null;
   status: TaskStatus;

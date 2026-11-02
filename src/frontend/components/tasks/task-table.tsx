@@ -28,6 +28,7 @@ import { applyFilters } from "@/shared/domain/filters";
 import { priorityMeta, statusMeta } from "@/shared/domain/labels";
 import { blockingImpact, sortTasks, unmetDependencies } from "@/shared/domain/priority";
 import {
+  NO_SPACE,
   TASK_PRIORITIES,
   TASK_STATUSES,
   type TaskPriority,
@@ -119,10 +120,13 @@ type Group = {
 
 export function TaskTable({
   ownerFilter,
+  spaceFilter,
   onAdd,
 }: {
   /** Member id, `UNASSIGNED`, or undefined for every task. */
   ownerFilter?: string;
+  /** Section id, `NO_SPACE`, or undefined for every section. */
+  spaceFilter?: string;
   /** Opens the full new-task form, pre-filled from the group. */
   onAdd?: (defaults: GroupDefaults) => void;
 }) {
@@ -132,10 +136,13 @@ export function TaskTable({
   const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(new Set());
 
   const visible = useMemo(() => {
-    const scoped =
+    let scoped =
       ownerFilter === undefined
         ? tasks
         : tasks.filter((task) => (task.owner?.id ?? UNASSIGNED) === ownerFilter);
+    if (spaceFilter !== undefined) {
+      scoped = scoped.filter((task) => (task.space?.id ?? NO_SPACE) === spaceFilter);
+    }
     // Grouped by status, "Completed" is a group of its own, so hiding completed
     // tasks would leave an empty heading. Any other grouping would interleave
     // them with live work, so there the filter is honoured.
@@ -148,7 +155,7 @@ export function TaskTable({
       sort,
       now,
     );
-  }, [tasks, filters, sort, now, ownerFilter, groupBy]);
+  }, [tasks, filters, sort, now, ownerFilter, spaceFilter, groupBy]);
 
   const groups = useMemo<Group[]>(() => {
     switch (groupBy) {
