@@ -22,6 +22,7 @@ import {
 import { evidenceMeta } from "@/shared/domain/labels";
 import { useT } from "@/frontend/i18n";
 import { cn } from "@/frontend/lib/utils";
+import { CreateModeSwitch } from "./create-mode-switch";
 import { Avatar } from "@/frontend/components/ui/avatar";
 import { Badge } from "@/frontend/components/ui/badge";
 import { Button } from "@/frontend/components/ui/button";
@@ -192,6 +193,17 @@ export function TaskIntakeDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
+          {!breakdown && onSwitchToForm && (
+            <CreateModeSwitch
+              value="DESCRIBE"
+              onChange={(mode) => {
+                if (mode === "DESCRIBE") return;
+                onOpenChange(false);
+                onSwitchToForm();
+              }}
+              className="mb-3 w-fit"
+            />
+          )}
           <DialogTitle className="flex items-center gap-1.5">
             <Sparkles className="h-3.5 w-3.5 text-accent-bright" />
             {t(breakdown ? "intake.review.title" : "intake.title")}
@@ -348,18 +360,6 @@ export function TaskIntakeDialog({
             </DialogBody>
 
             <DialogFooter>
-              {onSwitchToForm && (
-                <Button
-                  variant="ghost"
-                  className="mr-auto"
-                  onClick={() => {
-                    onOpenChange(false);
-                    onSwitchToForm();
-                  }}
-                >
-                  {t("intake.blankTask")}
-                </Button>
-              )}
               <Button variant="ghost" onClick={() => onOpenChange(false)}>
                 {t("common.cancel")}
               </Button>

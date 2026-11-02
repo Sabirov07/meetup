@@ -4,7 +4,6 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { Controller, useForm } from "react-hook-form";
-import { Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
 import { createTask, updateTask } from "@/backend/actions/tasks";
@@ -28,6 +27,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/frontend/components/ui/dialog";
+import { CreateModeSwitch } from "./create-mode-switch";
 import {
   Field,
   Input,
@@ -185,6 +185,17 @@ export function TaskFormDialog({
           className="flex min-h-0 flex-col"
         >
           <DialogHeader>
+            {!editing && onDescribeTasks && (
+              <CreateModeSwitch
+                value="FORM"
+                onChange={(mode) => {
+                  if (mode === "FORM") return;
+                  onOpenChange(false);
+                  onDescribeTasks();
+                }}
+                className="mb-3 w-fit"
+              />
+            )}
             <DialogTitle>{t(editing ? "form.title.edit" : "form.title.create")}</DialogTitle>
             <DialogDescription>
               {t(editing ? "form.description.edit" : "form.description.create")}
@@ -349,20 +360,6 @@ export function TaskFormDialog({
           </DialogBody>
 
           <DialogFooter>
-            {!editing && onDescribeTasks && (
-              <Button
-                type="button"
-                variant="ghost"
-                className="mr-auto"
-                onClick={() => {
-                  onOpenChange(false);
-                  onDescribeTasks();
-                }}
-              >
-                <Sparkles className="h-3.5 w-3.5 text-accent-bright" />
-                {t("intake.open")}
-              </Button>
-            )}
             <Button
               type="button"
               variant="ghost"

@@ -16,6 +16,8 @@ export const intake = {
   "intake.blankTask": ["Blank task", "Пустая задача"],
   "intake.blankTaskHint": ["Fill the fields in yourself", "Заполнить поля самостоятельно"],
 
+  "intake.mode.label": ["How to create this", "Как создавать"],
+
   "intake.title": ["Describe the work", "Опишите работу"],
   "intake.description": [
     "Write or paste anything — notes, a message, a list. It gets split into tasks with an owner each, and you check them before anything is saved.",
