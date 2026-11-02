@@ -78,8 +78,11 @@ export const tasks = {
   "tasks.zone.addOne": ["Add one", "Добавить"],
   "tasks.zone.dropTaskHere": ["Drop a task here", "Перетащите задачу сюда"],
   "tasks.panel.noOwnerYet": ["No owner yet", "Исполнитель не назначен"],
-  "tasks.panel.addFor": ["Add a task for {name}", "Добавить задачу для {name}"],
-  "tasks.panel.nobody": ["nobody", "никого"],
+  "tasks.panel.addFor": ["Add a task for {name}", "Добавить задачу для: {name}"],
+  "tasks.panel.addUnassigned": [
+    "Add an unassigned task",
+    "Добавить задачу без исполнителя",
+  ],
   "tasks.panel.empty.title": ["Nothing to show", "Нечего показать"],
   "tasks.panel.empty.filtered": [
     "Every task here is filtered out. Clear the filters to see them.",
@@ -89,7 +92,10 @@ export const tasks = {
     "No tasks assigned yet. Drag one here, or add one.",
     "Пока ничего не назначено. Перетащите задачу сюда или добавьте новую.",
   ],
-  "tasks.column.addStatus": ["Add a {status} task", "Добавить задачу: {status}"],
+  "tasks.column.addStatus": [
+    "Add a {status} task",
+    "Добавить задачу со статусом «{status}»",
+  ],
   "tasks.list.empty.title": ["No tasks match these filters", "Под фильтры ничего не подходит"],
   "tasks.list.empty.description": [
     "Try clearing a filter or widening the deadline window.",
@@ -132,7 +138,7 @@ export const tasks = {
   "tasks.table.createFailed": ["Could not create that task", "Не удалось создать задачу"],
   "tasks.table.assignedTo": [
     "{title} is assigned to {name}. Change the assignee",
-    "«{title}» назначена {name}. Сменить исполнителя",
+    "Исполнитель «{title}»: {name}. Сменить исполнителя",
   ],
   "tasks.table.assignTo": ["Assign {title} to someone", "Назначить исполнителя для «{title}»"],
   "tasks.table.priorityIs": [
@@ -145,7 +151,7 @@ export const tasks = {
   ],
   "tasks.table.dueIs": [
     "{title} is due {value}. Change the deadline",
-    "Срок «{title}» — {value}. Изменить срок",
+    "Срок «{title}»: {value}. Изменить срок",
   ],
   "tasks.table.deadlineFor": ["Deadline for {title}", "Срок для «{title}»"],
   "tasks.table.clearDeadline": ["Clear deadline", "Убрать срок"],
@@ -243,7 +249,7 @@ export const tasks = {
   "detail.property.category": ["Category", "Категория"],
   "detail.property.labels": ["Labels", "Метки"],
   "detail.suggested": ["Suggested {value}", "Предложено: {value}"],
-  "detail.consider": ["Consider {value}", "Возможно, {value}"],
+  "detail.consider": ["Consider {value}", "Возможно: {value}"],
   "detail.considerWhy": [
     "Based on its deadline and what it is blocking.",
     "С учётом срока и того, что задача блокирует.",

@@ -118,7 +118,6 @@ export const shell = {
   "palette.kind.meeting": ["Meeting", "Встреча"],
 
   "language.label": ["Language", "Язык"],
-  "language.switchTo": ["Switch to {language}", "Переключить на {language}"],
   "language.heading": ["Language", "Язык"],
   "language.description": [
     "Applies immediately, on this device and anywhere else you sign in.",

@@ -144,9 +144,9 @@ function MeetingForm({
             title={t("start.mode.google")}
             description={
               googleReady
-                ? t("start.mode.googleReady", {
-                    account: google.email ?? t("start.mode.googleAccountFallback"),
-                  })
+                ? google.email
+                  ? t("start.mode.googleReady", { account: google.email })
+                  : t("start.mode.googleReadyNoAccount")
                 : t(
                     google.configured
                       ? "start.mode.googleNeedsConnect"

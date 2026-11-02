@@ -58,7 +58,7 @@ export const meetings = {
   "meetings.deleteMeeting": ["Delete meeting", "Удалить встречу"],
 
   "detail.allMeetings": ["All meetings", "Все встречи"],
-  "detail.createdBy": ["created by {name}", "создал(а) {name}"],
+  "detail.createdBy": ["created by {name}", "автор: {name}"],
   "detail.joinCall": ["Join call", "Подключиться к звонку"],
   "detail.endMeeting": ["End meeting", "Завершить встречу"],
   "detail.startMeeting": ["Start", "Начать"],
@@ -137,7 +137,10 @@ export const meetings = {
     "Creates a real meeting space on {account}.",
     "Создаст настоящую встречу в аккаунте {account}.",
   ],
-  "start.mode.googleAccountFallback": ["your Google account", "вашем аккаунте Google"],
+  "start.mode.googleReadyNoAccount": [
+    "Creates a real meeting space on your Google account.",
+    "Создаст настоящую встречу в вашем аккаунте Google.",
+  ],
   "start.mode.googleNeedsConnect": [
     "Connect your Google account in Settings to use this.",
     "Подключите аккаунт Google в настройках, чтобы использовать это.",

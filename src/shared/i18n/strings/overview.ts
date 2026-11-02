@@ -160,15 +160,15 @@ export const overview = {
 
   "rec.followUp.title": [
     "Follow up with {name} on “{task}”",
-    "Напомните {name} про «{task}»",
+    "Напомнить про «{task}» — {name}",
   ],
   "rec.followUp.body.blocking": [
     "This sits with {name} and other work is waiting behind it.",
-    "Задача у {name}, и за ней стоит другая работа.",
+    "Исполнитель: {name}. За этой задачей стоит другая работа.",
   ],
   "rec.followUp.body.nudge": [
     "This sits with {name} and has not moved. A nudge may be all it needs.",
-    "Задача у {name} и не двигается. Возможно, достаточно напомнить.",
+    "Исполнитель: {name}. Задача не двигается — возможно, достаточно напомнить.",
   ],
 
   "rec.deadline.title": [
@@ -215,21 +215,23 @@ export const overview = {
   ],
 
   "rec.overdueCluster.title.one": [
-    "{count} overdue task for {name}",
-    "{count} просроченная задача у {name}",
+    "{count} overdue task — {name}",
+    "{count} просроченная задача — {name}",
   ],
   "rec.overdueCluster.title.few": [
-    "{count} overdue tasks for {name}",
-    "{count} просроченные задачи у {name}",
+    "{count} overdue tasks — {name}",
+    "{count} просроченные задачи — {name}",
   ],
   "rec.overdueCluster.title.many": [
-    "{count} overdue tasks for {name}",
-    "{count} просроченных задач у {name}",
+    "{count} overdue tasks — {name}",
+    "{count} просроченных задач — {name}",
   ],
   "rec.overdueCluster.title.other": [
-    "{count} overdue tasks for {name}",
-    "{count} просроченные задачи у {name}",
+    "{count} overdue tasks — {name}",
+    "{count} просроченные задачи — {name}",
   ],
+  /** Fills the same slot a person's name would, so it reads as an appositive. */
+  "rec.overdueCluster.noOwner": ["unassigned", "без исполнителя"],
   "rec.overdueCluster.body": [
     "Dates have already slipped. Rather than working through them, it is usually faster to re-date them honestly and drop what no longer matters.",
     "Сроки уже сдвинулись. Обычно быстрее честно перенести даты и отказаться от того, что потеряло смысл, чем разгребать всё подряд.",

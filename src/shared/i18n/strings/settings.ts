@@ -98,7 +98,7 @@ export const settings = {
   "settings.google.req.delay": ["A delay after the call.", "Задержка после звонка."],
   "settings.google.req.delayBody": [
     "Transcripts are not available the moment a meeting ends, which is why {state} is a normal state rather than an error.",
-    "Расшифровки появляются не сразу после встречи — поэтому {state} это нормальное состояние, а не ошибка.",
+    "Расшифровки появляются не сразу после встречи, поэтому {state} — нормальное состояние, а не ошибка.",
   ],
   "settings.google.req.scopes": ["Scopes.", "Разрешения."],
   "settings.google.req.scopesBody": [

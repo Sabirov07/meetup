@@ -200,7 +200,7 @@ export function buildRecommendations(
   }
   for (const [, group] of overdueByOwner) {
     if (group.length < 3) continue;
-    const ownerName = group[0]!.owner?.name ?? t("common.unassigned");
+    const ownerName = group[0]!.owner?.name ?? t("rec.overdueCluster.noOwner");
     push(
       "OVERDUE_CLUSTER",
       t("rec.overdueCluster.title", { count: group.length, name: ownerName }),

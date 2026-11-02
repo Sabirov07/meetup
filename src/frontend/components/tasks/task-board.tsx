@@ -282,9 +282,13 @@ export function OwnerPanel({
             variant="ghost"
             size="icon-sm"
             onClick={onAdd}
-            aria-label={t("tasks.panel.addFor", {
-              name: title ?? member?.name ?? t("tasks.panel.nobody"),
-            })}
+            // The person, not the panel's heading: "Add a task for My tasks"
+            // is what interpolating the heading here used to produce.
+            aria-label={
+              member
+                ? t("tasks.panel.addFor", { name: member.name })
+                : t("tasks.panel.addUnassigned")
+            }
           >
             <Plus className="h-4 w-4" />
           </Button>
