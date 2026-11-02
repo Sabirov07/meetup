@@ -284,4 +284,24 @@ export const errors = {
     "That invitation belongs to a different email address.",
     "Это приглашение выдано на другой адрес почты.",
   ],
+  "errors.intake.needsKey": [
+    "Set ANTHROPIC_API_KEY on the server to have text split into tasks.",
+    "Чтобы делить текст на задачи, задайте ANTHROPIC_API_KEY на сервере.",
+  ],
+  "errors.intake.tooShort": [
+    "Write a little more about the work first.",
+    "Напишите о работе чуть подробнее.",
+  ],
+  "errors.intake.tooLong": [
+    "That is too long to read in one go. Split it across a couple of goes.",
+    "Это слишком длинно для одного раза. Разбейте текст на несколько частей.",
+  ],
+  "errors.intake.noTasks": [
+    "No work to do was found in that text.",
+    "В этом тексте не нашлось работы, которую можно сделать.",
+  ],
+  "errors.intake.invalid": [
+    "Those tasks are not valid. Check the titles and try again.",
+    "Эти задачи заполнены неверно. Проверьте названия и попробуйте снова.",
+  ],
 } satisfies Entries;

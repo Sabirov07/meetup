@@ -6,6 +6,7 @@ import { dates } from "./dates";
 import { auth } from "./auth";
 import { overview } from "./overview";
 import { tasks } from "./tasks";
+import { intake } from "./intake";
 import { meetings } from "./meetings";
 import { review } from "./review";
 import { activity } from "./activity";
@@ -31,6 +32,7 @@ export const strings = {
   ...auth,
   ...overview,
   ...tasks,
+  ...intake,
   ...meetings,
   ...review,
   ...activity,

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { setSidebarCollapsed } from "@/backend/actions/preferences";
 import type {
   MemberSummary,
@@ -12,14 +12,16 @@ import { Dialog, DialogTitle } from "@/frontend/components/ui/dialog";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { StartMeetingDialog, type GoogleState } from "@/frontend/components/meetings/start-meeting-dialog";
 import { TaskFormDialog } from "@/frontend/components/tasks/task-form-dialog";
+import { TaskIntakeDialog } from "@/frontend/components/tasks/task-intake-dialog";
 import { useI18n } from "@/frontend/i18n";
 import { CommandPalette } from "./command-palette";
+import { CreateActionsProvider } from "./create-actions";
 import { Header, type HeaderAlert } from "./header";
 import { Sidebar, type NavCounts } from "./sidebar";
 
 /**
  * The shell owns everything that is global: navigation, the command palette,
- * and the two create dialogs reachable from any page.
+ * and the create dialogs reachable from any page.
  *
  * Pages render inside it as children and stay free of chrome concerns.
  */
@@ -31,6 +33,7 @@ export function AppShell({
   counts,
   alerts,
   google,
+  aiConfigured,
   initialCollapsed,
   children,
 }: {
@@ -42,6 +45,8 @@ export function AppShell({
   counts: NavCounts;
   alerts: HeaderAlert[];
   google: GoogleState;
+  /** Whether a model key is present, so intake can explain itself when not. */
+  aiConfigured: boolean;
   initialCollapsed: boolean;
   children: ReactNode;
 }) {
@@ -51,6 +56,7 @@ export function AppShell({
   const [searchOpen, setSearchOpen] = useState(false);
   const [meetingOpen, setMeetingOpen] = useState(false);
   const [taskOpen, setTaskOpen] = useState(false);
+  const [intakeOpen, setIntakeOpen] = useState(false);
 
   const toggleCollapsed = useCallback(() => {
     setCollapsed((prev) => {
@@ -81,6 +87,9 @@ export function AppShell({
       if (event.key === "c") {
         event.preventDefault();
         setTaskOpen(true);
+      } else if (event.key === "C") {
+        event.preventDefault();
+        setIntakeOpen(true);
       } else if (event.key === "m") {
         event.preventDefault();
         setMeetingOpen(true);
@@ -93,6 +102,16 @@ export function AppShell({
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [toggleCollapsed]);
 
+  const createHandlers = {
+    onNewTask: () => setTaskOpen(true),
+    onDescribeTasks: () => setIntakeOpen(true),
+    onStartMeeting: () => setMeetingOpen(true),
+  };
+
+  // Stable, so a page's create form does not re-render on every shell state
+  // change just because it holds this.
+  const createActions = useMemo(() => ({ describeTasks: () => setIntakeOpen(true) }), []);
+
   const sidebar = (
     <Sidebar
       workspace={workspace}
@@ -102,6 +121,7 @@ export function AppShell({
       counts={counts}
       collapsed={collapsed}
       onToggle={toggleCollapsed}
+      {...createHandlers}
     />
   );
 
@@ -135,6 +155,7 @@ export function AppShell({
               collapsed={false}
               onToggle={() => setMobileOpen(false)}
               onNavigate={() => setMobileOpen(false)}
+              {...createHandlers}
             />
           </DialogPrimitive.Content>
         </DialogPrimitive.Portal>
@@ -152,7 +173,9 @@ export function AppShell({
           onStartMeeting={() => setMeetingOpen(true)}
           onNewTask={() => setTaskOpen(true)}
         />
-        <main className="min-w-0 flex-1">{children}</main>
+        <main className="min-w-0 flex-1">
+          <CreateActionsProvider value={createActions}>{children}</CreateActionsProvider>
+        </main>
       </div>
 
       <CommandPalette open={searchOpen} onOpenChange={setSearchOpen} />
@@ -170,6 +193,15 @@ export function AppShell({
         onOpenChange={setTaskOpen}
         members={workspace.members}
         defaultOwnerId={member.id}
+        onDescribeTasks={() => setIntakeOpen(true)}
+      />
+
+      <TaskIntakeDialog
+        open={intakeOpen}
+        onOpenChange={setIntakeOpen}
+        members={workspace.members}
+        aiConfigured={aiConfigured}
+        onSwitchToForm={() => setTaskOpen(true)}
       />
     </div>
   );

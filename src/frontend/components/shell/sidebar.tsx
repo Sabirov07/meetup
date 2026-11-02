@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ChevronsLeft, LogOut, PanelLeft, Users } from "lucide-react";
+import { ChevronsLeft, LogOut, PanelLeft, Plus, Sparkles, SquarePen, Users, Video } from "lucide-react";
 import { signOut } from "@/backend/actions/auth";
 import type {
   MemberSummary,
@@ -15,7 +15,14 @@ import { Avatar } from "@/frontend/components/ui/avatar";
 import { Button } from "@/frontend/components/ui/button";
 import { Count } from "@/frontend/components/ui/badge";
 import { Tooltip } from "@/frontend/components/ui/feedback";
-import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from "@/frontend/components/ui/menu";
+import {
+  Menu,
+  MenuContent,
+  MenuItem,
+  MenuLabel,
+  MenuSeparator,
+  MenuTrigger,
+} from "@/frontend/components/ui/menu";
 import { WorkspaceSwitcher } from "@/frontend/components/team/workspace-switcher";
 import { useI18n } from "@/frontend/i18n";
 import { LanguageMenuSection } from "./language-switch";
@@ -33,6 +40,9 @@ export function Sidebar({
   collapsed,
   onToggle,
   onNavigate,
+  onNewTask,
+  onDescribeTasks,
+  onStartMeeting,
 }: {
   workspace: WorkspaceSummary;
   /** Every workspace this person belongs to, for the switcher. */
@@ -43,6 +53,11 @@ export function Sidebar({
   collapsed: boolean;
   onToggle: () => void;
   onNavigate?: () => void;
+  /** Opens the plain create form. */
+  onNewTask: () => void;
+  /** Opens the "describe the work and have it split up" dialog. */
+  onDescribeTasks: () => void;
+  onStartMeeting: () => void;
 }) {
   const pathname = usePathname();
   const { t } = useI18n();
@@ -96,8 +111,66 @@ export function Sidebar({
         )}
       </div>
 
+      {/* Create — the one place every kind of new thing starts */}
+      <div className="shrink-0 px-2 pt-3">
+        <Menu>
+          {collapsed ? (
+            <Tooltip content={t("sidebar.create")} side="right">
+              <MenuTrigger asChild>
+                <Button
+                  variant="primary"
+                  size="icon-sm"
+                  className="w-full"
+                  aria-label={t("sidebar.createLabel")}
+                >
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </MenuTrigger>
+            </Tooltip>
+          ) : (
+            <MenuTrigger asChild>
+              <Button variant="primary" size="md" className="w-full justify-start">
+                <Plus className="h-3.5 w-3.5" />
+                {t("sidebar.create")}
+              </Button>
+            </MenuTrigger>
+          )}
+          <MenuContent align="start" side="bottom" className="w-[17rem]">
+            <MenuLabel>{t("nav.section.tasks")}</MenuLabel>
+            {/* Listed first: it is the one that does the work for you. */}
+            <MenuItem className="items-start py-2" onSelect={onDescribeTasks}>
+              <Sparkles className="mt-0.5 h-3.5 w-3.5 shrink-0 text-accent-bright" />
+              <span className="min-w-0">
+                <span className="block text-[13px] font-medium text-text">
+                  {t("intake.open")}
+                </span>
+                <span className="mt-0.5 block text-2xs leading-4 text-text-faint">
+                  {t("intake.openHint")}
+                </span>
+              </span>
+            </MenuItem>
+            <MenuItem className="items-start py-2" onSelect={onNewTask}>
+              <SquarePen className="mt-0.5 h-3.5 w-3.5 shrink-0 text-text-faint" />
+              <span className="min-w-0">
+                <span className="block text-[13px] font-medium text-text">
+                  {t("intake.blankTask")}
+                </span>
+                <span className="mt-0.5 block text-2xs leading-4 text-text-faint">
+                  {t("intake.blankTaskHint")}
+                </span>
+              </span>
+            </MenuItem>
+            <MenuSeparator />
+            <MenuItem onSelect={onStartMeeting}>
+              <Video className="h-3.5 w-3.5" />
+              {t("header.startMeeting")}
+            </MenuItem>
+          </MenuContent>
+        </Menu>
+      </div>
+
       {/* Navigation */}
-      <nav className="min-h-0 flex-1 overflow-y-auto px-2 py-3" aria-label={t("nav.main")}>
+      <nav className="min-h-0 flex-1 overflow-y-auto px-2 pb-3 pt-2" aria-label={t("nav.main")}>
         {navSections.map((section, index) => (
           <div key={section.headingKey ?? index} className={index > 0 ? "mt-4" : undefined}>
             {section.headingKey && !collapsed && (

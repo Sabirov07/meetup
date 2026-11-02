@@ -3,6 +3,7 @@ import { db } from "@/backend/db";
 import { requireSession } from "@/backend/auth/guards";
 import { getShellData } from "@/backend/data/overview";
 import { listMyWorkspaces } from "@/backend/data/team";
+import { isAiConfigured } from "@/backend/ai/client";
 import { googleIntegrationStatus } from "@/backend/google/config";
 import { getConnectedAccount } from "@/backend/google/oauth";
 import { AppShell } from "@/frontend/components/shell/app-shell";
@@ -47,6 +48,7 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
         connected: Boolean(googleAccount),
         email: googleAccount?.googleEmail ?? null,
       }}
+      aiConfigured={isAiConfigured()}
       initialCollapsed={preference?.sidebarCollapsed ?? false}
     >
       {children}

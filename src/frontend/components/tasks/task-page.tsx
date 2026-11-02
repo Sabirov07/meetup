@@ -17,6 +17,7 @@ import { Tooltip } from "@/frontend/components/ui/feedback";
 import { cn } from "@/frontend/lib/utils";
 import { StatusColumns, TaskDndProvider } from "./task-board";
 import { TaskDetailSheet } from "./task-detail-sheet";
+import { useCreateActions } from "@/frontend/components/shell/create-actions";
 import { TaskFormDialog } from "./task-form-dialog";
 import { TaskTable } from "./task-table";
 import { TaskToolbar } from "./task-toolbar";
@@ -74,6 +75,7 @@ export function TaskPage({
 }) {
   const { tasks, members, now, filters, upsertTask } = useTasks();
   const t = useT();
+  const createActions = useCreateActions();
   const [newTask, setNewTask] = useState<NewTaskDefaults | null>(null);
   const [view, setView] = useView();
 
@@ -166,6 +168,7 @@ export function TaskPage({
         defaultStatus={newTask?.status}
         defaultPriority={newTask?.priority}
         onSaved={upsertTask}
+        onDescribeTasks={createActions?.describeTasks}
       />
     </TaskDndProvider>
   );

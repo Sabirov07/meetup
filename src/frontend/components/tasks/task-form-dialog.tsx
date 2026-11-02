@@ -4,6 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { Controller, useForm } from "react-hook-form";
+import { Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
 import { createTask, updateTask } from "@/backend/actions/tasks";
@@ -68,6 +69,7 @@ export function TaskFormDialog({
   defaultStatus,
   defaultPriority,
   onSaved,
+  onDescribeTasks,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -78,6 +80,11 @@ export function TaskFormDialog({
   defaultStatus?: TaskView["status"];
   defaultPriority?: TaskView["priority"];
   onSaved?: (task: TaskView) => void;
+  /**
+   * Hands over to the "describe the work" dialog. Offered only when creating:
+   * someone editing one task does not want a batch of new ones.
+   */
+  onDescribeTasks?: () => void;
 }) {
   const editing = Boolean(task);
   const router = useRouter();
@@ -342,6 +349,20 @@ export function TaskFormDialog({
           </DialogBody>
 
           <DialogFooter>
+            {!editing && onDescribeTasks && (
+              <Button
+                type="button"
+                variant="ghost"
+                className="mr-auto"
+                onClick={() => {
+                  onOpenChange(false);
+                  onDescribeTasks();
+                }}
+              >
+                <Sparkles className="h-3.5 w-3.5 text-accent-bright" />
+                {t("intake.open")}
+              </Button>
+            )}
             <Button
               type="button"
               variant="ghost"

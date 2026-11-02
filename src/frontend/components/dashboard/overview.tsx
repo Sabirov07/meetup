@@ -17,6 +17,7 @@ import { StartMeetingDialog, type GoogleState } from "@/frontend/components/meet
 import { OwnerPanel, TaskDndProvider } from "@/frontend/components/tasks/task-board";
 import { TaskDetailSheet } from "@/frontend/components/tasks/task-detail-sheet";
 import { TaskFormDialog } from "@/frontend/components/tasks/task-form-dialog";
+import { useCreateActions } from "@/frontend/components/shell/create-actions";
 import { TaskToolbar } from "@/frontend/components/tasks/task-toolbar";
 import { useTasks } from "@/frontend/components/tasks/task-store";
 import { KpiRow } from "./kpi-row";
@@ -41,6 +42,7 @@ export function Overview({
 }) {
   const { tasks, members, now, upsertTask } = useTasks();
   const { t, f, locale } = useI18n();
+  const createActions = useCreateActions();
   const [newTaskFor, setNewTaskFor] = useState<string | null | undefined>(undefined);
   const [meetingOpen, setMeetingOpen] = useState(false);
 
@@ -273,6 +275,7 @@ export function Overview({
         members={members}
         defaultOwnerId={newTaskFor ?? null}
         onSaved={upsertTask}
+        onDescribeTasks={createActions?.describeTasks}
       />
 
       <StartMeetingDialog

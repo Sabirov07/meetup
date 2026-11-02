@@ -1,9 +1,11 @@
 import "server-only";
 
-import Anthropic from "@anthropic-ai/sdk";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
+import { getClient, WORK_MODEL } from "./client";
 import { analysisSchema, type ExtractedAnalysis } from "./schema";
 import type { MemberSummary } from "@/shared/domain/types";
+
+export { AiNotConfiguredError, isAiConfigured } from "./client";
 
 /**
  * Transcript analysis.
@@ -15,24 +17,7 @@ import type { MemberSummary } from "@/shared/domain/types";
  * ("it's technical, so it must be the engineer's").
  */
 
-export const ANALYSIS_MODEL = "claude-opus-5";
-
-export class AiNotConfiguredError extends Error {
-  constructor() {
-    super("ANTHROPIC_API_KEY is not set, so transcripts cannot be analysed.");
-    this.name = "AiNotConfiguredError";
-  }
-}
-
-function getClient(): Anthropic {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) throw new AiNotConfiguredError();
-  return new Anthropic({ apiKey });
-}
-
-export function isAiConfigured(): boolean {
-  return Boolean(process.env.ANTHROPIC_API_KEY);
-}
+export const ANALYSIS_MODEL = WORK_MODEL;
 
 const SYSTEM_PROMPT = `You extract commitments from work conversations.
 

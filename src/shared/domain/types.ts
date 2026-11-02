@@ -169,6 +169,50 @@ export type TaskView = {
   completedAt: string | null;
 };
 
+/**
+ * One task the model drafted from a pasted brief, before anybody has agreed
+ * to it.
+ *
+ * Drafts deliberately have no database row. A transcript proposal is worth
+ * storing because the transcript outlives the conversation and someone may
+ * come back to it days later; a brief someone just pasted is reviewed in the
+ * same breath, and a table of abandoned drafts would be a graveyard. So these
+ * live in the dialog's state, are edited there, and are written straight to
+ * `tasks` on confirm — or discarded with the dialog.
+ *
+ * `key` is a client-side identity for list keys and edits, not an id.
+ */
+export type TaskDraft = {
+  key: string;
+  title: string;
+  description: string | null;
+  ownerMemberId: string | null;
+  priority: TaskPriority;
+  category: TaskCategory;
+  labels: string[];
+  /** `yyyy-MM-dd`, the shape a date input wants, or null. */
+  dueDate: string | null;
+  estimateMinutes: number | null;
+  /** How much of the owner choice came from the brief rather than the model. */
+  ownerEvidence: EvidenceLevel;
+  ownerRationale: string | null;
+  priorityRationale: string | null;
+  /** Verbatim quote from the brief that this task came from. */
+  sourceExcerpt: string | null;
+  /** The one thing a person has to settle first, when there is one. */
+  openQuestion: string | null;
+  needsReview: boolean;
+};
+
+/** A whole brief, read. */
+export type TaskBreakdown = {
+  /** What the model understood the brief to be asking for. */
+  summary: string;
+  drafts: TaskDraft[];
+  /** Parts of the brief it deliberately did not turn into work. */
+  leftovers: string[];
+};
+
 export type MeetingView = {
   id: string;
   title: string;
