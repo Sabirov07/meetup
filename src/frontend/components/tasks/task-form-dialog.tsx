@@ -2,7 +2,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
@@ -29,6 +29,7 @@ import {
   DialogTitle,
 } from "@/frontend/components/ui/dialog";
 import { CreateModeSwitch } from "./create-mode-switch";
+import { SubtaskDraftList, type DraftStep } from "./subtask-draft-list";
 import {
   Field,
   Input,
@@ -106,6 +107,17 @@ export function TaskFormDialog({
   const showSwitch = !editing && Boolean(onDescribeTasks);
   const router = useRouter();
   const t = useT();
+  /**
+   * Steps typed before the task exists. Kept outside the form: they are a
+   * list, not a field, and they are sent only on create.
+   */
+  const [steps, setSteps] = useState<DraftStep[]>([]);
+
+  /** Closing forgets the typed steps, so a reopened dialog starts clean. */
+  function setOpen(next: boolean) {
+    if (!next) setSteps([]);
+    onOpenChange(next);
+  }
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -172,9 +184,11 @@ export function TaskFormDialog({
       estimateMinutes,
     };
 
+    const subtasks = steps.map((step) => step.title.trim()).filter(Boolean);
+
     const result = task
       ? await updateTask({ id: task.id, ...payload })
-      : await createTask(payload);
+      : await createTask({ ...payload, subtasks });
 
     if (!result.ok) {
       toast.error(t(editing ? "form.saveFailed" : "form.createFailed"), {
@@ -194,11 +208,11 @@ export function TaskFormDialog({
     onSaved?.(result.data);
     if (!onSaved) router.refresh();
 
-    onOpenChange(false);
+    setOpen(false);
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={setOpen}>
       {/* The two ways of creating work share a size while both are on offer,
           so switching between them moves nothing but the fields themselves. */}
       <DialogContent
@@ -216,7 +230,7 @@ export function TaskFormDialog({
                 value="FORM"
                 onChange={(mode) => {
                   if (mode === "FORM") return;
-                  onOpenChange(false);
+                  setOpen(false);
                   onDescribeTasks?.();
                 }}
                 className="mx-auto mb-4 w-fit"
@@ -407,13 +421,21 @@ export function TaskFormDialog({
                 {...form.register("labels")}
               />
             </Field>
+
+            {!editing && (
+              <SubtaskDraftList
+                value={steps}
+                onChange={setSteps}
+                disabled={form.formState.isSubmitting}
+              />
+            )}
           </DialogBody>
 
           <DialogFooter>
             <Button
               type="button"
               variant="ghost"
-              onClick={() => onOpenChange(false)}
+              onClick={() => setOpen(false)}
             >
               {t("common.cancel")}
             </Button>

@@ -22,6 +22,7 @@ import {
   type TaskView,
 } from "@/shared/domain/types";
 import { priorityMeta, statusMeta } from "@/shared/domain/labels";
+import { MAX_SUBTASKS_PER_TASK, SUBTASK_TITLE_MAX } from "@/shared/domain/subtasks";
 import { message } from "@/backend/i18n/message";
 import type { TranslationKey } from "@/shared/i18n";
 import {
@@ -74,6 +75,14 @@ const taskInput = z.object({
   dueDate: taskFields.dueDate.optional(),
   estimateMinutes: taskFields.estimateMinutes.optional(),
   sourceMeetingId: taskFields.sourceMeetingId.optional(),
+  /**
+   * Steps written in the same breath as the task. Only on create: an existing
+   * task's checklist is edited one step at a time through the subtask actions.
+   */
+  subtasks: z
+    .array(z.string().trim().min(1).max(SUBTASK_TITLE_MAX))
+    .max(MAX_SUBTASKS_PER_TASK)
+    .default([]),
 });
 
 export type TaskInput = z.input<typeof taskInput>;
@@ -112,6 +121,14 @@ export async function createTask(raw: TaskInput): Promise<ActionResult<TaskView>
         // Created by a person, so it is a confirmed commitment from the start.
         confirmedByHuman: true,
         completedAt: input.status === "COMPLETED" ? new Date() : null,
+        // Created together with the task, so they land in one write and the
+        // task never exists for a moment without the steps it was typed with.
+        subtasks: {
+          create: input.subtasks.map((title, index) => ({
+            title,
+            position: (index + 1) * 100,
+          })),
+        },
       },
       select: { id: true },
     });
@@ -120,7 +137,10 @@ export async function createTask(raw: TaskInput): Promise<ActionResult<TaskView>
       workspaceId: session.workspace.id,
       actorMemberId: session.member.id,
       type: "TASK_CREATED",
-      summary: `created “${input.title}”`,
+      summary:
+        input.subtasks.length > 0
+          ? `created “${input.title}” with ${input.subtasks.length} steps`
+          : `created “${input.title}”`,
       taskId: created.id,
     });
 
