@@ -1,8 +1,9 @@
 "use client";
 
-import { Check, Copy, Download, Maximize2 } from "lucide-react";
+import { Check, Copy, Download, Maximize2, Paperclip } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
+import { isAttachmentHref } from "@/shared/doc/attachments";
 import {
   parseDoc,
   type DocBlock,
@@ -27,6 +28,9 @@ import { Dialog, DialogContent } from "@/frontend/components/ui/dialog";
  *    editor; and
  *  * images, which open full size, because a screenshot pasted into a sidebar
  *    column is otherwise unreadable.
+ *
+ * An attached file is a link like any other in the Markdown; it is only drawn
+ * differently — as a chip that downloads — so the eye finds it in a long brief.
  */
 export function DocContent({
   markdown,
@@ -354,6 +358,22 @@ function Inline({
               </code>
             );
           case "link": {
+            if (isAttachmentHref(node.href)) {
+              return (
+                <a
+                  key={index}
+                  href={node.href}
+                  download
+                  className="inline-flex max-w-full items-center gap-1.5 rounded-md border border-line bg-raised px-2 py-0.5 align-middle text-[0.9em] text-accent-bright transition-colors hover:border-line-strong hover:bg-hover"
+                >
+                  <Paperclip className="h-3 w-3 shrink-0" aria-hidden />
+                  <span className="truncate">
+                    <Inline nodes={node.children} onZoom={onZoom} />
+                  </span>
+                </a>
+              );
+            }
+
             const internal = node.href.startsWith("/") || node.href.startsWith("#");
             if (internal) {
               return (

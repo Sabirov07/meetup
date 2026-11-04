@@ -3,17 +3,23 @@ import { message } from "@/backend/i18n/message";
 import { getSessionContext } from "@/backend/auth/guards";
 import { db } from "@/backend/db";
 import {
+  attachmentKind,
   attachmentUrl,
+  fileMimeType,
   formatBytes,
-  isAcceptedImage,
-  MAX_IMAGE_BYTES,
+  maxBytesFor,
   type UploadedAttachment,
 } from "@/shared/doc/attachments";
 import { readImageSize } from "@/backend/images/dimensions";
 
 /**
- * Receives an image pasted, dropped or picked inside a document — a task's, or
- * a knowledge page's.
+ * Receives a file pasted, dropped or picked inside a document — a task's, or a
+ * knowledge page's.
+ *
+ * Two kinds land here. An image is embedded in the body; anything else on the
+ * allow-list (a translations JSON, a CSV, a PDF) is stored the same way and
+ * linked as a download, so the file lives with the work instead of in whatever
+ * chat it was sent through.
  *
  * A Route Handler rather than a Server Function because Server Functions cap
  * their request body at 1 MB by default, and a screenshot routinely exceeds
@@ -55,7 +61,7 @@ export async function POST(request: Request) {
     );
   }
   if (!(file instanceof File)) {
-    return NextResponse.json({ error: await message("errors.upload.noImage") }, { status: 400 });
+    return NextResponse.json({ error: await message("errors.upload.noFile") }, { status: 400 });
   }
 
   // Workspace isolation: the document has to be one this session can already
@@ -78,7 +84,9 @@ export async function POST(request: Request) {
     );
   }
 
-  if (!isAcceptedImage(file.type)) {
+  const filename = safeFilename(file.name);
+  const kind = attachmentKind({ type: file.type, name: filename });
+  if (!kind) {
     return NextResponse.json(
       { error: await message("errors.upload.wrongType") },
       { status: 415 },
@@ -90,15 +98,24 @@ export async function POST(request: Request) {
   if (bytes.byteLength === 0) {
     return NextResponse.json({ error: await message("errors.upload.empty") }, { status: 400 });
   }
-  if (bytes.byteLength > MAX_IMAGE_BYTES) {
+  const limit = maxBytesFor(kind);
+  if (bytes.byteLength > limit) {
     return NextResponse.json(
-      { error: `Images have to be ${formatBytes(MAX_IMAGE_BYTES)} or smaller.` },
+      {
+        error: await message("errors.upload.overLimit", {
+          size: formatBytes(bytes.byteLength),
+          limit: formatBytes(limit),
+        }),
+      },
       { status: 413 },
     );
   }
 
-  const size = readImageSize(bytes);
-  const filename = safeFilename(file.name);
+  // An image's type is the one the browser detected and we accepted; a carried
+  // file's comes from its extension, so a caller cannot choose what the
+  // download route will later serve it as.
+  const mimeType = kind === "image" ? file.type.toLowerCase() : fileMimeType(filename);
+  const size = kind === "image" ? readImageSize(bytes) : null;
 
   const row = await db.attachment.create({
     data: {
@@ -107,7 +124,7 @@ export async function POST(request: Request) {
       knowledgeDocId: owner.kind === "knowledge" ? owner.id : null,
       uploadedByMemberId: session.member.id,
       filename,
-      mimeType: file.type.toLowerCase(),
+      mimeType,
       byteSize: bytes.byteLength,
       width: size?.width ?? null,
       height: size?.height ?? null,
@@ -118,6 +135,7 @@ export async function POST(request: Request) {
 
   const payload: UploadedAttachment = {
     id: row.id,
+    kind,
     url: attachmentUrl(row.id),
     filename: row.filename,
     byteSize: row.byteSize,
@@ -130,7 +148,7 @@ export async function POST(request: Request) {
 /**
  * A pasted screenshot arrives as `image.png`; a dropped file brings whatever
  * name it had. Either way only the basename is kept, and it is only ever used
- * as alt text and as a download name.
+ * as alt text, as a link label and as a download name.
  */
 function safeFilename(raw: string): string {
   const base = raw.split(/[\\/]/).pop()?.trim() ?? "";

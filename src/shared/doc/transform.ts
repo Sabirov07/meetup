@@ -342,8 +342,3 @@ export function slashTrigger(
   if (!match) return null;
   return { from: caret - match[1].length - 1, query: match[1] };
 }
-
-/** Markdown for an uploaded image, as a block of its own. */
-export function imageMarkdown(url: string, alt: string): string {
-  return `![${alt.replace(/[[\]]/g, "")}](${url})`;
-}

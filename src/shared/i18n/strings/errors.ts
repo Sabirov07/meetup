@@ -245,29 +245,32 @@ export const errors = {
     "Не удалось прочитать загруженный файл.",
   ],
   "errors.upload.oneDocument": [
-    "An image has to belong to exactly one document.",
-    "Изображение должно принадлежать ровно одному документу.",
+    "An attachment has to belong to exactly one document.",
+    "Вложение должно принадлежать ровно одному документу.",
   ],
-  "errors.upload.noImage": ["No image was attached.", "Изображение не приложено."],
+  "errors.upload.noFile": ["No file was attached.", "Файл не приложен."],
   "errors.upload.docGone": [
     "That document no longer exists in this workspace.",
     "Этого документа больше нет в пространстве.",
   ],
   "errors.upload.wrongType": [
-    "Only PNG, JPEG, GIF, WebP and AVIF images can be embedded.",
-    "Встроить можно только изображения PNG, JPEG, GIF, WebP и AVIF.",
+    "That kind of file cannot be attached here.",
+    "Такой файл сюда приложить нельзя.",
   ],
-  "errors.upload.empty": ["That image is empty.", "Это изображение пустое."],
-  "errors.upload.notAnImage": [
-    "{name} is not an image Meetup can embed. PNG, JPEG, GIF, WebP and AVIF work.",
-    "{name} — не то изображение, которое Meetup может встроить. Подойдут PNG, JPEG, GIF, WebP и AVIF.",
+  "errors.upload.empty": ["That file is empty.", "Этот файл пустой."],
+  "errors.upload.unsupported": [
+    "{name} cannot be attached. Images, and data and document files — JSON, CSV, XML, PDF, Word, Excel, ZIP — work.",
+    "{name} приложить нельзя. Подойдут изображения, а также данные и документы — JSON, CSV, XML, PDF, Word, Excel, ZIP.",
   ],
   "errors.upload.tooLarge": [
     "{name} is {size}. The limit is {limit}.",
     "{name} весит {size}. Предел — {limit}.",
   ],
+  "errors.upload.overLimit": [
+    "That file is {size}. The limit is {limit}.",
+    "Этот файл весит {size}. Предел — {limit}.",
+  ],
   "errors.upload.thatFile": ["That file", "Этот файл"],
-  "errors.upload.thatImage": ["That image", "Это изображение"],
 
   "errors.workspace.nameTooShort": [
     "Give the workspace a name of at least 2 characters.",

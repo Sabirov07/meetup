@@ -14,25 +14,26 @@ export const doc = {
   "doc.showPreview": ["Show the preview", "Показать предпросмотр"],
   "doc.togglePreview": ["Toggle the preview", "Переключить предпросмотр"],
   "doc.empty": [
-    "Write the brief — headings, checklists, screenshots.",
-    "Опишите задачу — заголовки, чек-листы, скриншоты.",
+    "Write the brief — headings, checklists, screenshots, files.",
+    "Опишите задачу — заголовки, чек-листы, скриншоты, файлы.",
   ],
   "doc.saveFailed": ["Could not save the document", "Не удалось сохранить документ"],
   "doc.editorHint": [
-    "{slash} for blocks · paste or drop an image · {save} when done",
-    "{slash} — блоки · вставьте или перетащите картинку · {save} — готово",
+    "{slash} for blocks · paste or drop an image or a file · {save} when done",
+    "{slash} — блоки · вставьте или перетащите картинку или файл · {save} — готово",
   ],
   "doc.expandedHint": [
-    "Autosaves as you write. {slash} inserts a block, {link} links the selection, and images can be pasted or dropped anywhere in the text.",
-    "Сохраняется само по ходу письма. {slash} вставляет блок, {link} превращает выделение в ссылку, а картинки можно вставлять и перетаскивать в любое место текста.",
+    "Autosaves as you write. {slash} inserts a block, {link} links the selection, and images and files can be pasted or dropped anywhere in the text.",
+    "Сохраняется само по ходу письма. {slash} вставляет блок, {link} превращает выделение в ссылку, а картинки и файлы можно вставлять и перетаскивать в любое место текста.",
   ],
   "doc.placeholder": [
-    "Write the brief. Paste a screenshot, or type / for a block.",
-    "Опишите задачу. Вставьте скриншот или введите / для блока.",
+    "Write the brief. Paste a screenshot, drop a file, or type / for a block.",
+    "Опишите задачу. Вставьте скриншот, перетащите файл или введите / для блока.",
   ],
   "doc.nothingToPreview": ["Nothing to preview yet.", "Пока нечего показывать."],
-  "doc.dropToEmbed": ["Drop to embed", "Отпустите, чтобы вставить"],
+  "doc.dropToEmbed": ["Drop to attach", "Отпустите, чтобы приложить"],
   "doc.image": ["Image", "Изображение"],
+  "doc.attachment": ["Attachment", "Вложение"],
   "doc.markNotDone": ["Mark as not done", "Снять отметку"],
   "doc.markDone": ["Mark as done", "Отметить как сделанное"],
   "doc.linkPlaceholder": ["https://…", "https://…"],
@@ -58,7 +59,7 @@ export const doc = {
 
   "doc.upload.rejected": ["That file was not added", "Файл не добавлен"],
   "doc.upload.incomplete": ["The upload did not complete.", "Загрузка не завершилась."],
-  "doc.upload.failed": ["Could not add that image", "Не удалось добавить изображение"],
+  "doc.upload.failed": ["Could not add that file", "Не удалось добавить файл"],
 
   "doc.toolbar.h1": ["Heading 1", "Заголовок 1"],
   "doc.toolbar.h2": ["Heading 2", "Заголовок 2"],
@@ -77,6 +78,10 @@ export const doc = {
   "doc.toolbar.imageDrop": [
     "Image — or paste and drop them",
     "Изображение — или вставьте и перетащите",
+  ],
+  "doc.toolbar.fileAttach": [
+    "Attach a file — JSON, CSV, PDF, Word, Excel, ZIP",
+    "Приложить файл — JSON, CSV, PDF, Word, Excel, ZIP",
   ],
 
   "doc.block.insert": ["Insert a block", "Вставить блок"],
@@ -105,5 +110,11 @@ export const doc = {
   "doc.block.image.keywords": [
     "image picture screenshot photo attach upload",
     "изображение картинка скриншот фото загрузить",
+  ],
+  "doc.block.file": ["File", "Файл"],
+  "doc.block.file.hint": ["attach", "вложить"],
+  "doc.block.file.keywords": [
+    "file attachment document json csv pdf word excel zip translations upload",
+    "файл вложение документ джейсон csv pdf word excel zip переводы загрузить приложить",
   ],
 } satisfies Entries;

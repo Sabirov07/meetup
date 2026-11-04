@@ -15,6 +15,7 @@ import {
   ListOrdered,
   Loader2,
   Minus,
+  Paperclip,
   Quote,
   Strikethrough,
   Type,
@@ -32,6 +33,9 @@ import {
 } from "react";
 import { toast } from "sonner";
 import {
+  attachmentKind,
+  attachmentMarkdown,
+  FILE_ACCEPT_ATTRIBUTE,
   IMAGE_ACCEPT_ATTRIBUTE,
   rejectionReason,
   UPLOAD_ENDPOINT,
@@ -42,7 +46,6 @@ import {
   applyLink,
   blockKindAt,
   continueList,
-  imageMarkdown,
   indentLines,
   insertBlock,
   replaceRange,
@@ -70,10 +73,10 @@ import { DocContent } from "./doc-content";
  * document model and a serialiser (ProseMirror, Lexical) to behave under
  * paste, undo and selection, and half of one behaves worse than a plain text
  * box. What is here instead is the part people actually reach for — a toolbar
- * and shortcuts that write the syntax, a slash menu for blocks, images on
- * paste or drop, and a live preview of the real rendering — with native undo,
- * native selection and a body that is still readable when something goes
- * wrong.
+ * and shortcuts that write the syntax, a slash menu for blocks, images and
+ * files on paste or drop, and a live preview of the real rendering — with
+ * native undo, native selection and a body that is still readable when
+ * something goes wrong.
  *
  * Every text operation comes from `lib/doc/transform`, so this component is
  * only wiring: events in, pure edit out, caret restored.
@@ -99,7 +102,7 @@ export function DocEditor({
   onChange: (next: string) => void;
   /**
    * The document uploads belong to — a task or a knowledge page. The server
-   * authorises against it, so an image can never land somewhere the person
+   * authorises against it, so an upload can never land somewhere the person
    * cannot already see.
    */
   attachTo: { kind: "task" | "knowledge"; id: string };
@@ -125,6 +128,9 @@ export function DocEditor({
   className?: string;
 }) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  // Two pickers rather than one: a person reaching for a screenshot should not
+  // have to scroll past every spreadsheet in the folder, and the other way round.
+  const imageInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // The parent owns `value`, so async callbacks read it from a ref to avoid
@@ -209,13 +215,13 @@ export function DocEditor({
       }
       if (accepted.length === 0) return;
 
-      // Where the image should land, and the text that was there at the time.
+      // Where the attachment should land, and the text that was there at the time.
       let anchor = readSelection();
       let expected = latest.current;
 
       for (const file of accepted) {
         const key = `${Date.now()}-${file.name}-${Math.random().toString(36).slice(2, 7)}`;
-        setUploads((previous) => [...previous, { key, name: file.name || "image" }]);
+        setUploads((previous) => [...previous, { key, name: file.name || t("doc.attachment") }]);
         try {
           const form = new FormData();
           form.set(attachTo.kind === "task" ? "taskId" : "docId", attachTo.id);
@@ -235,11 +241,8 @@ export function DocEditor({
           const current = latest.current;
           const at =
             current === expected ? anchor : { start: current.length, end: current.length };
-          const edit = insertBlock(
-            current,
-            at,
-            imageMarkdown(payload.url, payload.filename),
-          );
+          // An image embeds where the caret is; a file becomes a download link.
+          const edit = insertBlock(current, at, attachmentMarkdown(payload));
           apply(edit);
           expected = edit.value;
           anchor = edit.selection;
@@ -273,9 +276,10 @@ export function DocEditor({
       const cleared = replaceRange(latest.current, slash.from, caret, "");
       closeSlash();
 
-      if (item.action === "image") {
+      if (item.action) {
         apply(cleared);
-        fileInputRef.current?.click();
+        const input = item.action === "image" ? imageInputRef : fileInputRef;
+        input.current?.click();
         return;
       }
       apply(item.run(cleared.value, cleared.selection));
@@ -361,12 +365,14 @@ export function DocEditor({
   }
 
   function handlePaste(event: ClipboardEvent<HTMLTextAreaElement>) {
-    const images = Array.from(event.clipboardData.files).filter((file) =>
-      file.type.startsWith("image/"),
+    // Only files this document can take; anything else stays a normal paste,
+    // so copying a folder of binaries does not swallow the text on the clipboard.
+    const files = Array.from(event.clipboardData.files).filter((file) =>
+      attachmentKind(file),
     );
-    if (images.length > 0) {
+    if (files.length > 0) {
       event.preventDefault();
-      void uploadFiles(images);
+      void uploadFiles(files);
       return;
     }
 
@@ -500,6 +506,11 @@ export function DocEditor({
         <ToolButton
           label="doc.toolbar.imageDrop"
           icon={ImagePlus}
+          onClick={() => imageInputRef.current?.click()}
+        />
+        <ToolButton
+          label="doc.toolbar.fileAttach"
+          icon={Paperclip}
           onClick={() => fileInputRef.current?.click()}
         />
 
@@ -639,9 +650,22 @@ export function DocEditor({
       {footer}
 
       <input
-        ref={fileInputRef}
+        ref={imageInputRef}
         type="file"
         accept={IMAGE_ACCEPT_ATTRIBUTE}
+        multiple
+        hidden
+        onChange={(event) => {
+          const files = Array.from(event.target.files ?? []);
+          event.target.value = "";
+          if (files.length > 0) void uploadFiles(files);
+        }}
+      />
+
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept={FILE_ACCEPT_ATTRIBUTE}
         multiple
         hidden
         onChange={(event) => {
@@ -711,13 +735,20 @@ type SlashItem = {
   hint: string;
   keywords: string;
   icon: IconComponent;
-  action?: "image";
+  /** Opens a file picker instead of editing the text. */
+  action?: "image" | "file";
   run: (value: string, selection: TextSelection) => TextEdit;
 };
 
-type SlashDefinition = Omit<SlashItem, "label" | "keywords"> & {
+type SlashDefinition = Omit<SlashItem, "label" | "keywords" | "hint"> & {
   label: TranslationKey;
   keywords: TranslationKey;
+  /**
+   * Most hints are the syntax the item writes (`##`, ```` ``` ````), which is
+   * the same in every language. The two that open a picker say a word instead,
+   * so they carry a key.
+   */
+  hint: string | { key: TranslationKey };
 };
 
 const blockItem = (
@@ -771,10 +802,19 @@ const SLASH_ITEMS: SlashDefinition[] = [
   {
     id: "image",
     label: "doc.block.image",
-    hint: "doc.block.image.hint",
+    hint: { key: "doc.block.image.hint" },
     keywords: "doc.block.image.keywords",
     icon: ImagePlus,
     action: "image",
+    run: (value, selection) => ({ value, selection }),
+  },
+  {
+    id: "file",
+    label: "doc.block.file",
+    hint: { key: "doc.block.file.hint" },
+    keywords: "doc.block.file.keywords",
+    icon: Paperclip,
+    action: "file",
     run: (value, selection) => ({ value, selection }),
   },
 ];
@@ -787,7 +827,7 @@ function filterSlashItems(query: string, t: Translate): SlashItem[] {
   const items: SlashItem[] = SLASH_ITEMS.map((item) => ({
     ...item,
     label: t(item.label),
-    hint: item.id === "image" ? t("doc.block.image.hint") : item.hint,
+    hint: typeof item.hint === "string" ? item.hint : t(item.hint.key),
     keywords: t(item.keywords),
   }));
 
