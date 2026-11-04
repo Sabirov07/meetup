@@ -992,10 +992,15 @@ function StatusCell({ task }: { task: TaskView }) {
   return (
     <Menu>
       <MenuTrigger asChild>
-        <CellButton label={t("tasks.table.statusIs", { title: task.title, value: label })}>
-          <Badge tone={meta.tone} className="min-w-0">
+        <CellButton
+          label={t("tasks.table.statusIs", { title: task.title, value: label })}
+          className="w-full"
+        >
+          <Badge tone={meta.tone} className="min-w-0 max-w-full shrink">
             <Dot tone={meta.tone} />
-            <span className="truncate">{label}</span>
+            <span className="truncate" title={label}>
+              {label}
+            </span>
           </Badge>
         </CellButton>
       </MenuTrigger>
