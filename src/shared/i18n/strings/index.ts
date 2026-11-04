@@ -14,6 +14,7 @@ import { settings } from "./settings";
 import { doc } from "./doc";
 import { errors } from "./errors";
 import { knowledge } from "./knowledge";
+import { flowcharts } from "./flowcharts";
 import { team } from "./team";
 import { spaces } from "./spaces";
 import { discussion } from "./discussion";
@@ -42,6 +43,7 @@ export const strings = {
   ...doc,
   ...errors,
   ...knowledge,
+  ...flowcharts,
   ...team,
   ...spaces,
   ...discussion,

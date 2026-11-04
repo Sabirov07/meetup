@@ -40,6 +40,14 @@ export const errors = {
     "Этой страницы больше нет в пространстве.",
   ],
   "errors.page.goneShort": ["That page no longer exists.", "Этой страницы больше нет."],
+  "errors.flowchart.gone": [
+    "That flowchart no longer exists in this workspace.",
+    "Этой блок-схемы больше нет в пространстве.",
+  ],
+  "errors.flowchart.goneShort": ["That flowchart no longer exists.", "Этой блок-схемы больше нет."],
+  "errors.flowchart.invalid": ["That flowchart is not valid.", "Эта блок-схема некорректна."],
+  "errors.flowchart.needsTitle": ["Give the flowchart a title.", "Дайте блок-схеме название."],
+  "errors.flowchart.untitled": ["Untitled flowchart", "Блок-схема без названия"],
   "errors.proposal.gone": [
     "That proposal no longer exists.",
     "Этого предложения больше нет.",

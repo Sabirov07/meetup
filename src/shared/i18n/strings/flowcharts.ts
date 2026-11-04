@@ -1,0 +1,82 @@
+import type { Entries } from "./entry";
+
+/** The flowchart list and the canvas a single chart is drawn on. */
+export const flowcharts = {
+  "flowcharts.heading": ["Flowcharts", "Блок-схемы"],
+  "flowcharts.description": [
+    "How the work moves, drawn as boxes and arrows: the steps, the decisions, and what happens after each.",
+    "Как движется работа, в виде блоков и стрелок: шаги, решения и что происходит после каждого.",
+  ],
+  "flowcharts.new": ["New flowchart", "Новая блок-схема"],
+  "flowcharts.searchPlaceholder": ["Search flowcharts…", "Поиск блок-схем…"],
+  "flowcharts.searchLabel": ["Search flowcharts", "Поиск по блок-схемам"],
+  "flowcharts.empty.title": ["No flowcharts yet", "Блок-схем пока нет"],
+  "flowcharts.empty.description": [
+    "Draw the first process the team keeps explaining out loud — how a request comes in, who decides, where it ends up.",
+    "Нарисуйте процесс, который команде приходится объяснять вслух: как приходит запрос, кто решает, чем всё заканчивается.",
+  ],
+  "flowcharts.empty.action": ["Draw the first one", "Нарисовать первую"],
+  "flowcharts.noMatches.title": ["Nothing matches", "Ничего не найдено"],
+  "flowcharts.noMatches.description": ["Try a different word.", "Попробуйте другое слово."],
+  "flowcharts.actionsFor": ["Actions for {title}", "Действия: {title}"],
+  "flowcharts.delete": ["Delete flowchart", "Удалить блок-схему"],
+  "flowcharts.deleted": ["Flowchart deleted", "Блок-схема удалена"],
+  "flowcharts.steps": ["{count} steps", "Шагов: {count}"],
+  "flowcharts.arrows": ["{count} arrows", "Стрелок: {count}"],
+  "flowcharts.untitled": ["Untitled flowchart", "Блок-схема без названия"],
+  "flowcharts.title": ["Flowchart title", "Название блок-схемы"],
+  "flowcharts.descriptionPlaceholder": [
+    "What this process is for, in a sentence…",
+    "Для чего этот процесс, одним предложением…",
+  ],
+  "flowcharts.descriptionLabel": ["Description", "Описание"],
+  "flowcharts.editedBy": ["{name} edited {when}", "{name} изменил(а) {when}"],
+  "flowcharts.edited": ["Edited {when}", "Изменено {when}"],
+  "flowcharts.chartActions": ["Flowchart actions", "Действия с блок-схемой"],
+
+  "flowcharts.starter.start": ["Start", "Начало"],
+  "flowcharts.starter.step": ["First step", "Первый шаг"],
+  "flowcharts.starter.end": ["Done", "Готово"],
+
+  "flowcharts.kind.start": ["Start", "Начало"],
+  "flowcharts.kind.process": ["Step", "Шаг"],
+  "flowcharts.kind.decision": ["Decision", "Решение"],
+  "flowcharts.kind.io": ["Input / output", "Ввод / вывод"],
+  "flowcharts.kind.end": ["End", "Конец"],
+  "flowcharts.kind.note": ["Note", "Заметка"],
+  "flowcharts.kind.newLabel": ["New {kind}", "{kind}"],
+
+  "flowcharts.tool.add": ["Add", "Добавить"],
+  "flowcharts.tool.connect": ["Connect", "Соединить"],
+  "flowcharts.tool.connectHint": [
+    "Click the box the arrow starts from, then the box it points to.",
+    "Нажмите на блок, откуда идёт стрелка, затем на блок, куда она ведёт.",
+  ],
+  "flowcharts.tool.connectFrom": ["Now click where the arrow goes", "Теперь нажмите, куда ведёт стрелка"],
+  "flowcharts.tool.fit": ["Fit to view", "Показать всё"],
+  "flowcharts.tool.zoomIn": ["Zoom in", "Приблизить"],
+  "flowcharts.tool.zoomOut": ["Zoom out", "Отдалить"],
+  "flowcharts.tool.delete": ["Delete selected", "Удалить выбранное"],
+  "flowcharts.tool.canvasHint": [
+    "Drag boxes to move them. Double-click a box or arrow to rename it. Delete removes the selection.",
+    "Перетаскивайте блоки. Двойной клик по блоку или стрелке — переименовать. Delete удаляет выбранное.",
+  ],
+  "flowcharts.canvasLabel": ["Flowchart canvas", "Холст блок-схемы"],
+  "flowcharts.edgeLabel": ["Arrow label", "Подпись стрелки"],
+  "flowcharts.edgeLabelPlaceholder": ["yes / no / …", "да / нет / …"],
+  "flowcharts.nodeLabel": ["Box text", "Текст блока"],
+  "flowcharts.nodeKind": ["Box type", "Тип блока"],
+  "flowcharts.selection.none": [
+    "Select a box or an arrow to edit it.",
+    "Выберите блок или стрелку, чтобы изменить.",
+  ],
+  "flowcharts.selection.node": ["Selected box", "Выбранный блок"],
+  "flowcharts.selection.edge": ["Selected arrow", "Выбранная стрелка"],
+  "flowcharts.selection.reverse": ["Reverse direction", "Развернуть стрелку"],
+  "flowcharts.selection.remove": ["Remove", "Удалить"],
+
+  "flowcharts.createFailed": ["Could not start that flowchart", "Не удалось создать блок-схему"],
+  "flowcharts.saveFailed": ["Could not save this flowchart", "Не удалось сохранить блок-схему"],
+  "flowcharts.saveChangeFailed": ["Could not save that change", "Не удалось сохранить изменение"],
+  "flowcharts.deleteFailed": ["Could not delete that flowchart", "Не удалось удалить блок-схему"],
+} satisfies Entries;

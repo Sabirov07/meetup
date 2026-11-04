@@ -7,6 +7,8 @@
  * the data-access boundary is an identity cast rather than a lookup table.
  */
 
+import type { FlowchartDocument } from "./flowchart";
+
 export const TASK_STATUSES = ["TODO", "IN_PROGRESS", "BLOCKED", "COMPLETED"] as const;
 export type TaskStatus = (typeof TASK_STATUSES)[number];
 
@@ -383,6 +385,24 @@ export type KnowledgeDocSummary = {
 /** One page, opened. */
 export type KnowledgeDocView = KnowledgeDocSummary & {
   body: string | null;
+  createdBy: MemberSummary | null;
+};
+
+/** One flowchart in the list. The diagram itself is not sent to the list. */
+export type FlowchartSummary = {
+  id: string;
+  title: string;
+  description: string | null;
+  nodes: number;
+  edges: number;
+  updatedBy: MemberSummary | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+/** One flowchart, opened on the canvas. */
+export type FlowchartView = FlowchartSummary & {
+  document: FlowchartDocument;
   createdBy: MemberSummary | null;
 };
 

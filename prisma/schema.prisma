@@ -288,6 +288,7 @@ model Workspace {
   recommendations Recommendation[]
   attachments     Attachment[]
   knowledgeDocs   KnowledgeDoc[]
+  flowcharts      Flowchart[]
   invites         WorkspaceInvite[]
   spaces          Space[]
 
@@ -313,6 +314,8 @@ model WorkspaceMember {
   uploads              Attachment[]
   authoredKnowledge    KnowledgeDoc[]       @relation("KnowledgeAuthor")
   editedKnowledge      KnowledgeDoc[]       @relation("KnowledgeEditor")
+  authoredFlowcharts   Flowchart[]          @relation("FlowchartAuthor")
+  editedFlowcharts     Flowchart[]          @relation("FlowchartEditor")
   createdMeetings      Meeting[]            @relation("MeetingCreator")
   meetingParticipation MeetingParticipant[]
   activity             ActivityEvent[]
@@ -844,6 +847,32 @@ model KnowledgeDoc {
   @@index([workspaceId, updatedAt])
   @@index([workspaceId, isPinned])
   @@map("knowledge_docs")
+}
+
+/// A process drawn as boxes and arrows: the shape of how work moves, kept
+/// next to the pages that describe it in words.
+model Flowchart {
+  id          String   @id @default(cuid())
+  workspaceId String
+  title       String
+  description String?
+  /// The diagram itself — `FlowchartDocument` in shared/domain/flowchart.ts:
+  /// nodes with a kind, a label and a position, and the edges between them.
+  /// JSON rather than tables because a diagram is read and written whole.
+  document    Json     @default("{\"nodes\":[],\"edges\":[]}")
+
+  createdByMemberId String?
+  updatedByMemberId String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  workspace Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  createdBy WorkspaceMember? @relation("FlowchartAuthor", fields: [createdByMemberId], references: [id], onDelete: SetNull)
+  updatedBy WorkspaceMember? @relation("FlowchartEditor", fields: [updatedByMemberId], references: [id], onDelete: SetNull)
+
+  @@index([workspaceId, updatedAt])
+  @@map("flowcharts")
 }
 
 model Recommendation {

@@ -14,6 +14,7 @@ export const nav = {
   "nav.section.workspace": ["Workspace", "Пространство"],
   "nav.team": ["Team", "Команда"],
   "nav.knowledge": ["Knowledge", "База знаний"],
+  "nav.flowcharts": ["Flowcharts", "Блок-схемы"],
   "nav.activity": ["Activity", "Активность"],
   "nav.settings": ["Settings", "Настройки"],
   "nav.main": ["Main", "Основное"],

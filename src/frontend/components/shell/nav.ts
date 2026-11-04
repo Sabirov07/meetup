@@ -3,6 +3,7 @@ import {
   CalendarClock,
   LayoutDashboard,
   Library,
+  Workflow,
   ListTodo,
   Settings,
   Sparkles,
@@ -53,6 +54,7 @@ export const navSections: NavSection[] = [
     items: [
       { href: "/team", labelKey: "nav.team", icon: UsersRound },
       { href: "/knowledge", labelKey: "nav.knowledge", icon: Library },
+      { href: "/flowcharts", labelKey: "nav.flowcharts", icon: Workflow },
       { href: "/activity", labelKey: "nav.activity", icon: Activity },
       { href: "/settings", labelKey: "nav.settings", icon: Settings },
     ],
