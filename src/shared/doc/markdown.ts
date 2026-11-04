@@ -32,9 +32,16 @@ export type InlineNode =
 export type DocListItem = {
   /** Zero-based source line, so a checkbox click can rewrite exactly this row. */
   line: number;
-  /** Nesting level, capped at 2 — deeper indents read as noise in a sidebar. */
+  /** Nesting level: one per two spaces (or one tab) of indent, no ceiling. */
   depth: number;
-  /** Null for a plain bullet; true / false for a checklist row. */
+  /** How the row is marked — items of different kinds nest freely in one list. */
+  marker: "bullet" | "ordered" | "check";
+  /**
+   * The number shown for an ordered row. Counts siblings at the same depth,
+   * so a numbered list nested under a numbered list restarts at 1.
+   */
+  number: number;
+  /** Null for a plain bullet or number; true / false for a checklist row. */
   checked: boolean | null;
   content: InlineNode[];
 };
@@ -46,8 +53,7 @@ export type DocBlock =
   | { type: "paragraph"; content: InlineNode[] }
   /** An image on a line of its own, rendered as a full-width figure. */
   | { type: "figure"; src: string; alt: string }
-  | { type: "list"; ordered: boolean; start: number; items: DocListItem[] }
-  | { type: "checklist"; items: DocListItem[] }
+  | { type: "list"; items: DocListItem[] }
   | { type: "quote"; lines: InlineNode[][] }
   | { type: "code"; language: string | null; value: string }
   | { type: "divider" };
@@ -170,18 +176,15 @@ function opensBlock(line: string): boolean {
 /**
  * Reads one run of list items.
  *
- * Checklist rows and plain bullets are different blocks, because one renders
- * as interactive checkboxes and the other as a bulleted list, so a run breaks
- * where the kind changes.
+ * Bullets, numbers and checkboxes all belong to the same run, so a numbered
+ * step can hold a bulleted sub-list and a bullet can hold a checklist. The
+ * run ends at a blank line or at a line that is not a list item.
  */
 function readList(lines: string[], from: number): { block: DocBlock; next: number } {
-  const first = ORDERED.exec(lines[from]);
-  const ordered = Boolean(first);
-  const firstBullet = BULLET.exec(lines[from]);
-  const firstChecked = !ordered && firstBullet ? CHECKBOX.exec(firstBullet[2]) : null;
-  const checklist = Boolean(firstChecked);
-
   const items: DocListItem[] = [];
+  // Counters per depth, so numbering restarts inside each nested list and
+  // resumes when the list comes back up a level.
+  const counters: number[] = [];
   let i = from;
 
   while (i < lines.length) {
@@ -189,29 +192,45 @@ function readList(lines: string[], from: number): { block: DocBlock; next: numbe
     if (line.trim() === "") break;
 
     const orderedMatch = ORDERED.exec(line);
-    const bulletMatch = BULLET.exec(line);
+    const bulletMatch = orderedMatch ? null : BULLET.exec(line);
     if (!orderedMatch && !bulletMatch) break;
-    if (Boolean(orderedMatch) !== ordered) break;
 
-    const indent = (orderedMatch ?? bulletMatch)![1].length;
+    const indent = (orderedMatch ?? bulletMatch)![1];
+    const depth = listDepth(indent);
     const rest = orderedMatch ? orderedMatch[3] : bulletMatch![2];
-    const checkbox = ordered ? null : CHECKBOX.exec(rest);
-    if (Boolean(checkbox) !== checklist) break;
+    const checkbox = orderedMatch ? null : CHECKBOX.exec(rest);
+    const marker = checkbox ? "check" : orderedMatch ? "ordered" : "bullet";
+
+    // Going shallower closes every deeper list, so their counters reset.
+    counters.length = depth + 1;
+    let number = 0;
+    if (marker === "ordered") {
+      // A list that starts at 3 keeps 3; one that continues counts on.
+      number = counters[depth] ? counters[depth] + 1 : Number(orderedMatch![2]);
+      counters[depth] = number;
+    } else {
+      counters[depth] = 0;
+    }
 
     items.push({
       line: i,
-      depth: Math.min(Math.floor(indent / 2), 2),
+      depth,
+      marker,
+      number,
       checked: checkbox ? checkbox[1].toLowerCase() === "x" : null,
       content: parseInline(checkbox ? checkbox[2] : rest),
     });
     i += 1;
   }
 
-  const block: DocBlock = checklist
-    ? { type: "checklist", items }
-    : { type: "list", ordered, start: ordered ? Number(first![2]) : 1, items };
+  return { block: { type: "list", items }, next: i };
+}
 
-  return { block, next: i };
+/** Two spaces or one tab per level; odd spaces round down. */
+function listDepth(indent: string): number {
+  let columns = 0;
+  for (const char of indent) columns += char === "\t" ? 2 : 1;
+  return Math.floor(columns / 2);
 }
 
 // ---------------------------------------------------------------------------
@@ -469,7 +488,6 @@ export function plainText(markdown: string | null | undefined): string {
         out.push("\n");
         break;
       case "list":
-      case "checklist":
         for (const item of block.items) {
           flattenInline(item.content, out);
           out.push("\n");
@@ -518,14 +536,14 @@ export function docStats(markdown: string | null | undefined): DocStats {
     if (block.type === "figure") images += 1;
     else if (block.type === "heading" || block.type === "paragraph") countImages(block.content);
     else if (block.type === "quote") block.lines.forEach(countImages);
-    else if (block.type === "checklist") {
+    else if (block.type === "list") {
       for (const item of block.items) {
-        total += 1;
-        if (item.checked) done += 1;
+        if (item.checked !== null) {
+          total += 1;
+          if (item.checked) done += 1;
+        }
         countImages(item.content);
       }
-    } else if (block.type === "list") {
-      block.items.forEach((item) => countImages(item.content));
     }
   }
 

@@ -166,42 +166,32 @@ function Block({
     case "figure":
       return <Figure src={block.src} alt={block.alt} relaxed={relaxed} onZoom={onZoom} />;
 
-    case "list": {
-      const Tag = block.ordered ? "ol" : "ul";
-      return (
-        <Tag
-          start={block.ordered ? block.start : undefined}
-          className={cn("space-y-1", block.ordered ? "list-none" : "list-none")}
-        >
-          {block.items.map((item, index) => (
-            <li
-              key={item.line}
-              className="flex gap-2"
-              style={{ marginInlineStart: `${item.depth * 1.1}rem` }}
-            >
-              <span className="mt-[0.1rem] shrink-0 select-none text-text-faint tabular-nums">
-                {block.ordered ? `${block.start + index}.` : bulletFor(item.depth)}
-              </span>
-              <span className="min-w-0 flex-1">
-                <Inline nodes={item.content} onZoom={onZoom} />
-              </span>
-            </li>
-          ))}
-        </Tag>
-      );
-    }
-
-    case "checklist":
+    case "list":
       return (
         <ul className="space-y-1">
-          {block.items.map((item) => (
-            <ChecklistRow
-              key={item.line}
-              item={item}
-              onToggle={onToggleCheckbox}
-              onZoom={onZoom}
-            />
-          ))}
+          {block.items.map((item) =>
+            item.marker === "check" ? (
+              <ChecklistRow
+                key={item.line}
+                item={item}
+                onToggle={onToggleCheckbox}
+                onZoom={onZoom}
+              />
+            ) : (
+              <li
+                key={item.line}
+                className="flex gap-2"
+                style={{ marginInlineStart: `${item.depth * LIST_INDENT_REM}rem` }}
+              >
+                <span className="mt-[0.1rem] shrink-0 select-none text-text-faint tabular-nums">
+                  {item.marker === "ordered" ? `${item.number}.` : bulletFor(item.depth)}
+                </span>
+                <span className="min-w-0 flex-1">
+                  <Inline nodes={item.content} onZoom={onZoom} />
+                </span>
+              </li>
+            ),
+          )}
         </ul>
       );
 
@@ -224,8 +214,12 @@ function Block({
   }
 }
 
+/** Per nesting level — tight enough that six levels still fit a sidebar. */
+const LIST_INDENT_REM = 1.1;
+
+/** The glyph cycles, so every depth stays distinguishable from its parent. */
 function bulletFor(depth: number): string {
-  return depth === 0 ? "•" : depth === 1 ? "◦" : "▪";
+  return ["•", "◦", "▪"][depth % 3];
 }
 
 function ChecklistRow({
@@ -242,7 +236,7 @@ function ChecklistRow({
   return (
     <li
       className="flex items-start gap-2"
-      style={{ marginInlineStart: `${item.depth * 1.1}rem` }}
+      style={{ marginInlineStart: `${item.depth * LIST_INDENT_REM}rem` }}
     >
       <Checkbox
         checked={item.checked === true}
