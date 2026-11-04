@@ -369,4 +369,18 @@ export const errors = {
     "Those tasks are not valid. Check the titles and try again.",
     "Эти задачи заполнены неверно. Проверьте названия и попробуйте снова.",
   ],
+  "errors.status.gone": [
+    "That status no longer exists, or it belongs to another workspace.",
+    "Этот статус больше не существует или принадлежит другому пространству.",
+  ],
+  "errors.status.invalid": ["That status is not valid.", "Статус заполнен неверно."],
+  "errors.status.needsName": ["Give the status a name.", "Дайте статусу название."],
+  "errors.status.tooMany": [
+    "A workspace can have up to {max} custom statuses.",
+    "В пространстве может быть не больше {max} своих статусов.",
+  ],
+  "errors.status.builtin": [
+    "Built-in statuses cannot be removed.",
+    "Встроенные статусы удалить нельзя.",
+  ],
 } satisfies Entries;

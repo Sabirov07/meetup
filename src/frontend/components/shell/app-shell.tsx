@@ -7,6 +7,7 @@ import type {
   SpaceSummary,
   WorkspaceOption,
   WorkspaceSummary,
+  TaskStatusDef,
 } from "@/shared/domain/types";
 import { cn } from "@/frontend/lib/utils";
 import { Dialog, DialogTitle } from "@/frontend/components/ui/dialog";
@@ -30,6 +31,7 @@ export function AppShell({
   workspace,
   workspaces,
   spaces,
+  statuses,
   unfiledCount,
   member,
   counterpart,
@@ -45,6 +47,8 @@ export function AppShell({
   workspaces: WorkspaceOption[];
   /** The sections of the active workspace, in sidebar order. */
   spaces: SpaceSummary[];
+  /** The task statuses of the active workspace, for the new-task form. */
+  statuses: TaskStatusDef[];
   /** Open tasks filed under no section. */
   unfiledCount: number;
   member: MemberSummary;
@@ -226,6 +230,7 @@ export function AppShell({
         onOpenChange={setTaskOpen}
         members={workspace.members}
         spaces={spaces}
+        statuses={statuses}
         defaultOwnerId={member.id}
         onDescribeTasks={() => openIntake(true)}
         quiet={handover}

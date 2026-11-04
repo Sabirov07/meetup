@@ -16,8 +16,10 @@ import type {
   MemberSummary,
   SortMode,
   SpaceSummary,
+  TaskStatusDef,
   TaskView,
 } from "@/shared/domain/types";
+import { BUILTIN_STATUS_DEFAULTS } from "@/shared/domain/statuses";
 import { emptyFilters, type TaskFilters } from "@/shared/domain/filters";
 
 /**
@@ -46,6 +48,19 @@ import { emptyFilters, type TaskFilters } from "@/shared/domain/filters";
  * copied from.
  */
 export const TASK_PARAM = "task";
+
+/**
+ * Used only by a provider that was not handed the workspace's list — the
+ * four built-ins, so nothing that lists statuses ever sees none.
+ */
+const FALLBACK_STATUSES: TaskStatusDef[] = BUILTIN_STATUS_DEFAULTS.map((s) => ({
+  id: s.key,
+  key: s.key,
+  label: "",
+  tone: s.tone,
+  position: s.position,
+  builtin: true,
+}));
 
 /**
  * A shareable link to one task.
@@ -87,6 +102,9 @@ type TaskStore = {
   members: MemberSummary[];
   /** The workspace's sections, for the picker and the section facet. */
   spaces: SpaceSummary[];
+  /** The workspace's statuses, in the order every surface shows them. */
+  statuses: TaskStatusDef[];
+  setStatuses: (next: TaskStatusDef[]) => void;
   currentMemberId: string;
   now: Date;
 
@@ -120,6 +138,7 @@ export function TaskStoreProvider({
   initialTasks,
   members,
   spaces = [],
+  statuses: initialStatuses = FALLBACK_STATUSES,
   currentMemberId,
   serverNow,
   defaultSort = "SMART",
@@ -129,6 +148,7 @@ export function TaskStoreProvider({
   initialTasks: TaskView[];
   members: MemberSummary[];
   spaces?: SpaceSummary[];
+  statuses?: TaskStatusDef[];
   currentMemberId: string;
   /** ISO string from the server, so the first client render matches. */
   serverNow: string;
@@ -137,6 +157,7 @@ export function TaskStoreProvider({
   children: ReactNode;
 }) {
   const [tasks, setTasks] = useState(initialTasks);
+  const [statuses, setStatuses] = useState(initialStatuses);
   const [now, setNow] = useState(() => new Date(serverNow));
   const [filters, setFiltersState] = useState<TaskFilters>({
     ...emptyFilters,
@@ -181,6 +202,11 @@ export function TaskStoreProvider({
   if (seededFrom !== initialTasks) {
     setSeededFrom(initialTasks);
     setTasks(initialTasks);
+  }
+  const [seededStatuses, setSeededStatuses] = useState(initialStatuses);
+  if (seededStatuses !== initialStatuses) {
+    setSeededStatuses(initialStatuses);
+    setStatuses(initialStatuses);
   }
 
   useEffect(() => {
@@ -285,6 +311,8 @@ export function TaskStoreProvider({
       tasks,
       members,
       spaces,
+      statuses,
+      setStatuses,
       currentMemberId,
       now,
       filters,
@@ -303,6 +331,7 @@ export function TaskStoreProvider({
       tasks,
       members,
       spaces,
+      statuses,
       currentMemberId,
       now,
       filters,

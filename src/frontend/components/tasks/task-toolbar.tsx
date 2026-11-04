@@ -7,11 +7,9 @@ import {
   SORT_MODES,
   TASK_CATEGORIES,
   TASK_PRIORITIES,
-  TASK_STATUSES,
   type SortMode,
   type TaskCategory,
   type TaskPriority,
-  type TaskStatus,
 } from "@/shared/domain/types";
 import { priorityMeta } from "@/shared/domain/labels";
 import { applyFilters, countActiveFilters, type DueWindow } from "@/shared/domain/filters";
@@ -19,7 +17,7 @@ import type { TranslationKey } from "@/shared/i18n";
 import { useI18n, useTx } from "@/frontend/i18n";
 import { cn } from "@/frontend/lib/utils";
 import { Avatar } from "@/frontend/components/ui/avatar";
-import { Badge, Count } from "@/frontend/components/ui/badge";
+import { Badge, Count, Dot } from "@/frontend/components/ui/badge";
 import { Button } from "@/frontend/components/ui/button";
 import { Checkbox, Separator, Switch, Tooltip } from "@/frontend/components/ui/feedback";
 import { Input, Label } from "@/frontend/components/ui/field";
@@ -37,6 +35,7 @@ import {
 } from "@/frontend/components/ui/menu";
 import { spaceDot } from "@/frontend/components/spaces/space-color";
 import { useTasks } from "./task-store";
+import { useStatusMeta } from "./status-meta";
 
 const dueWindows: { value: DueWindow; label: TranslationKey }[] = [
   { value: "ANY", label: "tasks.due.ANY" },
@@ -61,6 +60,7 @@ export function TaskToolbar({
 }) {
   const { tasks, members, spaces, filters, setFilters, resetFilters, sort, setSort, now } =
     useTasks();
+  const { all: allStatuses } = useStatusMeta();
   const { t } = useI18n();
   const tx = useTx();
 
@@ -170,18 +170,19 @@ export function TaskToolbar({
             )}
 
             <FacetGroup label={t("tasks.facet.status")}>
-              {TASK_STATUSES.map((status) => (
+              {allStatuses.map((status) => (
                 <FacetRow
-                  key={status}
-                  checked={filters.statuses.includes(status)}
+                  key={status.key}
+                  checked={filters.statuses.includes(status.key)}
                   onChange={() =>
                     setFilters((prev) => ({
                       ...prev,
-                      statuses: toggle(prev.statuses, status) as TaskStatus[],
+                      statuses: toggle(prev.statuses, status.key),
                     }))
                   }
                 >
-                  {t(`status.${status}.label`)}
+                  <Dot tone={status.tone} />
+                  {status.label}
                 </FacetRow>
               ))}
             </FacetGroup>

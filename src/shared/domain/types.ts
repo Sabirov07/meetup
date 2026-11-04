@@ -9,8 +9,24 @@
 
 import type { FlowchartDocument } from "./flowchart";
 
-export const TASK_STATUSES = ["TODO", "IN_PROGRESS", "BLOCKED", "COMPLETED"] as const;
-export type TaskStatus = (typeof TASK_STATUSES)[number];
+/**
+ * The key of a workspace's status definition. Four keys are built in — TODO,
+ * IN_PROGRESS, BLOCKED, COMPLETED — and a workspace may add more, so this is
+ * a string rather than a union. See `statuses.ts` for the rules.
+ */
+export type TaskStatus = string;
+
+/** One stage of a workspace's flow, in the order it is shown. */
+export type TaskStatusDef = {
+  id: string;
+  key: TaskStatus;
+  /** Empty for a built-in, which is translated from its key. */
+  label: string;
+  /** A `--tone-*` token name: neutral, accent, info, warning, success, danger. */
+  tone: string;
+  position: number;
+  builtin: boolean;
+};
 
 export const TASK_PRIORITIES = ["URGENT", "HIGH", "MEDIUM", "LOW"] as const;
 export type TaskPriority = (typeof TASK_PRIORITIES)[number];

@@ -27,13 +27,12 @@ import { toast } from "sonner";
 import { assignSubtask, setSubtaskDone } from "@/backend/actions/subtasks";
 import { createTask } from "@/backend/actions/tasks";
 import { applyFilters } from "@/shared/domain/filters";
-import { priorityMeta, statusMeta } from "@/shared/domain/labels";
+import { priorityMeta } from "@/shared/domain/labels";
 import { blockingImpact, sortTasks, unmetDependencies } from "@/shared/domain/priority";
 import { subtaskProgress } from "@/shared/domain/subtasks";
 import {
   NO_SPACE,
   TASK_PRIORITIES,
-  TASK_STATUSES,
   type SubtaskRef,
   type TaskPriority,
   type TaskStatus,
@@ -63,6 +62,8 @@ import {
 } from "@/frontend/components/ui/menu";
 import { ANY_OWNER, UNASSIGNED, zoneId } from "./task-zones";
 import { useTasks } from "./task-store";
+import { useStatusMeta } from "./status-meta";
+import { StatusManagerButton } from "./status-manager-dialog";
 
 /**
  * The list view: every task as a row in a spreadsheet-style table, grouped by
@@ -135,6 +136,7 @@ export function TaskTable({
   onAdd?: (defaults: GroupDefaults) => void;
 }) {
   const { tasks, members, filters, sort, now } = useTasks();
+  const { all: allStatuses } = useStatusMeta();
   const t = useT();
   const [groupBy, setGroupBy] = useState<GroupBy>("STATUS");
   const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(new Set());
@@ -164,13 +166,13 @@ export function TaskTable({
   const groups = useMemo<Group[]>(() => {
     switch (groupBy) {
       case "STATUS":
-        return TASK_STATUSES.map((status) => ({
-          key: status,
-          label: t(`status.${status}.label`),
-          marker: <Dot tone={statusMeta[status].tone} />,
-          items: visible.filter((task) => task.status === status),
-          defaults: { status },
-          zone: { owner: ownerFilter ?? ANY_OWNER, status },
+        return allStatuses.map((status) => ({
+          key: status.key,
+          label: status.label,
+          marker: <Dot tone={status.tone} />,
+          items: visible.filter((task) => task.status === status.key),
+          defaults: { status: status.key },
+          zone: { owner: ownerFilter ?? ANY_OWNER, status: status.key },
         }));
 
       case "ASSIGNEE": {
@@ -212,7 +214,7 @@ export function TaskTable({
           },
         ];
     }
-  }, [groupBy, visible, members, ownerFilter, t]);
+  }, [groupBy, visible, members, ownerFilter, t, allStatuses]);
 
   // Empty groups stay for statuses — a board you cannot drop into is not a
   // board, and the heading is also where a new task of that status is added.
@@ -262,6 +264,8 @@ export function TaskTable({
             )}
           </MenuContent>
         </Menu>
+
+        <StatusManagerButton />
       </header>
 
       {visible.length === 0 && groupBy !== "STATUS" ? (
@@ -980,9 +984,10 @@ function PriorityCell({ task }: { task: TaskView }) {
 
 function StatusCell({ task }: { task: TaskView }) {
   const { move } = useTasks();
+  const { meta: statusOf, all: allStatuses } = useStatusMeta();
   const t = useT();
-  const meta = statusMeta[task.status];
-  const label = t(`status.${task.status}.label`);
+  const meta = statusOf(task.status);
+  const label = meta.label;
 
   return (
     <Menu>
@@ -1000,10 +1005,10 @@ function StatusCell({ task }: { task: TaskView }) {
           value={task.status}
           onValueChange={(value) => move(task.id, { status: value as TaskStatus })}
         >
-          {TASK_STATUSES.map((status) => (
-            <MenuRadioItem key={status} value={status}>
-              <Dot tone={statusMeta[status].tone} />
-              {t(`status.${status}.label`)}
+          {allStatuses.map((status) => (
+            <MenuRadioItem key={status.key} value={status.key}>
+              <Dot tone={status.tone} />
+              {status.label}
             </MenuRadioItem>
           ))}
         </MenuRadioGroup>

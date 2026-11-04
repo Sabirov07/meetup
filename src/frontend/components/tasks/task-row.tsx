@@ -18,7 +18,7 @@ import { useMemo } from "react";
 import { toast } from "sonner";
 import { docStats, plainText } from "@/shared/doc/markdown";
 import type { TaskView } from "@/shared/domain/types";
-import { priorityMeta, statusMeta } from "@/shared/domain/labels";
+import { priorityMeta } from "@/shared/domain/labels";
 import { blockingImpact, smartExplanation, unmetDependencies } from "@/shared/domain/priority";
 import { subtaskProgress } from "@/shared/domain/subtasks";
 import { useI18n, useT } from "@/frontend/i18n";
@@ -36,9 +36,10 @@ import {
   MenuSeparator,
   MenuTrigger,
 } from "@/frontend/components/ui/menu";
-import { TASK_PRIORITIES, TASK_STATUSES } from "@/shared/domain/types";
+import { TASK_PRIORITIES } from "@/shared/domain/types";
 import { spaceDot } from "@/frontend/components/spaces/space-color";
 import { useTasks } from "./task-store";
+import { useStatusMeta } from "./status-meta";
 
 /**
  * One task, as a dense row rather than a card. Cards everywhere make a long
@@ -55,6 +56,7 @@ export function TaskRow({
   draggable?: boolean;
 }) {
   const { now, members, move, remove, setOpenTaskId } = useTasks();
+  const { meta: statusOf, all: allStatuses } = useStatusMeta();
   const { t, f } = useI18n();
 
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
@@ -188,8 +190,8 @@ export function TaskRow({
 
         <div className="mt-0.5 flex min-w-0 items-center gap-2 text-2xs text-text-faint">
           <span className="flex shrink-0 items-center gap-1">
-            <Dot tone={statusMeta[task.status].tone} />
-            {t(`status.${task.status}.short`)}
+            <Dot tone={statusOf(task.status).tone} />
+            {statusOf(task.status).short}
           </span>
 
           {/* The section comes before the category: on a board that spans
@@ -370,10 +372,10 @@ export function TaskRow({
               move(task.id, { status: value as TaskView["status"] })
             }
           >
-            {TASK_STATUSES.map((status) => (
-              <MenuRadioItem key={status} value={status}>
-                <Dot tone={statusMeta[status].tone} />
-                {t(`status.${status}.label`)}
+            {allStatuses.map((status) => (
+              <MenuRadioItem key={status.key} value={status.key}>
+                <Dot tone={status.tone} />
+                {status.label}
               </MenuRadioItem>
             ))}
           </MenuRadioGroup>
@@ -439,10 +441,11 @@ export function TaskRow({
 /** Rendered under the cursor while dragging. */
 export function TaskDragPreview({ task }: { task: TaskView }) {
   const t = useT();
+  const { meta: statusOf } = useStatusMeta();
 
   return (
     <div className="flex w-[22rem] max-w-[80vw] items-center gap-2.5 rounded-lg border border-line-accent bg-overlay px-2.5 py-2 shadow-popover">
-      <Dot tone={statusMeta[task.status].tone} />
+      <Dot tone={statusOf(task.status).tone} />
       <p className="min-w-0 flex-1 truncate text-[13px] font-medium text-text">{task.title}</p>
       <Badge tone={priorityMeta[task.priority].tone}>
         {t(`priority.${task.priority}.label`)}

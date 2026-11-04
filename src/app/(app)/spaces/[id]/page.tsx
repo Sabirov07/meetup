@@ -5,6 +5,7 @@ import { connection } from "next/server";
 import { requireSession } from "@/backend/auth/guards";
 import { listMeetings } from "@/backend/data/meetings";
 import { getSpace, listSpaces } from "@/backend/data/spaces";
+import { listStatuses } from "@/backend/data/statuses";
 import { listTasks } from "@/backend/data/tasks";
 import { getTranslator } from "@/backend/i18n/locale";
 import { NO_SPACE } from "@/shared/domain/types";
@@ -55,10 +56,11 @@ async function SpaceData({ params }: { params: PageProps<"/spaces/[id]">["params
   const now = new Date();
   const [session, { id }] = await Promise.all([requireSession(), params]);
 
-  const [tasks, meetings, spaces] = await Promise.all([
+  const [tasks, meetings, spaces, statuses] = await Promise.all([
     listTasks(session.workspace.id),
     listMeetings(session.workspace.id),
     listSpaces(session.workspace.id),
+    listStatuses(session.workspace.id),
   ]);
 
   const unfiled = id === NO_SPACE;
@@ -73,6 +75,7 @@ async function SpaceData({ params }: { params: PageProps<"/spaces/[id]">["params
       initialTasks={tasks}
       members={session.workspace.members}
       spaces={spaces}
+      statuses={statuses}
       currentMemberId={session.member.id}
       serverNow={now.toISOString()}
     >

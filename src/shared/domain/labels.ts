@@ -6,9 +6,9 @@ import type {
   SortMode,
   TaskCategory,
   TaskPriority,
-  TaskStatus,
   TranscriptStatus,
 } from "./types";
+import type { BuiltinStatus } from "./statuses";
 
 /**
  * Presentation metadata for every enum in the domain.
@@ -17,8 +17,12 @@ import type {
  * (`--tone-*`), never as raw hex values scattered through components.
  */
 
+/**
+ * The four built-in statuses only. A custom status carries its own label and
+ * tone on its `TaskStatusDef`; use `findStatus` for anything that may be one.
+ */
 export const statusMeta: Record<
-  TaskStatus,
+  BuiltinStatus,
   { label: string; short: string; tone: string; dot: string }
 > = {
   TODO: { label: "To do", short: "To do", tone: "tone-neutral", dot: "bg-[--tone-neutral-fg]" },

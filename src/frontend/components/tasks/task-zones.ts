@@ -1,4 +1,4 @@
-import { TASK_STATUSES, type TaskStatus } from "@/shared/domain/types";
+import type { TaskStatus } from "@/shared/domain/types";
 
 /**
  * Drag-and-drop targets, shared by the board and the list.
@@ -26,6 +26,7 @@ export function parseZone(id: string): { owner: string; status: TaskStatus } | n
   if (!id.startsWith("zone:")) return null;
   const [, owner, status] = id.split(":");
   if (!owner || !status) return null;
-  if (!TASK_STATUSES.includes(status as TaskStatus)) return null;
-  return { owner, status: status as TaskStatus };
+  // Any key is accepted here: the list of statuses lives in the store, and a
+  // zone is only ever made from one of them.
+  return { owner, status };
 }

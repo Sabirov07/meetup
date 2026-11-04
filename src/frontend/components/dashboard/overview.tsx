@@ -40,7 +40,7 @@ export function Overview({
   pendingProposals: number;
   google: GoogleState;
 }) {
-  const { tasks, members, now, upsertTask } = useTasks();
+  const { tasks, members, statuses, now, upsertTask } = useTasks();
   const { t, f, locale } = useI18n();
   const createActions = useCreateActions();
   const [newTaskFor, setNewTaskFor] = useState<string | null | undefined>(undefined);
@@ -273,6 +273,7 @@ export function Overview({
         open={newTaskFor !== undefined}
         onOpenChange={(open) => !open && setNewTaskFor(undefined)}
         members={members}
+        statuses={statuses}
         defaultOwnerId={newTaskFor ?? null}
         onSaved={upsertTask}
         onDescribeTasks={createActions?.describeTasks}

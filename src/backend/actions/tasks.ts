@@ -18,10 +18,12 @@ import { hasAdvice, type Advice } from "@/shared/domain/sketch";
 import {
   TASK_CATEGORIES,
   TASK_PRIORITIES,
-  TASK_STATUSES,
+  type TaskStatus,
   type TaskView,
 } from "@/shared/domain/types";
 import { priorityMeta, statusMeta } from "@/shared/domain/labels";
+import { findStatus, isBuiltinStatus, isValidStatus } from "@/shared/domain/statuses";
+import { listStatuses } from "@/backend/data/statuses";
 import { MAX_SUBTASKS_PER_TASK, SUBTASK_TITLE_MAX } from "@/shared/domain/subtasks";
 import { message } from "@/backend/i18n/message";
 import type { TranslationKey } from "@/shared/i18n";
@@ -53,7 +55,8 @@ const taskFields = {
   ownerMemberId: z.string().nullable(),
   /** The section it is filed under. Null is "No section". */
   spaceId: z.string().nullable(),
-  status: z.enum(TASK_STATUSES),
+  /** A status key; checked against the workspace's list before any write. */
+  status: z.string().trim().min(1).max(64),
   priority: z.enum(TASK_PRIORITIES),
   category: z.enum(TASK_CATEGORIES),
   labels: z.array(z.string().trim().min(1).max(40)).max(10),
@@ -87,6 +90,21 @@ const taskInput = z.object({
 
 export type TaskInput = z.input<typeof taskInput>;
 
+/**
+ * The status must be one the workspace knows: the key arrives from the
+ * browser, and a stale tab can still name a column that was deleted.
+ */
+async function assertStatusInWorkspace(status: TaskStatus, workspaceId: string) {
+  const defs = await listStatuses(workspaceId);
+  if (!isValidStatus(defs, status)) throw new Error(await message("errors.status.gone"));
+  return defs;
+}
+
+/** The name of a status for the activity feed, built-in or custom. */
+function statusName(defs: Awaited<ReturnType<typeof listStatuses>>, status: TaskStatus): string {
+  return isBuiltinStatus(status) ? statusMeta[status].label : findStatus(defs, status).label;
+}
+
 export async function createTask(raw: TaskInput): Promise<ActionResult<TaskView>> {
   return guarded(async () => {
     const session = await requireSessionForAction();
@@ -102,6 +120,7 @@ export async function createTask(raw: TaskInput): Promise<ActionResult<TaskView>
     if (input.spaceId) {
       await assertSpaceInWorkspace(input.spaceId, session.workspace.id);
     }
+    await assertStatusInWorkspace(input.status, session.workspace.id);
 
     const created = await db.task.create({
       data: {
@@ -208,6 +227,10 @@ export async function updateTask(raw: TaskUpdateInput): Promise<ActionResult<Tas
     if (changes.labels !== undefined) data.labels = changes.labels;
     if (changes.estimateMinutes !== undefined) data.estimateMinutes = changes.estimateMinutes;
     if (changes.dueDate !== undefined) data.dueDate = parseDateInput(changes.dueDate);
+    const statusDefs =
+      changes.status !== undefined
+        ? await assertStatusInWorkspace(changes.status, session.workspace.id)
+        : [];
     if (changes.status !== undefined) {
       data.status = changes.status;
       data.completedAt =
@@ -239,12 +262,12 @@ export async function updateTask(raw: TaskUpdateInput): Promise<ActionResult<Tas
       } else if (before.status === "COMPLETED") {
         entries.push({
           type: "TASK_REOPENED",
-          summary: `reopened “${before.title}” as ${statusMeta[changes.status].label}`,
+          summary: `reopened “${before.title}” as ${statusName(statusDefs, changes.status)}`,
         });
       } else {
         entries.push({
           type: "TASK_STATUS_CHANGED",
-          summary: `moved “${before.title}” to ${statusMeta[changes.status].label}`,
+          summary: `moved “${before.title}” to ${statusName(statusDefs, changes.status)}`,
           meta: { field: "status", from: before.status, to: changes.status },
         });
       }
@@ -329,7 +352,7 @@ export async function updateTask(raw: TaskUpdateInput): Promise<ActionResult<Tas
  */
 export async function moveTask(input: {
   id: string;
-  status?: (typeof TASK_STATUSES)[number];
+  status?: TaskStatus;
   ownerMemberId?: string | null;
 }): Promise<ActionResult<TaskView>> {
   return updateTask({

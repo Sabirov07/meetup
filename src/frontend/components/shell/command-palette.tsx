@@ -11,7 +11,7 @@ import {
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { searchWorkspace, type SearchHit } from "@/backend/actions/search";
-import { priorityMeta, statusMeta } from "@/shared/domain/labels";
+import { priorityMeta } from "@/shared/domain/labels";
 import { useI18n, useT } from "@/frontend/i18n";
 import { cn } from "@/frontend/lib/utils";
 import { Badge, Dot, Kbd } from "@/frontend/components/ui/badge";
@@ -202,8 +202,8 @@ function PaletteBody({
                         {command.hit.title}
                       </span>
                       <span className="flex items-center gap-1.5 text-2xs text-text-faint">
-                        <Dot tone={statusMeta[command.hit.status].tone} />
-                        {t(`status.${command.hit.status}.label`)}
+                        <Dot tone={command.hit.statusTone} />
+                        {command.hit.statusLabel}
                         {command.hit.ownerName && (
                           <>
                             <span aria-hidden>·</span>

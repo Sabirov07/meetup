@@ -89,7 +89,7 @@ export function TaskPage({
   space?: SpaceSummary | null;
   meetings: { id: string; title: string }[];
 }) {
-  const { tasks, members, spaces, now, filters, upsertTask } = useTasks();
+  const { tasks, members, spaces, statuses, now, filters, upsertTask } = useTasks();
   const t = useT();
   const createActions = useCreateActions();
   const [newTask, setNewTask] = useState<NewTaskDefaults | null>(null);
@@ -194,6 +194,7 @@ export function TaskPage({
         onOpenChange={(value) => !value && setNewTask(null)}
         members={members}
         spaces={spaces}
+        statuses={statuses}
         defaultOwnerId={
           newTask?.ownerMemberId !== undefined
             ? newTask.ownerMemberId

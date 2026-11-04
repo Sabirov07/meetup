@@ -3,6 +3,7 @@ import { connection } from "next/server";
 import { requireSession } from "@/backend/auth/guards";
 import { listActivity, countPendingProposals, listMeetings } from "@/backend/data/meetings";
 import { listSpaces } from "@/backend/data/spaces";
+import { listStatuses } from "@/backend/data/statuses";
 import { listDismissedRecommendationIds, listTasks } from "@/backend/data/tasks";
 import { googleIntegrationStatus } from "@/backend/google/config";
 import { getConnectedAccount } from "@/backend/google/oauth";
@@ -28,7 +29,7 @@ async function OverviewData() {
   const now = new Date();
 
   const session = await requireSession();
-  const [tasks, meetings, activity, dismissed, pendingProposals, googleAccount, spaces] =
+  const [tasks, meetings, activity, dismissed, pendingProposals, googleAccount, spaces, statuses] =
     await Promise.all([
       listTasks(session.workspace.id),
       listMeetings(session.workspace.id),
@@ -37,6 +38,7 @@ async function OverviewData() {
       countPendingProposals(session.workspace.id),
       getConnectedAccount(session.userId),
       listSpaces(session.workspace.id),
+      listStatuses(session.workspace.id),
     ]);
 
   const counterpart =
@@ -48,6 +50,7 @@ async function OverviewData() {
       initialTasks={tasks}
       members={session.workspace.members}
       spaces={spaces}
+      statuses={statuses}
       currentMemberId={session.member.id}
       serverNow={now.toISOString()}
     >

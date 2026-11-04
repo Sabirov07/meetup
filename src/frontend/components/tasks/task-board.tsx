@@ -19,12 +19,10 @@ import { toast } from "sonner";
 import { reorderTasks } from "@/backend/actions/tasks";
 import {
   NO_SPACE,
-  TASK_STATUSES,
   type MemberSummary,
   type TaskStatus,
   type TaskView,
 } from "@/shared/domain/types";
-import { statusMeta } from "@/shared/domain/labels";
 import { applyFilters } from "@/shared/domain/filters";
 import { sortTasks } from "@/shared/domain/priority";
 import { useT } from "@/frontend/i18n";
@@ -34,6 +32,7 @@ import { Button } from "@/frontend/components/ui/button";
 import { Count, Dot } from "@/frontend/components/ui/badge";
 import { EmptyState } from "@/frontend/components/ui/feedback";
 import { useTasks } from "./task-store";
+import { useStatusMeta } from "./status-meta";
 import { TaskDragPreview, TaskRow } from "./task-row";
 import { ANY_OWNER, UNASSIGNED, parseZone, zoneId } from "./task-zones";
 
@@ -216,14 +215,13 @@ function Zone({
 }
 
 function StatusHeading({ status, count }: { status: TaskStatus; count: number }) {
-  const t = useT();
+  const { meta } = useStatusMeta();
+  const presented = meta(status);
 
   return (
     <div className="flex items-center gap-1.5 border-b border-line bg-canvas/40 px-2.5 py-1.5">
-      <Dot tone={statusMeta[status].tone} />
-      <span className="text-2xs font-medium text-text-secondary">
-        {t(`status.${status}.label`)}
-      </span>
+      <Dot tone={presented.tone} />
+      <span className="text-2xs font-medium text-text-secondary">{presented.label}</span>
       <Count className="ml-auto">{count}</Count>
     </div>
   );
@@ -248,6 +246,7 @@ export function OwnerPanel({
   className?: string;
 }) {
   const { tasks, filters, sort, now } = useTasks();
+  const { statuses } = useStatusMeta();
   const t = useT();
   const ownerKey = member?.id ?? UNASSIGNED;
 
@@ -258,7 +257,7 @@ export function OwnerPanel({
 
   const openCount = visible.filter((t) => t.status !== "COMPLETED").length;
 
-  const grouped = TASK_STATUSES.map((status) => ({
+  const grouped = statuses.map(({ key: status }) => ({
     status,
     items: visible.filter((t) => t.status === status),
   }));
@@ -365,6 +364,7 @@ export function StatusColumns({
   onAdd?: (status: TaskStatus) => void;
 }) {
   const { tasks, filters, sort, now } = useTasks();
+  const { all: allStatuses } = useStatusMeta();
   const t = useT();
 
   const visible = useMemo(() => {
@@ -384,8 +384,13 @@ export function StatusColumns({
   }, [tasks, filters, sort, now, ownerFilter, spaceFilter]);
 
   return (
-    <div className="grid min-h-0 flex-1 gap-3 lg:grid-cols-4">
-      {TASK_STATUSES.map((status) => {
+    // Columns are sized to the number of statuses: four fit a laptop, and
+    // more than that scroll sideways rather than squeeze.
+    <div
+      className="grid min-h-0 flex-1 gap-3 overflow-x-auto lg:grid-flow-col lg:auto-cols-[minmax(15rem,1fr)]"
+    >
+      {allStatuses.map((presented) => {
+        const status = presented.key;
         const items = visible.filter((t) => t.status === status);
         return (
           <section
@@ -393,19 +398,15 @@ export function StatusColumns({
             className="flex min-w-0 flex-col overflow-hidden rounded-xl border border-line bg-surface"
           >
             <header className="flex shrink-0 items-center gap-1.5 border-b border-line px-2.5 py-2">
-              <Dot tone={statusMeta[status].tone} />
-              <h2 className="text-[13px] font-medium text-text">
-                {t(`status.${status}.label`)}
-              </h2>
+              <Dot tone={presented.tone} />
+              <h2 className="text-[13px] font-medium text-text">{presented.label}</h2>
               <Count className="ml-auto">{items.length}</Count>
               {onAdd && status !== "COMPLETED" && (
                 <Button
                   variant="ghost"
                   size="icon-xs"
                   onClick={() => onAdd(status)}
-                  aria-label={t("tasks.column.addStatus", {
-                    status: t(`status.${status}.label`),
-                  })}
+                  aria-label={t("tasks.column.addStatus", { status: presented.label })}
                 >
                   <Plus className="h-3.5 w-3.5" />
                 </Button>

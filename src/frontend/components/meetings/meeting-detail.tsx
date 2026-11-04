@@ -21,16 +21,17 @@ import type {
   MeetingStatus,
   MeetingView,
   MemberSummary,
+  TaskStatusDef,
   TaskView,
 } from "@/shared/domain/types";
 import {
   evidenceMeta,
   meetingStatusMeta,
   priorityMeta,
-  statusMeta,
   transcriptStatusMeta,
 } from "@/shared/domain/labels";
 import { useI18n } from "@/frontend/i18n";
+import { useStatusPresentation } from "@/frontend/components/tasks/status-meta";
 import { cn } from "@/frontend/lib/utils";
 import { Avatar, AvatarStack } from "@/frontend/components/ui/avatar";
 import { Badge, Count, Dot } from "@/frontend/components/ui/badge";
@@ -59,6 +60,7 @@ export function MeetingDetail({
   meeting: initial,
   analysis: initialAnalysis,
   tasks,
+  statuses,
   members,
   aiConfigured,
   serverNow,
@@ -66,11 +68,14 @@ export function MeetingDetail({
   meeting: MeetingView;
   analysis: AnalysisView | null;
   tasks: TaskView[];
+  /** The workspace's statuses, so the task list can colour its dots. */
+  statuses: TaskStatusDef[];
   members: MemberSummary[];
   aiConfigured: boolean;
   serverNow: string;
 }) {
   const { t, f } = useI18n();
+  const { meta: statusOf } = useStatusPresentation(statuses);
   const [meeting, setMeeting] = useState(initial);
   const [analysis] = useState(initialAnalysis);
   const [resolved, setResolved] = useState<Set<string>>(new Set());
@@ -469,7 +474,7 @@ export function MeetingDetail({
               key={task.id}
               className="flex items-center gap-2.5 border-b border-line px-4 py-2 last:border-b-0"
             >
-              <Dot tone={statusMeta[task.status].tone} />
+              <Dot tone={statusOf(task.status).tone} />
               <span
                 className={cn(
                   "min-w-0 flex-1 truncate text-[13px]",

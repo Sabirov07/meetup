@@ -4,6 +4,9 @@ import { db } from "@/backend/db";
 import { requireSessionForAction } from "@/backend/auth/guards";
 import { plainText } from "@/shared/doc/markdown";
 import { guarded, ok, type ActionResult } from "./shared";
+import { listStatuses } from "@/backend/data/statuses";
+import { getTranslator } from "@/backend/i18n/locale";
+import { findStatus, isBuiltinStatus, toneClass } from "@/shared/domain/statuses";
 import type { TaskPriority, TaskStatus } from "@/shared/domain/types";
 
 export type SearchHit =
@@ -12,6 +15,10 @@ export type SearchHit =
       id: string;
       title: string;
       status: TaskStatus;
+      /** Resolved here: the palette sits outside any task store. */
+      statusLabel: string;
+      /** A `.tone-*` class. */
+      statusTone: string;
       priority: TaskPriority;
       ownerName: string | null;
     }
@@ -25,7 +32,7 @@ export async function searchWorkspace(query: string): Promise<ActionResult<Searc
     const q = query.trim();
     if (q.length < 2) return ok([]);
 
-    const [tasks, meetings, docs] = await Promise.all([
+    const [tasks, meetings, docs, statuses, { t: translate }] = await Promise.all([
       db.task.findMany({
         where: {
           workspaceId: session.workspace.id,
@@ -69,6 +76,8 @@ export async function searchWorkspace(query: string): Promise<ActionResult<Searc
         orderBy: [{ isPinned: "desc" }, { updatedAt: "desc" }],
         take: 4,
       }),
+      listStatuses(session.workspace.id),
+      getTranslator(),
     ]);
 
     return ok([
@@ -78,6 +87,10 @@ export async function searchWorkspace(query: string): Promise<ActionResult<Searc
           id: t.id,
           title: t.title,
           status: t.status,
+          statusLabel: isBuiltinStatus(t.status)
+            ? translate(`status.${t.status}.label`)
+            : findStatus(statuses, t.status).label,
+          statusTone: toneClass(findStatus(statuses, t.status).tone),
           priority: t.priority,
           ownerName: t.owner?.user.name ?? null,
         }),

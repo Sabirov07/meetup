@@ -42,13 +42,6 @@ enum InviteStatus {
   REVOKED
 }
 
-enum TaskStatus {
-  TODO
-  IN_PROGRESS
-  BLOCKED
-  COMPLETED
-}
-
 enum TaskPriority {
   URGENT
   HIGH
@@ -291,6 +284,7 @@ model Workspace {
   flowcharts      Flowchart[]
   invites         WorkspaceInvite[]
   spaces          Space[]
+  taskStatuses    TaskStatusDefinition[]
 
   @@map("workspaces")
 }
@@ -305,13 +299,13 @@ model WorkspaceMember {
   /// Job title shown under the person's name, e.g. "Engineer", "Founder".
   jobTitle    String?
   createdAt   DateTime      @default(now())
-  assignedSubtasks     Subtask[]            @relation("SubtaskAssignee")
 
   workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   ownedTasks           Task[]               @relation("TaskOwner")
   createdTasks         Task[]               @relation("TaskCreator")
+  assignedSubtasks     Subtask[]            @relation("SubtaskAssignee")
   uploads              Attachment[]
   authoredKnowledge    KnowledgeDoc[]       @relation("KnowledgeAuthor")
   editedKnowledge      KnowledgeDoc[]       @relation("KnowledgeEditor")
@@ -600,7 +594,12 @@ model Task {
   ownerMemberId   String?
   creatorMemberId String?
 
-  status   TaskStatus   @default(TODO)
+  /// The key of one of the workspace's `TaskStatusDefinition` rows. The four
+  /// built-in keys (TODO, IN_PROGRESS, BLOCKED, COMPLETED) exist in every
+  /// workspace; custom ones are `cs_<id>`. A plain string rather than an enum
+  /// so a workspace can add its own stages. COMPLETED is the only key with
+  /// meaning to the code: it is the one that marks work as done.
+  status   String       @default("TODO")
   priority TaskPriority @default(MEDIUM)
   category TaskCategory @default(GENERAL)
   labels   String[]     @default([])
@@ -652,6 +651,33 @@ model Task {
   @@map("tasks")
 }
 
+/// One stage a task can be in, per workspace.
+///
+/// The four built-ins are rows too, so they can be reordered alongside the
+/// custom ones. A built-in has no label of its own — the UI translates its
+/// key — and cannot be deleted. Deleting a custom status moves its tasks back
+/// to TODO; nothing is lost with the column.
+model TaskStatusDefinition {
+  id          String   @id @default(cuid())
+  workspaceId String
+  /// What `Task.status` stores. Built-ins use the historical enum names.
+  key         String
+  /// Empty for a built-in: those are translated from the key.
+  label       String   @default("")
+  /// One of the `--tone-*` colour tokens: neutral, accent, info, warning, success, danger.
+  tone        String   @default("neutral")
+  /// Sidebar order; spaced so one can be dropped between two others.
+  position    Int
+  builtin     Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, key])
+  @@index([workspaceId, position])
+  @@map("task_statuses")
+}
+
 model TaskDependency {
   id              String   @id @default(cuid())
   /// The task that is blocked.
@@ -690,6 +716,8 @@ model Subtask {
   /// When it was ticked. Kept so "finished this morning" stays true after a
   /// later edit to the title.
   completedAt DateTime?
+  /// Who is doing this one step, when that differs from the task's owner.
+  assigneeMemberId String?
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
@@ -697,6 +725,7 @@ model Subtask {
   assignee WorkspaceMember? @relation("SubtaskAssignee", fields: [assigneeMemberId], references: [id], onDelete: SetNull)
 
   @@index([taskId, position])
+  @@index([assigneeMemberId])
   @@map("subtasks")
 }
 
@@ -717,15 +746,12 @@ model Attachment {
   workspaceId        String
   taskId             String?
   knowledgeDocId     String?
-  /// Who is doing this one step, when that differs from the task's owner.
-  assigneeMemberId String?
   uploadedByMemberId String?
   /// Original file name, shown in the alt text and on download.
   filename           String
   mimeType           String
   byteSize           Int
   /// Intrinsic pixel size when it could be read from the file header, so the
-  @@index([assigneeMemberId])
   /// renderer can reserve the right box and avoid layout shift.
   width              Int?
   height             Int?

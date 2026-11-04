@@ -20,10 +20,9 @@ import {
   NO_SPACE,
   TASK_CATEGORIES,
   TASK_PRIORITIES,
-  TASK_STATUSES,
   type TaskView,
 } from "@/shared/domain/types";
-import { evidenceMeta, priorityMeta, statusMeta } from "@/shared/domain/labels";
+import { evidenceMeta, priorityMeta } from "@/shared/domain/labels";
 import {
   factorLabel,
   smartScore,
@@ -52,6 +51,7 @@ import { TaskDoc } from "./task-doc";
 import { TaskFormDialog } from "./task-form-dialog";
 import { TaskSubtasks } from "./task-subtasks";
 import { taskLink, useTasks } from "./task-store";
+import { useStatusMeta } from "./status-meta";
 
 export function TaskDetailSheet() {
   const { tasks, openTaskId, setOpenTaskId } = useTasks();
@@ -119,7 +119,9 @@ function TaskDetail({
   /** Tells the drawer that a control inside it has a claim on Escape. */
   claimEscape: (owner: string, claimed: boolean) => void;
 }) {
-  const { members, spaces, now, move, remove, upsertTask, setOpenTaskId, tasks } = useTasks();
+  const { members, spaces, statuses, now, move, remove, upsertTask, setOpenTaskId, tasks } =
+    useTasks();
+  const { meta: statusOf, all: allStatuses } = useStatusMeta();
   const { t, f } = useI18n();
   const tx = useTx();
 
@@ -280,14 +282,14 @@ function TaskDetail({
             >
               <SelectTrigger size="sm" className="w-full">
                 <span className="flex items-center gap-1.5">
-                  <Dot tone={statusMeta[task.status].tone} />
-                  {t(`status.${task.status}.label`)}
+                  <Dot tone={statusOf(task.status).tone} />
+                  {statusOf(task.status).label}
                 </span>
               </SelectTrigger>
               <SelectContent>
-                {TASK_STATUSES.map((status) => (
-                  <SelectItem key={status} value={status}>
-                    {t(`status.${status}.label`)}
+                {allStatuses.map((status) => (
+                  <SelectItem key={status.key} value={status.key}>
+                    {status.label}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -522,7 +524,7 @@ function TaskDetail({
                   key={dependency.id}
                   className="flex items-center gap-2 rounded-md bg-raised px-2 py-1.5"
                 >
-                  <Dot tone={statusMeta[dependency.status].tone} />
+                  <Dot tone={statusOf(dependency.status).tone} />
                   <span
                     className={cn(
                       "min-w-0 flex-1 truncate text-2xs",
@@ -568,7 +570,7 @@ function TaskDetail({
                   key={dependent.id}
                   className="flex items-center gap-2 rounded-md bg-raised px-2 py-1.5"
                 >
-                  <Dot tone={statusMeta[dependent.status].tone} />
+                  <Dot tone={statusOf(dependent.status).tone} />
                   <span className="min-w-0 flex-1 truncate text-2xs text-text-secondary">
                     {dependent.title}
                   </span>
@@ -629,6 +631,7 @@ function TaskDetail({
         onOpenChange={setEditOpen}
         members={members}
         spaces={spaces}
+        statuses={statuses}
         task={task}
         onSaved={upsertTask}
       />
@@ -731,6 +734,7 @@ function DependencyPicker({
   onDone: () => void;
 }) {
   const { upsertTask } = useTasks();
+  const { meta: statusOf } = useStatusMeta();
   const t = useT();
   const [query, setQuery] = useState("");
   const [pending, setPending] = useState(false);
@@ -777,7 +781,7 @@ function DependencyPicker({
             }}
             className="flex w-full items-center gap-2 rounded-md px-1.5 py-1 text-left hover:bg-hover disabled:opacity-50"
           >
-            <Dot tone={statusMeta[candidate.status].tone} />
+            <Dot tone={statusOf(candidate.status).tone} />
             <span className="min-w-0 flex-1 truncate text-2xs text-text-secondary">
               {candidate.title}
             </span>

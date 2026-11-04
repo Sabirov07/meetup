@@ -4,6 +4,7 @@ import { requireSession } from "@/backend/auth/guards";
 import { getTranslator } from "@/backend/i18n/locale";
 import { getMeeting, listAnalyses } from "@/backend/data/meetings";
 import { listTasks } from "@/backend/data/tasks";
+import { listStatuses } from "@/backend/data/statuses";
 import { isAiConfigured } from "@/backend/ai/extract";
 import { MeetingDetail } from "@/frontend/components/meetings/meeting-detail";
 
@@ -29,9 +30,10 @@ export default async function MeetingPage(props: PageProps<"/meetings/[id]">) {
   const meeting = await getMeeting(id, session.workspace.id);
   if (!meeting) notFound();
 
-  const [analyses, allTasks] = await Promise.all([
+  const [analyses, allTasks, statuses] = await Promise.all([
     listAnalyses(session.workspace.id),
     listTasks(session.workspace.id),
+    listStatuses(session.workspace.id),
   ]);
 
   const analysis = analyses.find((a) => a.meetingId === id) ?? null;
@@ -42,6 +44,7 @@ export default async function MeetingPage(props: PageProps<"/meetings/[id]">) {
       meeting={meeting}
       analysis={analysis}
       tasks={tasks}
+      statuses={statuses}
       members={session.workspace.members}
       aiConfigured={isAiConfigured()}
       serverNow={now.toISOString()}

@@ -10,13 +10,14 @@ import { createTask, updateTask } from "@/backend/actions/tasks";
 import {
   TASK_CATEGORIES,
   TASK_PRIORITIES,
-  TASK_STATUSES,
   type MemberSummary,
   type SpaceSummary,
   type TaskView,
+  type TaskStatusDef,
 } from "@/shared/domain/types";
 import type { TranslationKey } from "@/shared/i18n";
 import { useT } from "@/frontend/i18n";
+import { useStatusPresentation } from "./status-meta";
 import { toDateInputValue } from "@/frontend/i18n/format";
 import { Button } from "@/frontend/components/ui/button";
 import {
@@ -51,7 +52,7 @@ const schema = z.object({
   description: z.string().trim().optional(),
   ownerMemberId: z.string(),
   spaceId: z.string(),
-  status: z.enum(TASK_STATUSES),
+  status: z.string().min(1),
   priority: z.enum(TASK_PRIORITIES),
   category: z.enum(TASK_CATEGORIES),
   dueDate: z.string(),
@@ -73,6 +74,7 @@ export function TaskFormDialog({
   onOpenChange,
   members,
   spaces = [],
+  statuses,
   task,
   defaultOwnerId,
   defaultSpaceId,
@@ -87,6 +89,8 @@ export function TaskFormDialog({
   members: MemberSummary[];
   /** The workspace's sections. Empty hides the picker rather than showing one choice. */
   spaces?: SpaceSummary[];
+  /** The workspace's statuses, in order, for the picker. */
+  statuses: TaskStatusDef[];
   /** Present means edit; absent means create. */
   task?: TaskView | null;
   defaultOwnerId?: string | null;
@@ -107,6 +111,7 @@ export function TaskFormDialog({
   const showSwitch = !editing && Boolean(onDescribeTasks);
   const router = useRouter();
   const t = useT();
+  const { all: allStatuses } = useStatusPresentation(statuses);
   /**
    * Steps typed before the task exists. Kept outside the form: they are a
    * list, not a field, and they are sent only on create.
@@ -329,9 +334,9 @@ export function TaskFormDialog({
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        {TASK_STATUSES.map((s) => (
-                          <SelectItem key={s} value={s}>
-                            {t(`status.${s}.label`)}
+                        {allStatuses.map((s) => (
+                          <SelectItem key={s.key} value={s.key}>
+                            {s.label}
                           </SelectItem>
                         ))}
                       </SelectContent>
