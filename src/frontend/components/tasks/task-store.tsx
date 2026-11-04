@@ -121,7 +121,15 @@ type TaskStore = {
 
   upsertTask: (task: TaskView) => void;
   /** Optimistic owner / status change, used by drag-and-drop. */
-  move: (id: string, change: { status?: TaskView["status"]; ownerMemberId?: string | null }) => void;
+  move: (
+    id: string,
+    change: {
+      status?: TaskView["status"];
+      ownerMemberId?: string | null;
+      /** The full list of people beside the owner, after the change. */
+      assigneeMemberIds?: string[];
+    },
+  ) => void;
   patch: (id: string, change: Parameters<typeof updateTask>[0]) => void;
   remove: (id: string) => void;
 };
@@ -248,10 +256,19 @@ export function TaskStoreProvider({
           change.ownerMemberId === undefined
             ? task.owner
             : (members.find((m) => m.id === change.ownerMemberId) ?? null);
+        // Mirrors the server: the owner never doubles as a co-assignee.
+        const assignees = (
+          change.assigneeMemberIds === undefined
+            ? task.assignees
+            : change.assigneeMemberIds
+                .map((id) => members.find((m) => m.id === id))
+                .filter((m): m is NonNullable<typeof m> => Boolean(m))
+        ).filter((m) => m.id !== owner?.id);
         return {
           ...task,
           status: change.status ?? task.status,
           owner,
+          assignees,
           completedAt:
             change.status === "COMPLETED"
               ? (task.completedAt ?? new Date().toISOString())

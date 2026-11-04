@@ -1,5 +1,5 @@
 import { NO_SPACE } from "./types";
-import type { TaskCategory, TaskPriority, TaskStatus, TaskView } from "./types";
+import type { MemberSummary, TaskCategory, TaskPriority, TaskStatus, TaskView } from "./types";
 import { isOverdue, unmetDependencies } from "./priority";
 
 export type DueWindow = "ANY" | "OVERDUE" | "TODAY" | "THIS_WEEK" | "NO_DATE";
@@ -98,6 +98,7 @@ export function applyFilters(tasks: TaskView[], f: TaskFilters, now: Date): Task
         task.description ?? "",
         task.labels.join(" "),
         task.owner?.name ?? "",
+        task.assignees.map((m) => m.name).join(" "),
         task.space?.name ?? "",
         task.sourceMeeting?.title ?? "",
       ]
@@ -106,10 +107,7 @@ export function applyFilters(tasks: TaskView[], f: TaskFilters, now: Date): Task
       if (!haystack.includes(needle)) return false;
     }
 
-    if (f.owners.length) {
-      const key = task.owner?.id ?? "UNASSIGNED";
-      if (!f.owners.includes(key)) return false;
-    }
+    if (f.owners.length && !f.owners.some((key) => isOnTask(task, key))) return false;
 
     if (f.spaces.length) {
       const key = task.space?.id ?? NO_SPACE;
@@ -130,4 +128,19 @@ export function applyFilters(tasks: TaskView[], f: TaskFilters, now: Date): Task
 
     return true;
   });
+}
+
+/** Everyone on the task: the owner first, then the others, in order. */
+export function peopleOn(task: Pick<TaskView, "owner" | "assignees">): MemberSummary[] {
+  return task.owner ? [task.owner, ...task.assignees] : task.assignees;
+}
+
+/**
+ * Whether a person is on the task, as owner or alongside them. `"UNASSIGNED"`
+ * means nobody is on it at all.
+ */
+export function isOnTask(task: Pick<TaskView, "owner" | "assignees">, memberKey: string): boolean {
+  const people = peopleOn(task);
+  if (memberKey === "UNASSIGNED") return people.length === 0;
+  return people.some((m) => m.id === memberKey);
 }

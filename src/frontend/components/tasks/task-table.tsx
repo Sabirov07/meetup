@@ -64,6 +64,7 @@ import { ANY_OWNER, UNASSIGNED, zoneId } from "./task-zones";
 import { useTasks } from "./task-store";
 import { useStatusMeta } from "./status-meta";
 import { StatusManagerButton } from "./status-manager-dialog";
+import { PeopleMenuItems, TaskPeople, usePeopleLabel } from "./task-people";
 
 /**
  * The list view: every task as a row in a spreadsheet-style table, grouped by
@@ -897,20 +898,14 @@ function CellButton({
 
 function AssigneeCell({ task }: { task: TaskView }) {
   const { members, move } = useTasks();
-  const t = useT();
+  const label = usePeopleLabel();
 
   return (
     <Menu>
       <MenuTrigger asChild>
-        <CellButton
-          label={
-            task.owner
-              ? t("tasks.table.assignedTo", { title: task.title, name: task.owner.name })
-              : t("tasks.table.assignTo", { title: task.title })
-          }
-        >
-          {task.owner ? (
-            <Avatar member={task.owner} size="md" />
+        <CellButton label={label(task)}>
+          {task.owner || task.assignees.length > 0 ? (
+            <TaskPeople task={task} size="md" />
           ) : (
             // A dashed "add person" target, so an unassigned task advertises
             // that assigning one is a click here — not a trip to the drawer.
@@ -921,24 +916,13 @@ function AssigneeCell({ task }: { task: TaskView }) {
         </CellButton>
       </MenuTrigger>
       <MenuContent align="start" onClick={(event) => event.stopPropagation()}>
-        <MenuLabel>{t("tasks.table.column.assignee")}</MenuLabel>
-        <MenuRadioGroup
-          value={task.owner?.id ?? UNASSIGNED}
-          onValueChange={(value) =>
-            move(task.id, { ownerMemberId: value === UNASSIGNED ? null : value })
-          }
-        >
-          {members.map((member) => (
-            <MenuRadioItem key={member.id} value={member.id}>
-              <Avatar member={member} size="xs" />
-              {member.name}
-            </MenuRadioItem>
-          ))}
-          <MenuRadioItem value={UNASSIGNED}>
-            <Avatar member={null} size="xs" />
-            {t("common.unassigned")}
-          </MenuRadioItem>
-        </MenuRadioGroup>
+        <PeopleMenuItems
+          members={members}
+          ownerId={task.owner?.id ?? null}
+          assigneeIds={task.assignees.map((m) => m.id)}
+          onOwnerChange={(ownerMemberId) => move(task.id, { ownerMemberId })}
+          onAssigneesChange={(assigneeMemberIds) => move(task.id, { assigneeMemberIds })}
+        />
       </MenuContent>
     </Menu>
   );

@@ -305,6 +305,7 @@ model WorkspaceMember {
 
   ownedTasks           Task[]               @relation("TaskOwner")
   createdTasks         Task[]               @relation("TaskCreator")
+  taskAssignments      TaskAssignee[]
   assignedSubtasks     Subtask[]            @relation("SubtaskAssignee")
   uploads              Attachment[]
   authoredKnowledge    KnowledgeDoc[]       @relation("KnowledgeAuthor")
@@ -638,6 +639,8 @@ model Task {
   /// Tasks that are waiting on this one.
   dependents   TaskDependency[] @relation("BlockingTask")
 
+  /// Everyone else on the task beside the owner. See `TaskAssignee`.
+  assignees   TaskAssignee[]
   subtasks    Subtask[]
   comments    TaskComment[]
   attachments Attachment[]
@@ -649,6 +652,27 @@ model Task {
   @@index([workspaceId, dueDate])
   @@index([spaceId, status])
   @@map("tasks")
+}
+
+/// A second (third, …) person on a task.
+///
+/// `Task.ownerMemberId` stays the one accountable owner — the board panels,
+/// the team counts and the AI ownership detection all key on it. This row is
+/// for the work two people genuinely did together: it puts a second avatar on
+/// the row and makes the task show up under that person as well. Deleting the
+/// member deletes the row; the task is unaffected.
+model TaskAssignee {
+  id        String   @id @default(cuid())
+  taskId    String
+  memberId  String
+  createdAt DateTime @default(now())
+
+  task   Task            @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  member WorkspaceMember @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@unique([taskId, memberId])
+  @@index([memberId])
+  @@map("task_assignees")
 }
 
 /// One stage a task can be in, per workspace.

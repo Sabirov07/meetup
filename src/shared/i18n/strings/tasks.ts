@@ -43,6 +43,8 @@ export const tasks = {
   "tasks.search.clear": ["Clear search", "Очистить поиск"],
   "tasks.filter": ["Filter", "Фильтр"],
   "tasks.facet.assignee": ["Assignee", "Исполнитель"],
+  "tasks.facet.alsoOn": ["Also on it", "Также участвуют"],
+  "tasks.people.nobodyElse": ["Nobody else", "Больше никого"],
   "tasks.facet.status": ["Status", "Статус"],
   "tasks.facet.priority": ["Priority", "Приоритет"],
   "tasks.facet.deadline": ["Deadline", "Срок"],
@@ -141,6 +143,10 @@ export const tasks = {
     "Исполнитель «{title}»: {name}. Сменить исполнителя",
   ],
   "tasks.table.assignTo": ["Assign {title} to someone", "Назначить исполнителя для «{title}»"],
+  "tasks.table.assignedToMany": [
+    "{title} is assigned to {names}. Change who is on it",
+    "Исполнители «{title}»: {names}. Изменить состав",
+  ],
   "tasks.table.priorityIs": [
     "Priority of {title} is {value}. Change it",
     "Приоритет «{title}» — {value}. Изменить",
@@ -265,6 +271,7 @@ export const tasks = {
   "detail.deleteTask": ["Delete task", "Удалить задачу"],
   "detail.property.status": ["Status", "Статус"],
   "detail.property.assignee": ["Assignee", "Исполнитель"],
+  "detail.property.alsoOn": ["Also on it", "Также участвуют"],
   "detail.property.priority": ["Priority", "Приоритет"],
   "detail.property.deadline": ["Deadline", "Срок"],
   "detail.property.category": ["Category", "Категория"],

@@ -32,7 +32,7 @@ import {
 import { useI18n, useT, useTx } from "@/frontend/i18n";
 import { toDateInputValue } from "@/frontend/i18n/format";
 import { cn } from "@/frontend/lib/utils";
-import { Avatar } from "@/frontend/components/ui/avatar";
+import { Avatar, AvatarStack } from "@/frontend/components/ui/avatar";
 import { Badge, Dot } from "@/frontend/components/ui/badge";
 import { Button } from "@/frontend/components/ui/button";
 import { Dialog, DialogTitle, SheetContent } from "@/frontend/components/ui/dialog";
@@ -52,6 +52,8 @@ import { TaskFormDialog } from "./task-form-dialog";
 import { TaskSubtasks } from "./task-subtasks";
 import { taskLink, useTasks } from "./task-store";
 import { useStatusMeta } from "./status-meta";
+import { Menu, MenuContent, MenuTrigger } from "@/frontend/components/ui/menu";
+import { PeopleMenuItems } from "./task-people";
 
 export function TaskDetailSheet() {
   const { tasks, openTaskId, setOpenTaskId } = useTasks();
@@ -319,6 +321,41 @@ function TaskDetail({
               </SelectContent>
             </Select>
           </Property>
+
+          {members.length > 1 && (
+            <Property label={t("detail.property.alsoOn")}>
+              <Menu>
+                <MenuTrigger asChild>
+                  <button
+                    type="button"
+                    className="flex h-7 w-full min-w-0 items-center gap-1.5 rounded-md border border-line bg-surface px-2 text-left text-xs text-text transition-colors hover:bg-raised data-[state=open]:bg-raised"
+                  >
+                    {task.assignees.length > 0 ? (
+                      <>
+                        <AvatarStack members={task.assignees} size="xs" max={3} />
+                        <span className="min-w-0 truncate">
+                          {task.assignees.map((m) => m.name).join(", ")}
+                        </span>
+                      </>
+                    ) : (
+                      <span className="text-text-faint">{t("tasks.people.nobodyElse")}</span>
+                    )}
+                  </button>
+                </MenuTrigger>
+                <MenuContent align="start">
+                  <PeopleMenuItems
+                    members={members}
+                    ownerId={task.owner?.id ?? null}
+                    assigneeIds={task.assignees.map((m) => m.id)}
+                    onOwnerChange={(ownerMemberId) => move(task.id, { ownerMemberId })}
+                    onAssigneesChange={(assigneeMemberIds) =>
+                      move(task.id, { assigneeMemberIds })
+                    }
+                  />
+                </MenuContent>
+              </Menu>
+            </Property>
+          )}
 
           <Property label={t("detail.property.priority")}>
             <div className="space-y-1.5">

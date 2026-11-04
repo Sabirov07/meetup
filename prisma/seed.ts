@@ -286,6 +286,8 @@ async function main() {
     title: string;
     description: string;
     owner: string | null;
+    /** Member ids working on it beside the owner. */
+    also?: string[];
     status: "TODO" | "IN_PROGRESS" | "BLOCKED" | "COMPLETED";
     priority: "URGENT" | "HIGH" | "MEDIUM" | "LOW";
     category:
@@ -417,6 +419,7 @@ async function main() {
       title: "Design the task and meeting schema",
       description: "Workspaces, members, tasks, dependencies, transcripts and AI proposals.",
       owner: employeeMember.id,
+      also: [employerMember.id],
       status: "COMPLETED",
       priority: "HIGH",
       category: "DEVELOPMENT",
@@ -532,6 +535,7 @@ async function main() {
         title: t.title,
         description: t.description,
         ownerMemberId: t.owner,
+        assignees: { create: (t.also ?? []).map((memberId) => ({ memberId })) },
         creatorMemberId: t.fromMeeting ? employerMember.id : employeeMember.id,
         status: t.status,
         priority: t.priority,

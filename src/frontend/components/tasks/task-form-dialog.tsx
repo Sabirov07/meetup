@@ -3,7 +3,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Controller, useForm } from "react-hook-form";
+import { Controller, useForm, useWatch } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
 import { createTask, updateTask } from "@/backend/actions/tasks";
@@ -29,7 +29,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/frontend/components/ui/dialog";
+import { AvatarStack } from "@/frontend/components/ui/avatar";
+import { Menu, MenuContent, MenuTrigger } from "@/frontend/components/ui/menu";
 import { CreateModeSwitch } from "./create-mode-switch";
+import { PeopleMenuItems } from "./task-people";
 import { SubtaskDraftList, type DraftStep } from "./subtask-draft-list";
 import {
   Field,
@@ -51,6 +54,7 @@ const schema = z.object({
   title: z.string().trim().min(3, "form.field.titleTooShort"),
   description: z.string().trim().optional(),
   ownerMemberId: z.string(),
+  assigneeMemberIds: z.array(z.string()),
   spaceId: z.string(),
   status: z.string().min(1),
   priority: z.enum(TASK_PRIORITIES),
@@ -130,6 +134,7 @@ export function TaskFormDialog({
       title: "",
       description: "",
       ownerMemberId: UNASSIGNED,
+      assigneeMemberIds: [],
       spaceId: NO_SECTION,
       status: "TODO",
       priority: "MEDIUM",
@@ -140,6 +145,9 @@ export function TaskFormDialog({
     },
   });
 
+  // Watched so the "also on it" list can drop whoever becomes the owner.
+  const ownerId = useWatch({ control: form.control, name: "ownerMemberId" });
+
   // Re-seed whenever the dialog opens, so a reused instance never shows the
   // previous task's values.
   useEffect(() => {
@@ -148,6 +156,7 @@ export function TaskFormDialog({
       title: task?.title ?? "",
       description: task?.description ?? "",
       ownerMemberId: task?.owner?.id ?? defaultOwnerId ?? UNASSIGNED,
+      assigneeMemberIds: task?.assignees.map((m) => m.id) ?? [],
       spaceId: task?.space?.id ?? defaultSpaceId ?? NO_SECTION,
       status: task?.status ?? defaultStatus ?? "TODO",
       priority: task?.priority ?? defaultPriority ?? "MEDIUM",
@@ -180,6 +189,9 @@ export function TaskFormDialog({
         : null,
       ownerMemberId:
         values.ownerMemberId === UNASSIGNED ? null : values.ownerMemberId,
+      assigneeMemberIds: values.assigneeMemberIds.filter(
+        (id) => id !== values.ownerMemberId,
+      ),
       spaceId: values.spaceId === NO_SECTION ? null : values.spaceId,
       status: values.status,
       priority: values.priority,
@@ -299,6 +311,54 @@ export function TaskFormDialog({
                   )}
                 />
               </Field>
+
+              {members.length > 1 && (
+                <Field label={t("tasks.facet.alsoOn")}>
+                  <Controller
+                    control={form.control}
+                    name="assigneeMemberIds"
+                    render={({ field }) => {
+                      const chosen = members.filter(
+                        (m) => m.id !== ownerId && field.value.includes(m.id),
+                      );
+                      return (
+                        <Menu>
+                          <MenuTrigger asChild>
+                            <button
+                              type="button"
+                              className="flex h-9 w-full min-w-0 items-center gap-2 rounded-md border border-line bg-surface px-3 text-left text-sm text-text transition-colors hover:bg-raised data-[state=open]:bg-raised"
+                            >
+                              {chosen.length > 0 ? (
+                                <>
+                                  <AvatarStack members={chosen} size="sm" max={3} />
+                                  <span className="min-w-0 truncate">
+                                    {chosen.map((m) => m.name).join(", ")}
+                                  </span>
+                                </>
+                              ) : (
+                                <span className="text-text-faint">
+                                  {t("tasks.people.nobodyElse")}
+                                </span>
+                              )}
+                            </button>
+                          </MenuTrigger>
+                          <MenuContent align="start">
+                            <PeopleMenuItems
+                              members={members}
+                              ownerId={ownerId === UNASSIGNED ? null : ownerId}
+                              assigneeIds={field.value}
+                              onOwnerChange={(id) =>
+                                form.setValue("ownerMemberId", id ?? UNASSIGNED)
+                              }
+                              onAssigneesChange={field.onChange}
+                            />
+                          </MenuContent>
+                        </Menu>
+                      );
+                    }}
+                  />
+                </Field>
+              )}
 
               {spaces.length > 0 && (
                 <Field label={t("spaces.field")} hint={t("spaces.fieldHint")}>

@@ -53,6 +53,8 @@ const taskFields = {
     .max(50_000, "errors.task.docTooLong")
     .nullable(),
   ownerMemberId: z.string().nullable(),
+  /** Everyone else on the task. The owner is dropped from it if present. */
+  assigneeMemberIds: z.array(z.string().min(1)).max(20),
   /** The section it is filed under. Null is "No section". */
   spaceId: z.string().nullable(),
   /** A status key; checked against the workspace's list before any write. */
@@ -70,6 +72,7 @@ const taskInput = z.object({
   title: taskFields.title,
   description: taskFields.description.optional(),
   ownerMemberId: taskFields.ownerMemberId.optional(),
+  assigneeMemberIds: taskFields.assigneeMemberIds.default([]),
   spaceId: taskFields.spaceId.optional(),
   status: taskFields.status.default("TODO"),
   priority: taskFields.priority.default("MEDIUM"),
@@ -117,6 +120,11 @@ export async function createTask(raw: TaskInput): Promise<ActionResult<TaskView>
     if (input.ownerMemberId) {
       await assertMemberInWorkspace(input.ownerMemberId, session.workspace.id);
     }
+    const assigneeIds = await assertAssignees(
+      input.assigneeMemberIds,
+      input.ownerMemberId ?? null,
+      session.workspace.id,
+    );
     if (input.spaceId) {
       await assertSpaceInWorkspace(input.spaceId, session.workspace.id);
     }
@@ -128,6 +136,7 @@ export async function createTask(raw: TaskInput): Promise<ActionResult<TaskView>
         title: input.title,
         description: input.description ?? null,
         ownerMemberId: input.ownerMemberId ?? null,
+        assignees: { create: assigneeIds.map((memberId) => ({ memberId })) },
         spaceId: input.spaceId ?? null,
         creatorMemberId: session.member.id,
         status: input.status,
@@ -184,6 +193,7 @@ const updateInput = z.object({
   title: taskFields.title.optional(),
   description: taskFields.description.optional(),
   ownerMemberId: taskFields.ownerMemberId.optional(),
+  assigneeMemberIds: taskFields.assigneeMemberIds.optional(),
   spaceId: taskFields.spaceId.optional(),
   status: taskFields.status.optional(),
   priority: taskFields.priority.optional(),
@@ -217,7 +227,29 @@ export async function updateTask(raw: TaskUpdateInput): Promise<ActionResult<Tas
       await assertSpaceInWorkspace(changes.spaceId, session.workspace.id);
     }
 
+    // The owner is never also a co-assignee. Whichever side of that pair
+    // changes, the other side is brought into line here.
+    const ownerAfter =
+      changes.ownerMemberId !== undefined ? changes.ownerMemberId : before.ownerMemberId;
+    const assigneesBefore = before.assignees.map((a) => a.memberId);
+    const assigneesAfter =
+      changes.assigneeMemberIds !== undefined || changes.ownerMemberId !== undefined
+        ? await assertAssignees(
+            changes.assigneeMemberIds ?? assigneesBefore,
+            ownerAfter,
+            session.workspace.id,
+          )
+        : undefined;
+    const assigneesChanged =
+      assigneesAfter !== undefined && !sameSet(assigneesAfter, assigneesBefore);
+
     const data: Record<string, unknown> = {};
+    if (assigneesChanged) {
+      data.assignees = {
+        deleteMany: {},
+        create: assigneesAfter.map((memberId) => ({ memberId })),
+      };
+    }
     if (changes.title !== undefined) data.title = changes.title;
     if (changes.description !== undefined) data.description = changes.description;
     if (changes.ownerMemberId !== undefined) data.ownerMemberId = changes.ownerMemberId;
@@ -294,6 +326,23 @@ export async function updateTask(raw: TaskUpdateInput): Promise<ActionResult<Tas
       });
     }
 
+    if (assigneesChanged) {
+      const added = assigneesAfter.filter((id) => !assigneesBefore.includes(id));
+      const removed = assigneesBefore.filter((id) => !assigneesAfter.includes(id));
+      const names = await memberNames([...added, ...removed]);
+      const parts = [
+        added.length ? `added ${added.map((id) => names.get(id) ?? "someone").join(", ")} to` : "",
+        removed.length
+          ? `took ${removed.map((id) => names.get(id) ?? "someone").join(", ")} off`
+          : "",
+      ].filter(Boolean);
+      entries.push({
+        type: "TASK_OWNER_CHANGED",
+        summary: `${parts.join(" and ")} “${before.title}”`,
+        meta: { field: "assignees", from: assigneesBefore, to: assigneesAfter },
+      });
+    }
+
     if (changes.spaceId !== undefined && changes.spaceId !== before.spaceId) {
       // Named rather than recorded as a bare "updated": moving work between
       // sections is the kind of change a colleague notices and asks about.
@@ -354,12 +403,44 @@ export async function moveTask(input: {
   id: string;
   status?: TaskStatus;
   ownerMemberId?: string | null;
+  assigneeMemberIds?: string[];
 }): Promise<ActionResult<TaskView>> {
   return updateTask({
     id: input.id,
     ...(input.status !== undefined ? { status: input.status } : {}),
     ...(input.ownerMemberId !== undefined ? { ownerMemberId: input.ownerMemberId } : {}),
+    ...(input.assigneeMemberIds !== undefined
+      ? { assigneeMemberIds: input.assigneeMemberIds }
+      : {}),
   });
+}
+
+/**
+ * Co-assignees, checked and cleaned: each must be in the workspace, the owner
+ * is dropped, and duplicates collapse. Order is kept, so the avatars stay in
+ * the order people were added.
+ */
+async function assertAssignees(
+  ids: string[],
+  ownerMemberId: string | null,
+  workspaceId: string,
+): Promise<string[]> {
+  const unique = [...new Set(ids)].filter((id) => id !== ownerMemberId);
+  await Promise.all(unique.map((id) => assertMemberInWorkspace(id, workspaceId)));
+  return unique;
+}
+
+function sameSet(a: string[], b: string[]): boolean {
+  return a.length === b.length && a.every((id) => b.includes(id));
+}
+
+async function memberNames(ids: string[]): Promise<Map<string, string>> {
+  if (ids.length === 0) return new Map();
+  const rows = await db.workspaceMember.findMany({
+    where: { id: { in: ids } },
+    select: { id: true, user: { select: { name: true } } },
+  });
+  return new Map(rows.map((r) => [r.id, r.user.name]));
 }
 
 /** Persists a hand-arranged order. */

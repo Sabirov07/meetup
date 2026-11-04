@@ -145,6 +145,7 @@ export async function assertTaskInWorkspace(taskId: string, workspaceId: string)
       priority: true,
       dueDate: true,
       ownerMemberId: true,
+      assignees: { select: { memberId: true }, orderBy: { createdAt: "asc" } },
       spaceId: true,
       confirmedByHuman: true,
     },

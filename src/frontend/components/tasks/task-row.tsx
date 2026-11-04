@@ -23,7 +23,6 @@ import { blockingImpact, smartExplanation, unmetDependencies } from "@/shared/do
 import { subtaskProgress } from "@/shared/domain/subtasks";
 import { useI18n, useT } from "@/frontend/i18n";
 import { cn } from "@/frontend/lib/utils";
-import { Avatar } from "@/frontend/components/ui/avatar";
 import { Badge, Dot } from "@/frontend/components/ui/badge";
 import { Tooltip } from "@/frontend/components/ui/feedback";
 import {
@@ -40,6 +39,7 @@ import { TASK_PRIORITIES } from "@/shared/domain/types";
 import { spaceDot } from "@/frontend/components/spaces/space-color";
 import { useTasks } from "./task-store";
 import { useStatusMeta } from "./status-meta";
+import { PeopleMenuItems, TaskPeople } from "./task-people";
 
 /**
  * One task, as a dense row rather than a card. Cards everywhere make a long
@@ -349,7 +349,7 @@ export function TaskRow({
       {/* Owner */}
       {showOwner && (
         <span className="shrink-0">
-          <Avatar member={task.owner} size="md" />
+          <TaskPeople task={task} size="md" />
         </span>
       )}
 
@@ -408,21 +408,13 @@ export function TaskRow({
           </MenuRadioGroup>
 
           <MenuSeparator />
-          <MenuLabel>{t("tasks.facet.assignee")}</MenuLabel>
-          <MenuRadioGroup
-            value={task.owner?.id ?? "UNASSIGNED"}
-            onValueChange={(value) =>
-              move(task.id, { ownerMemberId: value === "UNASSIGNED" ? null : value })
-            }
-          >
-            {members.map((member) => (
-              <MenuRadioItem key={member.id} value={member.id}>
-                <Avatar member={member} size="xs" />
-                {member.name}
-              </MenuRadioItem>
-            ))}
-            <MenuRadioItem value="UNASSIGNED">{t("common.unassigned")}</MenuRadioItem>
-          </MenuRadioGroup>
+          <PeopleMenuItems
+            members={members}
+            ownerId={task.owner?.id ?? null}
+            assigneeIds={task.assignees.map((m) => m.id)}
+            onOwnerChange={(ownerMemberId) => move(task.id, { ownerMemberId })}
+            onAssigneesChange={(assigneeMemberIds) => move(task.id, { assigneeMemberIds })}
+          />
 
           <MenuSeparator />
           <MenuItem onSelect={() => setOpenTaskId(task.id)}>
@@ -450,7 +442,7 @@ export function TaskDragPreview({ task }: { task: TaskView }) {
       <Badge tone={priorityMeta[task.priority].tone}>
         {t(`priority.${task.priority}.label`)}
       </Badge>
-      <Avatar member={task.owner} size="md" />
+      <TaskPeople task={task} size="md" />
     </div>
   );
 }

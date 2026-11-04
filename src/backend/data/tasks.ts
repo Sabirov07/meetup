@@ -44,6 +44,10 @@ const taskSelect = {
   completedAt: true,
   space: { select: spaceSelect },
   owner: { select: memberSelect },
+  assignees: {
+    select: { member: { select: memberSelect } },
+    orderBy: { createdAt: "asc" },
+  },
   creator: { select: memberSelect },
   sourceMeeting: { select: { id: true, title: true } },
   dependencies: {
@@ -89,6 +93,7 @@ type TaskRow = {
   completedAt: Date | null;
   space: { id: string; name: string; colorToken: string } | null;
   owner: Parameters<typeof toMemberSummary>[0] | null;
+  assignees: { member: Parameters<typeof toMemberSummary>[0] }[];
   creator: Parameters<typeof toMemberSummary>[0] | null;
   sourceMeeting: { id: string; title: string } | null;
   dependencies: { dependsOnTask: { id: string; title: string; status: TaskView["status"] } }[];
@@ -111,6 +116,9 @@ export function toTaskView(row: TaskRow): TaskView {
     description: row.description,
     space: row.space,
     owner: row.owner ? toMemberSummary(row.owner) : null,
+    assignees: row.assignees
+      .map((a) => toMemberSummary(a.member))
+      .filter((m) => m.id !== row.owner?.id),
     creator: row.creator ? toMemberSummary(row.creator) : null,
     status: row.status,
     priority: row.priority,

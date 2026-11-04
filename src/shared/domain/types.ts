@@ -210,6 +210,11 @@ export type TaskView = {
   /** Which section it is filed under, or null for "No section". */
   space: SpaceRef | null;
   owner: MemberSummary | null;
+  /**
+   * Everyone else on the task beside the owner, in the order they were added.
+   * Never contains the owner. `peopleOn()` gives the full list.
+   */
+  assignees: MemberSummary[];
   creator: MemberSummary | null;
   status: TaskStatus;
   priority: TaskPriority;

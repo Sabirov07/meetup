@@ -1,5 +1,6 @@
 import type { MemberSummary, TaskView } from "./types";
 import { isOverdue, startOfDay, unmetDependencies } from "./priority";
+import { isOnTask } from "./filters";
 
 /**
  * Every number the dashboard shows is computed here, from the live task list.
@@ -42,7 +43,7 @@ export function computeStats(
   return {
     totalOpen: open.length,
     byMember: members.map((member) => {
-      const mine = tasks.filter((t) => t.owner?.id === member.id);
+      const mine = tasks.filter((t) => isOnTask(t, member.id));
       return {
         member,
         open: mine.filter(isOpen).length,
@@ -50,7 +51,7 @@ export function computeStats(
         completed: mine.filter((t) => t.status === "COMPLETED").length,
       };
     }),
-    unassignedOpen: open.filter((t) => t.owner === null).length,
+    unassignedOpen: open.filter((t) => isOnTask(t, "UNASSIGNED")).length,
     inProgress: tasks.filter((t) => t.status === "IN_PROGRESS").length,
     waiting: open.filter((t) => t.status === "BLOCKED" || unmetDependencies(t).length > 0).length,
     completed: completed.length,
