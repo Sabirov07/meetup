@@ -305,6 +305,7 @@ model WorkspaceMember {
   /// Job title shown under the person's name, e.g. "Engineer", "Founder".
   jobTitle    String?
   createdAt   DateTime      @default(now())
+  assignedSubtasks     Subtask[]            @relation("SubtaskAssignee")
 
   workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -692,7 +693,8 @@ model Subtask {
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
-  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  task     Task             @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  assignee WorkspaceMember? @relation("SubtaskAssignee", fields: [assigneeMemberId], references: [id], onDelete: SetNull)
 
   @@index([taskId, position])
   @@map("subtasks")
@@ -715,12 +717,15 @@ model Attachment {
   workspaceId        String
   taskId             String?
   knowledgeDocId     String?
+  /// Who is doing this one step, when that differs from the task's owner.
+  assigneeMemberId String?
   uploadedByMemberId String?
   /// Original file name, shown in the alt text and on download.
   filename           String
   mimeType           String
   byteSize           Int
   /// Intrinsic pixel size when it could be read from the file header, so the
+  @@index([assigneeMemberId])
   /// renderer can reserve the right box and avoid layout shift.
   width              Int?
   height             Int?

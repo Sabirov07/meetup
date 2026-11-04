@@ -183,6 +183,8 @@ export type SubtaskRef = {
   title: string;
   done: boolean;
   position: number;
+  /** Who is doing this step, or null when it is simply the task owner's. */
+  assignee: MemberSummary | null;
 };
 
 export type TaskView = {

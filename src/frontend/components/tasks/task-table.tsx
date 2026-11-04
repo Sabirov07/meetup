@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 import { useMemo, useState, type ComponentProps, type ReactNode } from "react";
 import { toast } from "sonner";
+import { assignSubtask, setSubtaskDone } from "@/backend/actions/subtasks";
 import { createTask } from "@/backend/actions/tasks";
 import { applyFilters } from "@/shared/domain/filters";
 import { priorityMeta, statusMeta } from "@/shared/domain/labels";
@@ -33,6 +34,7 @@ import {
   NO_SPACE,
   TASK_PRIORITIES,
   TASK_STATUSES,
+  type SubtaskRef,
   type TaskPriority,
   type TaskStatus,
   type TaskView,
@@ -511,8 +513,13 @@ function TaskTableRow({
   const blocks = blockingImpact(task);
   const unmet = unmetDependencies(task);
   const steps = subtaskProgress(task.subtasks);
+  // Unfolded steps live under the row, the way a tree does. Folded by default:
+  // a list where every task spills its checklist is no longer scannable.
+  const [expanded, setExpanded] = useState(false);
+  const showSteps = expanded && !isDragging && task.subtasks.length > 0;
 
   return (
+    <>
     <div
       ref={setNodeRef}
       style={{ transform: CSS.Transform.toString(transform), transition }}
@@ -564,6 +571,29 @@ function TaskTableRow({
       {/* Title. The whole point of this view: one line, full width, no clipping
           until the row genuinely runs out of room. */}
       <div className="flex min-w-0 items-center gap-1.5">
+        {/* The fold sits in the gutter before the title, so rows with and
+            without steps keep their titles on the same line. */}
+        <span className="-ml-1 flex w-4 shrink-0 items-center justify-center">
+          {task.subtasks.length > 0 && (
+            <button
+              onClick={(event) => {
+                event.stopPropagation();
+                setExpanded((prev) => !prev);
+              }}
+              onPointerDown={(event) => event.stopPropagation()}
+              aria-expanded={expanded}
+              aria-label={t(
+                expanded ? "tasks.table.collapseSubtasks" : "tasks.table.expandSubtasks",
+                { title: task.title },
+              )}
+              className="rounded p-0.5 text-text-faint transition-colors hover:bg-raised hover:text-text"
+            >
+              <ChevronRight
+                className={cn("h-3 w-3 transition-transform", expanded && "rotate-90")}
+              />
+            </button>
+          )}
+        </span>
         <span
           className={cn(
             "truncate text-[13px] leading-5",
@@ -678,6 +708,148 @@ function TaskTableRow({
           </MenuItem>
         </MenuContent>
       </Menu>
+    </div>
+
+    {showSteps &&
+      task.subtasks.map((subtask) => (
+        <SubtaskTableRow key={subtask.id} task={task} subtask={subtask} />
+      ))}
+    </>
+  );
+}
+
+/**
+ * One step of a task, as a nested row under it.
+ *
+ * It shares the parent's grid so the assignee and status land in their own
+ * columns, and leaves the columns a step does not have — priority, deadline,
+ * estimate — empty rather than inventing values for them.
+ */
+function SubtaskTableRow({ task, subtask }: { task: TaskView; subtask: SubtaskRef }) {
+  const { members, upsertTask, setOpenTaskId } = useTasks();
+  const t = useT();
+  const [busy, setBusy] = useState(false);
+
+  async function run(action: () => ReturnType<typeof setSubtaskDone>) {
+    setBusy(true);
+    const result = await action();
+    setBusy(false);
+    if (result.ok) upsertTask(result.data);
+    else toast.error(t("detail.saveFailed"), { description: result.error });
+  }
+
+  return (
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={() => setOpenTaskId(task.id)}
+      onKeyDown={(event) => {
+        if (event.key === "Enter") {
+          event.preventDefault();
+          setOpenTaskId(task.id);
+        }
+      }}
+      aria-label={subtask.title}
+      className={cn(
+        COLUMNS,
+        "group border-b border-line bg-canvas/30 px-2.5 py-1 text-left transition-colors hover:bg-hover focus-visible:bg-hover",
+        busy && "opacity-60",
+      )}
+    >
+      <span />
+
+      <div className="flex min-w-0 items-center gap-2 pl-7">
+        <button
+          onClick={(event) => {
+            event.stopPropagation();
+            void run(() => setSubtaskDone({ id: subtask.id, done: !subtask.done }));
+          }}
+          aria-label={t(
+            subtask.done ? "detail.subtasks.markTodo" : "detail.subtasks.markDone",
+            { title: subtask.title },
+          )}
+          aria-pressed={subtask.done}
+          className={cn(
+            "flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-full border transition-colors",
+            subtask.done
+              ? "border-success bg-success text-canvas"
+              : "border-line-strong text-transparent hover:border-accent hover:text-accent",
+          )}
+        >
+          <Check className="h-2 w-2" strokeWidth={3.5} />
+        </button>
+        <span
+          className={cn(
+            "truncate text-[13px] leading-5",
+            subtask.done ? "text-text-faint line-through" : "text-text-secondary",
+          )}
+        >
+          {subtask.title}
+        </span>
+      </div>
+
+      <Menu>
+        <MenuTrigger asChild>
+          <CellButton
+            label={
+              subtask.assignee
+                ? t("detail.subtasks.assignedTo", {
+                    title: subtask.title,
+                    name: subtask.assignee.name,
+                  })
+                : t("detail.subtasks.assign", { title: subtask.title })
+            }
+          >
+            {subtask.assignee ? (
+              <Avatar member={subtask.assignee} size="sm" />
+            ) : (
+              <span className="flex h-5 w-5 items-center justify-center rounded-full border border-dashed border-line-strong text-text-faint group-hover:border-accent group-hover:text-accent">
+                <UserPlus className="h-2.5 w-2.5" />
+              </span>
+            )}
+          </CellButton>
+        </MenuTrigger>
+        <MenuContent align="start" onClick={(event) => event.stopPropagation()}>
+          <MenuLabel>{t("tasks.table.column.assignee")}</MenuLabel>
+          <MenuRadioGroup
+            value={subtask.assignee?.id ?? UNASSIGNED}
+            onValueChange={(value) =>
+              void run(() =>
+                assignSubtask({ id: subtask.id, memberId: value === UNASSIGNED ? null : value }),
+              )
+            }
+          >
+            {members.map((member) => (
+              <MenuRadioItem key={member.id} value={member.id}>
+                <Avatar member={member} size="xs" />
+                {member.name}
+              </MenuRadioItem>
+            ))}
+            <MenuRadioItem value={UNASSIGNED}>
+              <Avatar member={null} size="xs" />
+              {t("common.unassigned")}
+            </MenuRadioItem>
+          </MenuRadioGroup>
+        </MenuContent>
+      </Menu>
+
+      <span />
+
+      <CellButton
+        label={t("detail.subtasks.setStatus", { title: subtask.title })}
+        onClick={() => void run(() => setSubtaskDone({ id: subtask.id, done: !subtask.done }))}
+      >
+        <Badge tone={subtask.done ? "tone-success" : "tone-neutral"} className="min-w-0">
+          <Dot tone={subtask.done ? "tone-success" : "tone-neutral"} />
+          <span className="truncate">
+            {t(subtask.done ? "detail.subtasks.status.done" : "detail.subtasks.status.open")}
+          </span>
+        </Badge>
+      </CellButton>
+
+      <span />
+      <span />
+      <span />
     </div>
   );
 }

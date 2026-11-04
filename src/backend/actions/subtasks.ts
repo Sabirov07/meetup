@@ -4,6 +4,7 @@ import { refresh } from "next/cache";
 import { z } from "zod";
 import { db } from "@/backend/db";
 import {
+  assertMemberInWorkspace,
   assertSubtaskInWorkspace,
   assertTaskInWorkspace,
   requireSessionForAction,
@@ -141,6 +142,31 @@ export async function renameSubtask(
     await db.subtask.update({
       where: { id: subtask.id },
       data: { title: parsed.data.title },
+    });
+
+    return respond(subtask.taskId, session.workspace.id);
+  });
+}
+
+const assignInput = z.object({ id: z.string().min(1), memberId: z.string().min(1).nullable() });
+
+/** Hands one step to a member, or back to nobody in particular. */
+export async function assignSubtask(
+  raw: z.input<typeof assignInput>,
+): Promise<ActionResult<TaskView>> {
+  return guarded(async () => {
+    const session = await requireSessionForAction();
+    const parsed = assignInput.safeParse(raw);
+    if (!parsed.success) return fail(await message("errors.subtask.invalid"));
+
+    const subtask = await assertSubtaskInWorkspace(parsed.data.id, session.workspace.id);
+    if (parsed.data.memberId) {
+      await assertMemberInWorkspace(parsed.data.memberId, session.workspace.id);
+    }
+
+    await db.subtask.update({
+      where: { id: subtask.id },
+      data: { assigneeMemberId: parsed.data.memberId },
     });
 
     return respond(subtask.taskId, session.workspace.id);

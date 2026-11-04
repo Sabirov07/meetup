@@ -53,7 +53,13 @@ const taskSelect = {
     select: { task: { select: { id: true, title: true, status: true } } },
   },
   subtasks: {
-    select: { id: true, title: true, done: true, position: true },
+    select: {
+      id: true,
+      title: true,
+      done: true,
+      position: true,
+      assignee: { select: memberSelect },
+    },
     // Positions are assigned strictly increasing, within a batch and across
     // batches, so this one key is the order the list was written in.
     orderBy: { position: "asc" },
@@ -87,7 +93,13 @@ type TaskRow = {
   sourceMeeting: { id: string; title: string } | null;
   dependencies: { dependsOnTask: { id: string; title: string; status: TaskView["status"] } }[];
   dependents: { task: { id: string; title: string; status: TaskView["status"] } }[];
-  subtasks: { id: string; title: string; done: boolean; position: number }[];
+  subtasks: {
+    id: string;
+    title: string;
+    done: boolean;
+    position: number;
+    assignee: Parameters<typeof toMemberSummary>[0] | null;
+  }[];
   _count: { comments: number };
 };
 
@@ -116,7 +128,10 @@ export function toTaskView(row: TaskRow): TaskView {
     manualOrder: row.manualOrder,
     dependencies: row.dependencies.map((d) => d.dependsOnTask),
     dependents: row.dependents.map((d) => d.task),
-    subtasks: row.subtasks,
+    subtasks: row.subtasks.map((subtask) => ({
+      ...subtask,
+      assignee: subtask.assignee ? toMemberSummary(subtask.assignee) : null,
+    })),
     commentCount: row._count.comments,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),

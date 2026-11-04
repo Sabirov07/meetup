@@ -17,24 +17,39 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { Check, GripVertical, ListChecks, Plus, X } from "lucide-react";
+import { Check, ChevronDown, ChevronUp, GripVertical, ListChecks, Plus, UserPlus, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import {
   addSubtasks,
+  assignSubtask,
   deleteSubtask,
   renameSubtask,
   reorderSubtasks,
   setSubtaskDone,
 } from "@/backend/actions/subtasks";
 import { parseSubtaskLines, subtaskProgress } from "@/shared/domain/subtasks";
-import type { SubtaskRef, TaskView } from "@/shared/domain/types";
+import type { MemberSummary, SubtaskRef, TaskView } from "@/shared/domain/types";
 import { useT, useTx } from "@/frontend/i18n";
 import { cn } from "@/frontend/lib/utils";
+import { Avatar } from "@/frontend/components/ui/avatar";
+import { Badge, Dot } from "@/frontend/components/ui/badge";
 import { Button } from "@/frontend/components/ui/button";
-import { Progress, Tooltip } from "@/frontend/components/ui/feedback";
+import { Progress } from "@/frontend/components/ui/feedback";
 import { Input, Textarea } from "@/frontend/components/ui/field";
+import {
+  Menu,
+  MenuContent,
+  MenuLabel,
+  MenuRadioGroup,
+  MenuRadioItem,
+  MenuTrigger,
+} from "@/frontend/components/ui/menu";
 import { useTasks } from "./task-store";
+
+const UNASSIGNED = "__unassigned__";
+/** The row's columns: grip + tick + name, assignee, status, remove. */
+const GRID = "grid grid-cols-[minmax(0,1fr)_3.5rem_5rem_1.25rem] items-center gap-x-2";
 
 /**
  * A task's checklist, and the two ways of filling it in.
@@ -75,12 +90,14 @@ export function TaskSubtasks({
    */
   onCapturesEscapeChange?: (captures: boolean) => void;
 }) {
-  const { upsertTask } = useTasks();
+  const { upsertTask, members } = useTasks();
   const t = useT();
   const tx = useTx();
 
   const [composing, setComposing] = useState(false);
   const [mode, setMode] = useState<Mode>("ONE");
+  /** Finished steps fold away under a count, so the list is what is left. */
+  const [showClosed, setShowClosed] = useState(false);
   const [line, setLine] = useState("");
   const [bulk, setBulk] = useState("");
   const [saving, setSaving] = useState(false);
@@ -114,6 +131,10 @@ export function TaskSubtasks({
     : visible;
   const progress = subtaskProgress(visible);
   const bulkCount = parseSubtaskLines(bulk).length;
+  const openRows = ordered.filter((subtask) => !subtask.done);
+  const closedRows = ordered.filter((subtask) => subtask.done);
+  // Nothing open: the finished list is the list, so it stays in view.
+  const listed = showClosed || openRows.length === 0 ? ordered : openRows;
 
   const sensors = useSensors(
     // Travel before a drag starts, so clicking a title to rename it — or the
@@ -163,25 +184,6 @@ export function TaskSubtasks({
     setBulk("");
   }
 
-  /** Carries whatever is typed across the switch, so neither mode loses it. */
-  function switchMode(next: Mode) {
-    if (next === mode) return;
-    if (next === "RAW") {
-      const carried = [bulk.trimEnd(), line.trim()].filter(Boolean).join("\n");
-      setBulk(carried ? `${carried}\n` : "");
-      setLine("");
-    } else {
-      const lines = parseSubtaskLines(bulk);
-      // A single line moves into the field; a real list stays where it is, so
-      // switching back and forth cannot throw nineteen steps away.
-      if (lines.length <= 1) {
-        setLine(lines[0] ?? "");
-        setBulk("");
-      }
-    }
-    open(next);
-  }
-
   async function submitBulk() {
     if (bulkCount === 0 || saving) return;
     setSaving(true);
@@ -201,6 +203,13 @@ export function TaskSubtasks({
         delete next[subtask.id];
         return next;
       });
+    });
+  }
+
+  function assign(subtask: SubtaskRef, memberId: string | null) {
+    void assignSubtask({ id: subtask.id, memberId }).then((result) => {
+      if (result.ok) upsertTask(result.data);
+      else toast.error(t("detail.saveFailed"), { description: result.error });
     });
   }
 
@@ -249,13 +258,23 @@ export function TaskSubtasks({
           <ListChecks className="h-3 w-3" />
           {t("detail.subtasks")}
         </p>
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-2">
           {progress && (
-            <span className="text-2xs tabular-nums text-text-faint">
-              {t("detail.subtasks.progress", {
-                done: progress.done,
-                total: progress.total,
-              })}
+            <span className="flex items-center gap-2 text-2xs tabular-nums text-text-faint">
+              <span className={cn(progress.done === progress.total && "text-success")}>
+                {progress.done === progress.total
+                  ? t("detail.subtasks.allDone")
+                  : t("detail.subtasks.open", { count: progress.total - progress.done })}
+              </span>
+              <Progress
+                value={progress.percent}
+                tone={progress.done === progress.total ? "bg-success" : "bg-accent"}
+                aria-label={t("detail.subtasks.progress", {
+                  done: progress.done,
+                  total: progress.total,
+                })}
+                className="w-12"
+              />
             </span>
           )}
           <Button variant="ghost" size="xs" onClick={() => open("ONE")}>
@@ -265,19 +284,21 @@ export function TaskSubtasks({
         </div>
       </div>
 
-      {progress && (
-        <Progress
-          value={progress.percent}
-          tone={progress.done === progress.total ? "bg-success" : "bg-accent"}
-          aria-label={t("detail.subtasks.progress", {
-            done: progress.done,
-            total: progress.total,
-          })}
-          className="mb-2"
-        />
+      {ordered.length > 0 && (
+        <div
+          className={cn(
+            GRID,
+            "border-b border-line px-1 pb-1 text-2xs font-medium text-text-faint",
+          )}
+        >
+          <span className="pl-5">{t("detail.subtasks.column.name")}</span>
+          <span>{t("tasks.table.column.assignee")}</span>
+          <span>{t("tasks.table.column.status")}</span>
+          <span />
+        </div>
       )}
 
-      {ordered.length > 0 && (
+      {listed.length > 0 && (
         <DndContext
           // The drawer renders inside the board's own context; a stable id of
           // its own keeps the two apart.
@@ -287,15 +308,17 @@ export function TaskSubtasks({
           onDragEnd={onDragEnd}
         >
           <SortableContext
-            items={ordered.map((subtask) => subtask.id)}
+            items={listed.map((subtask) => subtask.id)}
             strategy={verticalListSortingStrategy}
           >
-            <ul className="space-y-px">
-              {ordered.map((subtask) => (
+            <ul>
+              {listed.map((subtask) => (
                 <SubtaskRow
                   key={subtask.id}
                   subtask={subtask}
+                  members={members}
                   onToggle={(done) => toggle(subtask, done)}
+                  onAssign={(memberId) => assign(subtask, memberId)}
                   onRename={(title) => void rename(subtask, title)}
                   onRemove={() => remove(subtask)}
                 />
@@ -310,7 +333,7 @@ export function TaskSubtasks({
           {pending.map((row) => (
             <li
               key={row.key}
-              className="flex items-center gap-2 px-1 py-1 opacity-50"
+              className="flex items-center gap-2 border-b border-line px-1 py-1.5 pl-5 opacity-50"
             >
               <span className="h-3.5 w-3.5 shrink-0 rounded-full border border-line-strong" />
               <span className="min-w-0 flex-1 truncate text-[13px] text-text-muted">
@@ -338,9 +361,18 @@ export function TaskSubtasks({
         </>
       )}
 
+      {ordered.length > 0 && !composing && (
+        <button
+          onClick={() => open("ONE")}
+          className="-mx-1 flex w-full items-center gap-2 rounded px-1 py-1.5 pl-6 text-left hover:bg-hover"
+        >
+          <Plus className="h-3.5 w-3.5 shrink-0 text-text-faint" />
+          <span className="text-[13px] text-text-faint">{t("detail.subtasks.addTask")}</span>
+        </button>
+      )}
+
       {composing && (
         <div className="mt-1.5 space-y-1.5">
-          <ModeSwitch value={mode} onChange={switchMode} />
 
           {mode === "ONE" ? (
             <>
@@ -458,69 +490,38 @@ export function TaskSubtasks({
           )}
         </div>
       )}
+
+      {closedRows.length > 0 && openRows.length > 0 && (
+        <button
+          onClick={() => setShowClosed((prev) => !prev)}
+          className="mt-1 flex items-center gap-1 rounded px-1 py-0.5 text-2xs text-text-faint hover:bg-hover hover:text-text"
+        >
+          {showClosed ? (
+            <ChevronUp className="h-3 w-3" />
+          ) : (
+            <ChevronDown className="h-3 w-3" />
+          )}
+          {showClosed
+            ? t("detail.subtasks.hideClosed")
+            : t("detail.subtasks.showClosed", { count: closedRows.length })}
+        </button>
+      )}
     </section>
-  );
-}
-
-/** Which way of adding you are looking at. */
-function ModeSwitch({
-  value,
-  onChange,
-}: {
-  value: Mode;
-  onChange: (next: Mode) => void;
-}) {
-  const t = useT();
-  const modes: { mode: Mode; label: string; hint: string }[] = [
-    {
-      mode: "ONE",
-      label: t("detail.subtasks.mode.one"),
-      hint: t("detail.subtasks.mode.oneHint"),
-    },
-    {
-      mode: "RAW",
-      label: t("detail.subtasks.mode.raw"),
-      hint: t("detail.subtasks.mode.rawHint"),
-    },
-  ];
-
-  return (
-    <div
-      role="group"
-      aria-label={t("detail.subtasks.mode.label")}
-      className="flex w-fit items-center gap-0.5 rounded-md border border-line bg-canvas p-0.5"
-    >
-      {modes.map(({ mode, label, hint }) => (
-        // The explanation goes in a tooltip rather than `title`, which would
-        // replace the accessible name with it.
-        <Tooltip key={mode} content={hint}>
-          <button
-            type="button"
-            onClick={() => onChange(mode)}
-            aria-pressed={value === mode}
-            className={cn(
-              "h-5 rounded-[5px] px-2 text-2xs font-medium transition-colors",
-              value === mode
-                ? "bg-raised text-text"
-                : "text-text-muted hover:bg-hover hover:text-text",
-            )}
-          >
-            {label}
-          </button>
-        </Tooltip>
-      ))}
-    </div>
   );
 }
 
 function SubtaskRow({
   subtask,
+  members,
   onToggle,
+  onAssign,
   onRename,
   onRemove,
 }: {
   subtask: SubtaskRef & { done: boolean };
+  members: MemberSummary[];
   onToggle: (done: boolean) => void;
+  onAssign: (memberId: string | null) => void;
   onRename: (title: string) => void;
   onRemove: () => void;
 }) {
@@ -543,10 +544,12 @@ function SubtaskRow({
       ref={setNodeRef}
       style={{ transform: CSS.Transform.toString(transform), transition }}
       className={cn(
-        "group/subtask -mx-1 flex items-center gap-1.5 rounded px-1 py-1 hover:bg-hover",
-        isDragging && "relative z-10 bg-raised shadow-popover",
+        GRID,
+        "group/subtask border-b border-line px-1 py-1 hover:bg-hover",
+        isDragging && "relative z-10 rounded bg-raised shadow-popover",
       )}
     >
+      <div className="flex min-w-0 items-center gap-1.5">
       {/* A handle rather than the whole row: the row's other half is a title
           you click to rename and a tick you click to finish. */}
       <button
@@ -608,6 +611,62 @@ function SubtaskRow({
           </span>
         </button>
       )}
+      </div>
+
+      <Menu>
+        <MenuTrigger asChild>
+          <button
+            aria-label={
+              subtask.assignee
+                ? t("detail.subtasks.assignedTo", {
+                    title: subtask.title,
+                    name: subtask.assignee.name,
+                  })
+                : t("detail.subtasks.assign", { title: subtask.title })
+            }
+            className="flex h-6 w-fit items-center rounded-md px-0.5 transition-colors hover:bg-raised data-[state=open]:bg-raised"
+          >
+            {subtask.assignee ? (
+              <Avatar member={subtask.assignee} size="sm" />
+            ) : (
+              <span className="flex h-5 w-5 items-center justify-center rounded-full border border-dashed border-line-strong text-text-faint group-hover/subtask:border-accent group-hover/subtask:text-accent">
+                <UserPlus className="h-2.5 w-2.5" />
+              </span>
+            )}
+          </button>
+        </MenuTrigger>
+        <MenuContent align="start">
+          <MenuLabel>{t("tasks.table.column.assignee")}</MenuLabel>
+          <MenuRadioGroup
+            value={subtask.assignee?.id ?? UNASSIGNED}
+            onValueChange={(value) => onAssign(value === UNASSIGNED ? null : value)}
+          >
+            {members.map((member) => (
+              <MenuRadioItem key={member.id} value={member.id}>
+                <Avatar member={member} size="xs" />
+                {member.name}
+              </MenuRadioItem>
+            ))}
+            <MenuRadioItem value={UNASSIGNED}>
+              <Avatar member={null} size="xs" />
+              {t("common.unassigned")}
+            </MenuRadioItem>
+          </MenuRadioGroup>
+        </MenuContent>
+      </Menu>
+
+      <button
+        onClick={() => onToggle(!subtask.done)}
+        aria-label={t("detail.subtasks.setStatus", { title: subtask.title })}
+        className="flex h-6 w-fit items-center rounded-md px-0.5 transition-colors hover:bg-raised"
+      >
+        <Badge tone={subtask.done ? "tone-success" : "tone-neutral"} className="min-w-0">
+          <Dot tone={subtask.done ? "tone-success" : "tone-neutral"} />
+          <span className="truncate">
+            {t(subtask.done ? "detail.subtasks.status.done" : "detail.subtasks.status.open")}
+          </span>
+        </Badge>
+      </button>
 
       <button
         onClick={onRemove}
