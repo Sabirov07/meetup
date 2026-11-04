@@ -39,8 +39,10 @@ export type DocListItem = {
   content: InlineNode[];
 };
 
+export type HeadingLevel = 1 | 2 | 3 | 4 | 5 | 6;
+
 export type DocBlock =
-  | { type: "heading"; level: 1 | 2 | 3; content: InlineNode[] }
+  | { type: "heading"; level: HeadingLevel; content: InlineNode[] }
   | { type: "paragraph"; content: InlineNode[] }
   /** An image on a line of its own, rendered as a full-width figure. */
   | { type: "figure"; src: string; alt: string }
@@ -102,9 +104,7 @@ export function parseDoc(markdown: string | null | undefined): DocBlock[] {
 
     const heading = HEADING.exec(line);
     if (heading) {
-      // h4–h6 would be smaller than body text in this type scale, so they
-      // collapse into h3 rather than rendering as something unreadable.
-      const level = Math.min(heading[1].length, 3) as 1 | 2 | 3;
+      const level = heading[1].length as HeadingLevel;
       blocks.push({ type: "heading", level, content: parseInline(heading[2]) });
       i += 1;
       continue;

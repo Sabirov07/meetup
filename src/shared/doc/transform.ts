@@ -18,11 +18,24 @@ export type BlockKind =
   | "h1"
   | "h2"
   | "h3"
+  | "h4"
+  | "h5"
+  | "h6"
   | "quote"
   | "bullet"
   | "ordered"
   | "check"
   | "code";
+
+export type HeadingKind = Extract<BlockKind, `h${number}`>;
+
+export const HEADING_KINDS: readonly HeadingKind[] = ["h1", "h2", "h3", "h4", "h5", "h6"];
+
+/** `"h3"` → `3`; anything that is not a heading → `0`. */
+export function headingLevel(kind: BlockKind): number {
+  const match = /^h([1-6])$/.exec(kind);
+  return match ? Number(match[1]) : 0;
+}
 
 export type InlineMark = "strong" | "em" | "strike" | "code";
 
@@ -56,11 +69,12 @@ function lineSpan(value: string, selection: TextSelection): TextSelection {
 function prefixFor(kind: BlockKind, indent: string, index: number): string {
   switch (kind) {
     case "h1":
-      return `${indent}# `;
     case "h2":
-      return `${indent}## `;
     case "h3":
-      return `${indent}### `;
+    case "h4":
+    case "h5":
+    case "h6":
+      return `${indent}${"#".repeat(headingLevel(kind))} `;
     case "quote":
       return `${indent}> `;
     case "bullet":
@@ -81,9 +95,8 @@ export function blockKindAt(value: string, caret: number): BlockKind {
   if (fences % 2 === 1) return "code";
 
   const line = value.slice(startOfLine(value, caret), endOfLine(value, caret));
-  if (/^\s*#{3,6}[ \t]/.test(line)) return "h3";
-  if (/^\s*##[ \t]/.test(line)) return "h2";
-  if (/^\s*#[ \t]/.test(line)) return "h1";
+  const heading = /^\s*(#{1,6})[ \t]/.exec(line);
+  if (heading) return `h${heading[1].length}` as HeadingKind;
   if (/^\s*>/.test(line)) return "quote";
   if (/^\s*[-*+][ \t]+\[[ xX]\][ \t]/.test(line)) return "check";
   if (/^\s*[-*+][ \t]/.test(line)) return "bullet";

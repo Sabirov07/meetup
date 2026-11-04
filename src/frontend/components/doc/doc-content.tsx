@@ -7,6 +7,7 @@ import { isAttachmentHref } from "@/shared/doc/attachments";
 import {
   parseDoc,
   type DocBlock,
+  type HeadingLevel,
   type DocListItem,
   type InlineNode,
 } from "@/shared/doc/markdown";
@@ -32,6 +33,25 @@ import { Dialog, DialogContent } from "@/frontend/components/ui/dialog";
  * An attached file is a link like any other in the Markdown; it is only drawn
  * differently — as a chip that downloads — so the eye finds it in a long brief.
  */
+/** Type scale per heading level; the compact one is for sidebars and previews. */
+const HEADING_SIZE_RELAXED: Record<HeadingLevel, string> = {
+  1: "text-xl",
+  2: "text-lg",
+  3: "text-base",
+  4: "text-[15px]",
+  5: "text-[13px] tracking-[0.04em]",
+  6: "text-xs tracking-[0.06em]",
+};
+
+const HEADING_SIZE_COMPACT: Record<HeadingLevel, string> = {
+  1: "text-base",
+  2: "text-sm",
+  3: "text-[13px]",
+  4: "text-xs",
+  5: "text-2xs tracking-[0.04em]",
+  6: "text-2xs tracking-[0.06em]",
+};
+
 export function DocContent({
   markdown,
   density = "compact",
@@ -116,25 +136,19 @@ function Block({
 }) {
   switch (block.type) {
     case "heading": {
-      const size =
-        block.level === 1
-          ? relaxed
-            ? "text-xl"
-            : "text-base"
-          : block.level === 2
-            ? relaxed
-              ? "text-lg"
-              : "text-sm"
-            : relaxed
-              ? "text-base"
-              : "text-[13px]";
-      const Tag = (`h${block.level + 1}` as "h2" | "h3" | "h4");
+      const size = (relaxed ? HEADING_SIZE_RELAXED : HEADING_SIZE_COMPACT)[block.level];
+      // The document title is the page's h1, so a level-1 heading renders as
+      // h2 and the rest shift down with it, bottoming out at h6.
+      const Tag = `h${Math.min(block.level + 1, 6)}` as "h2" | "h3" | "h4" | "h5" | "h6";
       return (
         <Tag
           className={cn(
-            "font-semibold tracking-[-0.01em] text-text",
+            "tracking-[-0.01em] text-text",
             size,
             block.level === 1 ? "mt-1 pt-1" : "",
+            // h5–h6 are body-sized, so they read as headings by weight and
+            // tone rather than by size.
+            block.level >= 5 ? "font-semibold uppercase text-text-muted" : "font-semibold",
           )}
         >
           <Inline nodes={block.content} onZoom={onZoom} />

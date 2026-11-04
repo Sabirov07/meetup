@@ -4,9 +4,14 @@ import {
   Bold,
   Code,
   Code2,
+  ChevronDown,
+  Heading,
   Heading1,
   Heading2,
   Heading3,
+  Heading4,
+  Heading5,
+  Heading6,
   ImagePlus,
   Italic,
   Link2,
@@ -46,6 +51,8 @@ import {
   applyLink,
   blockKindAt,
   continueList,
+  HEADING_KINDS,
+  headingLevel,
   indentLines,
   insertBlock,
   replaceRange,
@@ -53,6 +60,7 @@ import {
   slashTrigger,
   toggleMark,
   type BlockKind,
+  type HeadingKind,
   type InlineMark,
   type TextEdit,
   type TextSelection,
@@ -63,6 +71,13 @@ import { cn } from "@/frontend/lib/utils";
 import { Button } from "@/frontend/components/ui/button";
 import { Input } from "@/frontend/components/ui/field";
 import { Tooltip } from "@/frontend/components/ui/feedback";
+import {
+  Menu,
+  MenuContent,
+  MenuItem,
+  MenuShortcut,
+  MenuTrigger,
+} from "@/frontend/components/ui/menu";
 import { DocContent } from "./doc-content";
 
 /**
@@ -329,6 +344,12 @@ export function DocEditor({
         setLinkDraft("");
         return;
       }
+      if (event.altKey && /^[0-6]$/.test(event.code.replace("Digit", ""))) {
+        event.preventDefault();
+        const level = Number(event.code.replace("Digit", ""));
+        apply(setBlockKind(value, current, level === 0 ? "text" : (`h${level}` as HeadingKind)));
+        return;
+      }
       if (event.key === "Enter") {
         event.preventDefault();
         onSaveRequest?.();
@@ -417,23 +438,9 @@ export function DocEditor({
     >
       {/* Toolbar */}
       <div className="flex shrink-0 flex-wrap items-center gap-0.5 rounded-t-lg border border-line-strong bg-raised px-1.5 py-1">
-        <ToolButton
-          label="doc.toolbar.h1"
-          icon={Heading1}
-          active={block === "h1"}
-          onClick={() => apply(setBlockKind(value, readSelection(), "h1"))}
-        />
-        <ToolButton
-          label="doc.toolbar.h2"
-          icon={Heading2}
-          active={block === "h2"}
-          onClick={() => apply(setBlockKind(value, readSelection(), "h2"))}
-        />
-        <ToolButton
-          label="doc.toolbar.h3"
-          icon={Heading3}
-          active={block === "h3"}
-          onClick={() => apply(setBlockKind(value, readSelection(), "h3"))}
+        <HeadingPicker
+          current={block}
+          onPick={(kind) => apply(setBlockKind(value, readSelection(), kind))}
         />
         <ToolDivider />
         <ToolButton
@@ -724,6 +731,96 @@ function ToolDivider() {
   return <span className="mx-0.5 h-4 w-px shrink-0 bg-line-strong" aria-hidden />;
 }
 
+const HEADING_ICONS: Record<HeadingKind, IconComponent> = {
+  h1: Heading1,
+  h2: Heading2,
+  h3: Heading3,
+  h4: Heading4,
+  h5: Heading5,
+  h6: Heading6,
+};
+
+/**
+ * One button for all six heading levels. It shows the level the caret is on
+ * (or a plain H when it is on body text) and opens a list to switch — six
+ * separate buttons would eat half the toolbar.
+ */
+function HeadingPicker({
+  current,
+  onPick,
+}: {
+  current: BlockKind;
+  onPick: (kind: BlockKind) => void;
+}) {
+  const t = useT();
+  const level = headingLevel(current);
+  const Icon = level ? HEADING_ICONS[current as HeadingKind] : Heading;
+  const label = level ? t(`doc.toolbar.h${level}` as TranslationKey) : t("doc.toolbar.heading");
+
+  return (
+    <Menu modal={false}>
+      <Tooltip content={label}>
+        <MenuTrigger asChild>
+          <button
+            type="button"
+            aria-label={label}
+            aria-pressed={level > 0}
+            // The textarea must keep its selection, so the button never takes focus.
+            onMouseDown={(event) => event.preventDefault()}
+            className={cn(
+              "flex h-6 items-center gap-0.5 rounded pl-1 pr-0.5 transition-colors",
+              level > 0
+                ? "bg-accent-dim text-accent-bright"
+                : "text-text-muted hover:bg-hover hover:text-text",
+            )}
+          >
+            <Icon className="h-3.5 w-3.5" />
+            <ChevronDown className="h-3 w-3 opacity-70" />
+          </button>
+        </MenuTrigger>
+      </Tooltip>
+      <MenuContent
+        align="start"
+        className="min-w-[10rem]"
+        // Focus goes back to the textarea on its own; the menu must not grab it.
+        onCloseAutoFocus={(event) => event.preventDefault()}
+      >
+        <MenuItem onSelect={() => onPick("text")} className={current === "text" ? "text-text" : ""}>
+          <Type className="h-3.5 w-3.5" />
+          {t("doc.block.text")}
+          <MenuShortcut>⌘⌥0</MenuShortcut>
+        </MenuItem>
+        {HEADING_KINDS.map((kind, index) => {
+          const LevelIcon = HEADING_ICONS[kind];
+          return (
+            <MenuItem
+              key={kind}
+              onSelect={() => onPick(kind)}
+              className={current === kind ? "bg-accent-dim text-accent-bright" : ""}
+            >
+              <LevelIcon className="h-3.5 w-3.5" />
+              <span className={HEADING_PREVIEW[index]}>
+                {t(`doc.toolbar.h${index + 1}` as TranslationKey)}
+              </span>
+              <MenuShortcut>{`⌘⌥${index + 1}`}</MenuShortcut>
+            </MenuItem>
+          );
+        })}
+      </MenuContent>
+    </Menu>
+  );
+}
+
+/** Each row previews its own size, so the list reads like a type scale. */
+const HEADING_PREVIEW = [
+  "text-base font-semibold",
+  "text-[15px] font-semibold",
+  "text-sm font-semibold",
+  "text-[13px] font-semibold",
+  "text-xs font-semibold uppercase tracking-[0.04em]",
+  "text-2xs font-semibold uppercase tracking-[0.06em]",
+];
+
 // ---------------------------------------------------------------------------
 // Slash menu
 // ---------------------------------------------------------------------------
@@ -771,6 +868,9 @@ const SLASH_ITEMS: SlashDefinition[] = [
   blockItem("h1", "doc.block.h1", "#", "doc.block.h1.keywords", Heading1, "h1"),
   blockItem("h2", "doc.block.h2", "##", "doc.block.h2.keywords", Heading2, "h2"),
   blockItem("h3", "doc.block.h3", "###", "doc.block.h3.keywords", Heading3, "h3"),
+  blockItem("h4", "doc.block.h4", "####", "doc.block.h4.keywords", Heading4, "h4"),
+  blockItem("h5", "doc.block.h5", "#####", "doc.block.h5.keywords", Heading5, "h5"),
+  blockItem("h6", "doc.block.h6", "######", "doc.block.h6.keywords", Heading6, "h6"),
   blockItem("text", "doc.block.text", "¶", "doc.block.text.keywords", Type, "text"),
   blockItem("bullet", "doc.block.bullet", "-", "doc.block.bullet.keywords", List, "bullet"),
   blockItem(
