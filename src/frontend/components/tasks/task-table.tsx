@@ -107,6 +107,7 @@ type GroupDefaults = {
   status?: TaskStatus;
   ownerMemberId?: string | null;
   priority?: TaskPriority;
+  spaceId?: string | null;
 };
 
 type Group = {
@@ -217,6 +218,19 @@ export function TaskTable({
     }
   }, [groupBy, visible, members, ownerFilter, t, allStatuses]);
 
+  // A task typed into a section's or a member's own list belongs to that
+  // section or member: the quick-add row has no picker to say otherwise, so
+  // the page's scope travels with the group's own defaults.
+  const scopeDefaults = useMemo<GroupDefaults>(
+    () => ({
+      ...(spaceFilter !== undefined && { spaceId: spaceFilter === NO_SPACE ? null : spaceFilter }),
+      ...(ownerFilter !== undefined && {
+        ownerMemberId: ownerFilter === UNASSIGNED ? null : ownerFilter,
+      }),
+    }),
+    [spaceFilter, ownerFilter],
+  );
+
   // Empty groups stay for statuses — a board you cannot drop into is not a
   // board, and the heading is also where a new task of that status is added.
   const shown = groups.filter((group) => group.items.length > 0 || groupBy === "STATUS");
@@ -286,6 +300,7 @@ export function TaskTable({
                 collapsed={collapsed.has(group.key)}
                 onToggle={() => toggleGroup(group.key)}
                 onAdd={onAdd}
+                scopeDefaults={scopeDefaults}
               />
             ))}
           </div>
@@ -326,11 +341,14 @@ function GroupSection({
   collapsed,
   onToggle,
   onAdd,
+  scopeDefaults,
 }: {
   group: Group;
   collapsed: boolean;
   onToggle: () => void;
   onAdd?: (defaults: GroupDefaults) => void;
+  /** What the page itself is scoped to — a section, a member — for quick add. */
+  scopeDefaults: GroupDefaults;
 }) {
   const t = useT();
   const [quickAdd, setQuickAdd] = useState(false);
@@ -409,7 +427,10 @@ function GroupSection({
           )}
 
           {quickAdd ? (
-            <QuickAddRow defaults={group.defaults} onClose={() => setQuickAdd(false)} />
+            <QuickAddRow
+              defaults={{ ...scopeDefaults, ...group.defaults }}
+              onClose={() => setQuickAdd(false)}
+            />
           ) : (
             <button
               onClick={() => setQuickAdd(true)}
