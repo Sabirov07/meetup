@@ -826,6 +826,10 @@ model TaskComment {
   /// The model that answered, so an old reply is not mistaken for this one's.
   model          String?
   createdAt      DateTime    @default(now())
+  /// When the author last changed the text. Null until they do: a thread
+  /// where every message was edited at the moment it was posted would hide
+  /// the edits that matter.
+  editedAt       DateTime?
 
   task    Task             @relation(fields: [taskId], references: [id], onDelete: Cascade)
   author  WorkspaceMember? @relation(fields: [authorMemberId], references: [id], onDelete: SetNull)

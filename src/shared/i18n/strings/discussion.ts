@@ -33,6 +33,23 @@ export const discussion = {
     "Не удалось отправить сообщение",
   ],
 
+  "discussion.edit": ["Edit", "Редактировать"],
+  "discussion.edited": ["edited", "изменено"],
+  "discussion.editHint": ["⌘↵ to save, Esc to cancel", "⌘↵ — сохранить, Esc — отменить"],
+  "discussion.editFailed": ["Could not save the change", "Не удалось сохранить изменение"],
+  "discussion.messageMenu": ["Message actions", "Действия с сообщением"],
+  "discussion.delete.title": ["Delete this message?", "Удалить это сообщение?"],
+  "discussion.delete.body": [
+    "It will disappear from the discussion for everyone. This cannot be undone.",
+    "Оно исчезнет из обсуждения у всех. Это действие нельзя отменить.",
+  ],
+  "discussion.delete.withAnswer": [
+    "The assistant's answer to it will be deleted too.",
+    "Ответ ассистента на него тоже будет удалён.",
+  ],
+  "discussion.delete.failed": ["Could not delete the message", "Не удалось удалить сообщение"],
+  "discussion.deleted": ["Message deleted", "Сообщение удалено"],
+
   "discussion.count.one": ["{count} message", "{count} сообщение"],
   "discussion.count.few": ["{count} messages", "{count} сообщения"],
   "discussion.count.many": ["{count} messages", "{count} сообщений"],

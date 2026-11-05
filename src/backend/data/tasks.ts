@@ -188,6 +188,8 @@ export type CommentView = {
   advice: Advice | null;
   model: string | null;
   createdAt: string;
+  /** When the text was last changed, or null if never. */
+  editedAt: string | null;
 };
 
 const commentSelect = {
@@ -200,6 +202,7 @@ const commentSelect = {
   advice: true,
   model: true,
   createdAt: true,
+  editedAt: true,
   author: { select: memberSelect },
 } as const;
 
@@ -213,6 +216,7 @@ type CommentRow = {
   advice: unknown;
   model: string | null;
   createdAt: Date;
+  editedAt: Date | null;
   author: Parameters<typeof toMemberSummary>[0] | null;
 };
 
@@ -239,6 +243,7 @@ function toCommentView(row: CommentRow): CommentView {
     advice: (row.advice as Advice | null) ?? null,
     model: row.model,
     createdAt: row.createdAt.toISOString(),
+    editedAt: row.editedAt?.toISOString() ?? null,
   };
 }
 

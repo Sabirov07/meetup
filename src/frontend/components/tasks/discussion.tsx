@@ -6,12 +6,21 @@ import {
   Lightbulb,
   Loader2,
   MessagesSquare,
+  MoreHorizontal,
+  Pencil,
   RefreshCw,
   Sparkles,
+  Trash2,
 } from "lucide-react";
 import { Fragment, useEffect, useRef, useState, useTransition } from "react";
 import { toast } from "sonner";
-import { addComment, answerWithAi, fetchComments } from "@/backend/actions/tasks";
+import {
+  addComment,
+  answerWithAi,
+  deleteComment,
+  fetchComments,
+  updateComment,
+} from "@/backend/actions/tasks";
 import type { CommentView } from "@/backend/data/tasks";
 import { splitMentions } from "@/shared/domain/mentions";
 import { hasAdvice, hasSketch, type Advice, type Effort } from "@/shared/domain/sketch";
@@ -21,6 +30,15 @@ import { cn } from "@/frontend/lib/utils";
 import { Avatar } from "@/frontend/components/ui/avatar";
 import { Badge, Count } from "@/frontend/components/ui/badge";
 import { Button } from "@/frontend/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/frontend/components/ui/dialog";
+import { Menu, MenuContent, MenuItem, MenuTrigger } from "@/frontend/components/ui/menu";
 import { RelativeTime } from "@/frontend/components/ui/relative-time";
 import { DocContent } from "@/frontend/components/doc/doc-content";
 import { SketchView } from "./discussion-sketch";
@@ -44,7 +62,7 @@ import { useTasks } from "./task-store";
  * failure to answer costs the answer rather than what they wrote.
  */
 export function Discussion({ task }: { task: TaskView }) {
-  const { members, upsertTask } = useTasks();
+  const { members, currentMemberId, upsertTask } = useTasks();
   const { t } = useI18n();
 
   const [comments, setComments] = useState<CommentView[] | null>(null);
@@ -63,6 +81,11 @@ export function Discussion({ task }: { task: TaskView }) {
   const [answering, setAnswering] = useState<string | null>(null);
   /** A question whose answer failed, so it can be asked again. */
   const [failed, setFailed] = useState<string | null>(null);
+  /** The message being rewritten in place, if any. */
+  const [editingId, setEditingId] = useState<string | null>(null);
+  /** The message whose deletion is waiting for a confirmation. */
+  const [deleting, setDeleting] = useState<CommentView | null>(null);
+  const [removing, setRemoving] = useState(false);
 
   // Not part of the task list payload, so the thread loads when the drawer
   // opens. The component is keyed by task id upstream, so this starts as null.
@@ -121,6 +144,45 @@ export function Discussion({ task }: { task: TaskView }) {
     });
   }
 
+  async function saveEdit(commentId: string, body: string): Promise<boolean> {
+    const result = await updateComment({ taskId: task.id, commentId, body });
+    if (!result.ok) {
+      toast.error(t("discussion.editFailed"), { description: result.error });
+      return false;
+    }
+    sync(result.data);
+    setEditingId(null);
+    return true;
+  }
+
+  async function confirmDelete() {
+    if (!deleting || removing) return;
+    setRemoving(true);
+    const result = await deleteComment({ taskId: task.id, commentId: deleting.id });
+    setRemoving(false);
+    if (!result.ok) {
+      toast.error(t("discussion.delete.failed"), { description: result.error });
+      return;
+    }
+    sync(result.data);
+    setDeleting(null);
+    toast.success(t("discussion.deleted"));
+  }
+
+  /**
+   * Who may act on a message: its author, or — for the assistant's answer —
+   * whoever asked. The server checks the same thing and also lets an
+   * administrator through; the client only decides whether to draw the menu.
+   */
+  function ownerOf(comment: CommentView): string | null {
+    if (comment.kind !== "AI_ANSWER") return comment.author?.id ?? null;
+    const question = comments?.find((item) => item.id === comment.answersId);
+    return question?.author?.id ?? null;
+  }
+
+  const deletingHasAnswer =
+    deleting !== null && (comments?.some((item) => item.answersId === deleting.id) ?? false);
+
   return (
     <section className="px-4 py-3.5">
       <div className="mb-2.5 flex items-center gap-1.5">
@@ -164,7 +226,16 @@ export function Discussion({ task }: { task: TaskView }) {
 
           {comments.map((comment) => (
             <Fragment key={comment.id}>
-              <Message comment={comment} members={members} />
+              <Message
+                comment={comment}
+                members={members}
+                mine={ownerOf(comment) === currentMemberId}
+                editing={editingId === comment.id}
+                onEdit={() => setEditingId(comment.id)}
+                onCancelEdit={() => setEditingId(null)}
+                onSave={(body) => saveEdit(comment.id, body)}
+                onDelete={() => setDeleting(comment)}
+              />
               {answering === comment.id && <Thinking />}
               {failed === comment.id && (
                 <RetryRow onRetry={() => requestAnswer(comment.id)} />
@@ -198,16 +269,62 @@ export function Discussion({ task }: { task: TaskView }) {
           </div>
         </div>
       )}
+
+      <Dialog open={deleting !== null} onOpenChange={(open) => !open && !removing && setDeleting(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>{t("discussion.delete.title")}</DialogTitle>
+            <DialogDescription>
+              {t("discussion.delete.body")}
+              {deletingHasAnswer && <> {t("discussion.delete.withAnswer")}</>}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setDeleting(null)} disabled={removing}>
+              {t("common.cancel")}
+            </Button>
+            <Button
+              variant="danger"
+              onClick={confirmDelete}
+              loading={removing}
+              loadingLabel={t("common.saving")}
+            >
+              {t("common.delete")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </section>
   );
 }
 
-function Message({ comment, members }: { comment: CommentView; members: MemberSummary[] }) {
+function Message({
+  comment,
+  members,
+  mine,
+  editing,
+  onEdit,
+  onCancelEdit,
+  onSave,
+  onDelete,
+}: {
+  comment: CommentView;
+  members: MemberSummary[];
+  /** Whether the viewer may change or remove this message. */
+  mine: boolean;
+  editing: boolean;
+  onEdit: () => void;
+  onCancelEdit: () => void;
+  onSave: (body: string) => Promise<boolean>;
+  onDelete: () => void;
+}) {
   const { t } = useI18n();
   const isAi = comment.kind === "AI_ANSWER";
 
   return (
-    <article className={cn("flex gap-2", isAi && "rounded-lg bg-raised/60 p-2 -mx-0.5")}>
+    <article
+      className={cn("group flex gap-2", isAi && "rounded-lg bg-raised/60 p-2 -mx-0.5")}
+    >
       {isAi ? (
         <span
           aria-hidden
@@ -239,6 +356,37 @@ function Message({ comment, members }: { comment: CommentView; members: MemberSu
           <span className="text-2xs text-text-faint">
             <RelativeTime value={comment.createdAt} />
           </span>
+          {comment.editedAt && (
+            <span className="text-2xs text-text-faint" title={comment.editedAt}>
+              · {t("discussion.edited")}
+            </span>
+          )}
+
+          {mine && !editing && (
+            <Menu>
+              <MenuTrigger asChild>
+                <button
+                  type="button"
+                  aria-label={t("discussion.messageMenu")}
+                  className="ml-auto -my-1 rounded-md p-1 text-text-faint opacity-0 transition hover:bg-raised hover:text-text focus-visible:opacity-100 group-hover:opacity-100 data-[state=open]:opacity-100"
+                >
+                  <MoreHorizontal className="h-3.5 w-3.5" />
+                </button>
+              </MenuTrigger>
+              <MenuContent align="end">
+                {!isAi && (
+                  <MenuItem onSelect={onEdit}>
+                    <Pencil className="h-3.5 w-3.5" />
+                    {t("discussion.edit")}
+                  </MenuItem>
+                )}
+                <MenuItem destructive onSelect={onDelete}>
+                  <Trash2 className="h-3.5 w-3.5" />
+                  {t("common.delete")}
+                </MenuItem>
+              </MenuContent>
+            </Menu>
+          )}
         </p>
 
         {/* The assistant writes Markdown; a person writes text with mentions. */}
@@ -246,6 +394,13 @@ function Message({ comment, members }: { comment: CommentView; members: MemberSu
           <div className="mt-1">
             <DocContent markdown={comment.body} className="text-[13px]" />
           </div>
+        ) : editing ? (
+          <EditForm
+            initial={comment.body}
+            members={members}
+            onCancel={onCancelEdit}
+            onSave={onSave}
+          />
         ) : (
           <p className="mt-0.5 whitespace-pre-wrap text-2xs leading-5 text-text-secondary">
             <MentionText body={comment.body} members={members} />
@@ -271,6 +426,63 @@ function Message({ comment, members }: { comment: CommentView; members: MemberSu
         )}
       </div>
     </article>
+  );
+}
+
+/** Rewrites a message in place, with the same mention picker as the composer. */
+function EditForm({
+  initial,
+  members,
+  onCancel,
+  onSave,
+}: {
+  initial: string;
+  members: MemberSummary[];
+  onCancel: () => void;
+  onSave: (body: string) => Promise<boolean>;
+}) {
+  const { t } = useI18n();
+  const [draft, setDraft] = useState(initial);
+  const [saving, startSaving] = useTransition();
+  const changed = draft.trim() !== initial.trim() && draft.trim().length > 0;
+
+  function save() {
+    if (!changed || saving) return;
+    startSaving(async () => {
+      await onSave(draft.trim());
+    });
+  }
+
+  return (
+    <div
+      className="mt-1"
+      onKeyDown={(event) => {
+        if (event.key === "Escape") {
+          event.stopPropagation();
+          onCancel();
+        }
+      }}
+    >
+      <MentionInput
+        value={draft}
+        onChange={setDraft}
+        members={members}
+        disabled={saving}
+        onSubmit={save}
+        autoFocus
+      />
+      <div className="mt-1.5 flex items-center justify-between gap-2">
+        <span className="text-2xs text-text-faint">{t("discussion.editHint")}</span>
+        <div className="flex items-center gap-1">
+          <Button size="xs" variant="ghost" onClick={onCancel} disabled={saving}>
+            {t("common.cancel")}
+          </Button>
+          <Button size="xs" variant="secondary" disabled={!changed} loading={saving} onClick={save}>
+            {t("common.save")}
+          </Button>
+        </div>
+      </div>
+    </div>
   );
 }
 

@@ -628,6 +628,84 @@ export async function addComment(input: {
 }
 
 /**
+ * Whether this person may change or remove a message: its author, or an
+ * administrator cleaning up a thread. An assistant answer belongs to whoever
+ * asked the question it answers.
+ */
+async function assertCommentEditable(
+  commentId: string,
+  taskId: string,
+  session: Awaited<ReturnType<typeof requireSessionForAction>>,
+) {
+  const row = await db.taskComment.findFirst({
+    where: { id: commentId, taskId, task: { workspaceId: session.workspace.id } },
+    select: {
+      id: true,
+      kind: true,
+      authorMemberId: true,
+      answers: { select: { authorMemberId: true } },
+    },
+  });
+  if (!row) throw new Error(await message("errors.comment.gone"));
+
+  const ownerId = row.kind === "AI_ANSWER" ? row.answers?.authorMemberId : row.authorMemberId;
+  const allowed = ownerId === session.member.id || session.member.role === "ADMINISTRATOR";
+  if (!allowed) throw new Error(await message("errors.comment.notYours"));
+
+  return row;
+}
+
+export async function updateComment(input: {
+  taskId: string;
+  commentId: string;
+  body: string;
+}): Promise<ActionResult<CommentView[]>> {
+  return guarded(async () => {
+    const session = await requireSessionForAction();
+    const body = input.body.trim();
+    if (body.length === 0) return fail(await message("errors.task.emptyNote"));
+    if (body.length > 4000) return fail(await message("errors.task.noteTooLong"));
+
+    await assertTaskInWorkspace(input.taskId, session.workspace.id);
+    const existing = await assertCommentEditable(input.commentId, input.taskId, session);
+    if (existing.kind !== "MESSAGE") return fail(await message("errors.comment.aiNotEditable"));
+
+    // Mentions follow the text: someone removed from the message is no longer
+    // called in, and someone newly named is. Editing never re-asks the
+    // assistant, though — an answer that already exists stays attached.
+    const { memberIds, mentionsAi } = mentionsIn(body, session.workspace.members);
+
+    await db.taskComment.update({
+      where: { id: input.commentId },
+      data: { body, mentionedMemberIds: memberIds, mentionsAi, editedAt: new Date() },
+    });
+
+    refresh();
+    return ok(await listComments(input.taskId, session.workspace.id));
+  });
+}
+
+/**
+ * Removes a message. Deleting a question takes the assistant's answer with it
+ * (the FK cascades), because an answer with no question reads as noise.
+ */
+export async function deleteComment(input: {
+  taskId: string;
+  commentId: string;
+}): Promise<ActionResult<CommentView[]>> {
+  return guarded(async () => {
+    const session = await requireSessionForAction();
+    await assertTaskInWorkspace(input.taskId, session.workspace.id);
+    await assertCommentEditable(input.commentId, input.taskId, session);
+
+    await db.taskComment.delete({ where: { id: input.commentId } });
+
+    refresh();
+    return ok(await listComments(input.taskId, session.workspace.id));
+  });
+}
+
+/**
  * Answers an `@ai` mention, and posts the answer into the thread.
  *
  * Split from `addComment` on purpose. The model call costs tens of seconds, and

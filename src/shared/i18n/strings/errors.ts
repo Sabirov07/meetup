@@ -85,6 +85,19 @@ export const errors = {
     "Аккаунт с такой почтой уже есть. Войдите в него.",
   ],
 
+  "errors.comment.gone": [
+    "That message no longer exists.",
+    "Этого сообщения больше нет.",
+  ],
+  "errors.comment.notYours": [
+    "Only the author or an administrator can change that message.",
+    "Изменить сообщение может только его автор или администратор.",
+  ],
+  "errors.comment.aiNotEditable": [
+    "The assistant's answers cannot be edited.",
+    "Ответы ассистента нельзя редактировать.",
+  ],
+
   "errors.task.invalid": ["That task is not valid.", "Задача заполнена неверно."],
   "errors.task.changeInvalid": [
     "That change is not valid.",
